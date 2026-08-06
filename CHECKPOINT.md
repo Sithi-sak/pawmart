@@ -18,7 +18,7 @@ Current state: fresh `create-vue` + FastAPI scaffolds, no pages built, no schema
 - [x] **1.6 Checkout** (`/checkout`) — 3-step wizard: Shipping → Payment → Review, with a persistent order summary sidebar (KHQR is a static placeholder for now, no real generation yet). See "Checkout flow" note below for backend implications.
 - [x] **1.7 Order Confirmation** (`/order/confirm`) — post-payment confirmation screen.
 - [x] **1.8 Order Tracking** (`/orders/:id`) — status timeline UI (Confirmed → Processing → Shipping → Out for Delivery → Delivered).
-- [ ] **1.9 Login / Signup** (`/login`, `/signup`) — forms only, no auth wiring yet.
+- [x] **1.9 Login / Signup** (`/login`, `/signup`) — forms only, no auth wiring yet.
 - [ ] **1.10 Account** (`/account`) — profile view/edit shell.
 - [ ] **1.11 Pet Profiles** (`/account/pets`) — list + create/edit form (name, species, breed, age, weight, diet).
 - [ ] **1.12 Admin Dashboard shell** (`/admin`) — protected-route layout, sales overview + low-stock alert widgets (mock data).

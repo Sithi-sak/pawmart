@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import DefaultLayout from '../layouts/DefaultLayout.vue'
 import AdminLayout from '../layouts/AdminLayout.vue'
+import AuthLayout from '../layouts/AuthLayout.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -43,17 +44,33 @@ const router = createRouter({
           component: () => import('../views/OrderTrackingView.vue'),
           props: true,
         },
+        { path: 'account', name: 'account', component: () => import('../views/AccountView.vue') },
+        {
+          path: 'account/pets',
+          name: 'pet-profiles',
+          component: () => import('../views/PetProfilesView.vue'),
+        },
+      ],
+    },
+    {
+      path: '/',
+      component: AuthLayout,
+      children: [
         { path: 'login', name: 'login', component: () => import('../views/auth/LoginView.vue') },
         {
           path: 'signup',
           name: 'signup',
           component: () => import('../views/auth/SignupView.vue'),
         },
-        { path: 'account', name: 'account', component: () => import('../views/AccountView.vue') },
         {
-          path: 'account/pets',
-          name: 'pet-profiles',
-          component: () => import('../views/PetProfilesView.vue'),
+          path: 'forgot-password',
+          name: 'forgot-password',
+          component: () => import('../views/auth/ForgotPasswordView.vue'),
+        },
+        {
+          path: 'reset-password',
+          name: 'reset-password',
+          component: () => import('../views/auth/ResetPasswordView.vue'),
         },
       ],
     },
