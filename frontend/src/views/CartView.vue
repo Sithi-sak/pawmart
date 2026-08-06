@@ -1,38 +1,10 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { PhTruck, PhLock, PhMinus, PhPlus } from '@phosphor-icons/vue'
+import { useCartStore } from '../stores/cart'
 
-interface CartItem {
-  id: number
-  productId: number
-  name: string
-  variant: string
-  size: string
-  price: number
-  quantity: number
-}
-
-const items = ref<CartItem[]>([
-  {
-    id: 1,
-    productId: 3,
-    name: 'Woven Leather Leash Set',
-    variant: 'COGNAC / ITALIAN LEATHER',
-    size: 'Medium',
-    price: 210.0,
-    quantity: 1,
-  },
-  {
-    id: 2,
-    productId: 5,
-    name: 'Grooming Brush Kit',
-    variant: 'NATURAL BOAR BRISTLE',
-    size: 'Standard',
-    price: 125.0,
-    quantity: 2,
-  },
-])
+const cart = useCartStore()
 
 interface RelatedProduct {
   id: number
@@ -50,58 +22,24 @@ const relatedProducts: RelatedProduct[] = [
 
 const router = useRouter()
 
-const itemCount = computed(() => items.value.reduce((sum, item) => sum + item.quantity, 0))
-
-const subtotal = computed(() =>
-  items.value.reduce((sum, item) => sum + item.price * item.quantity, 0),
-)
-
-// Mock promo codes — real validation/discount lookup comes with the checkout API (3.2).
-const voucherCodes: Record<string, number> = {
-  PAWMART10: 0.1,
-  WELCOME15: 0.15,
-}
-
 const voucherInput = ref('')
-const appliedVoucher = ref<{ code: string; rate: number } | null>(null)
 const voucherError = ref(false)
 
-const discount = computed(() =>
-  appliedVoucher.value ? subtotal.value * appliedVoucher.value.rate : 0,
-)
-
-const total = computed(() => subtotal.value - discount.value)
-
 function applyVoucher() {
-  const code = voucherInput.value.trim().toUpperCase()
+  const code = voucherInput.value.trim()
   if (!code) return
 
-  const rate = voucherCodes[code]
-  if (rate) {
-    appliedVoucher.value = { code, rate }
+  if (cart.applyVoucher(code)) {
     voucherError.value = false
   } else {
-    appliedVoucher.value = null
     voucherError.value = true
   }
 }
 
 function removeVoucher() {
-  appliedVoucher.value = null
+  cart.removeVoucher()
   voucherInput.value = ''
   voucherError.value = false
-}
-
-function increment(item: CartItem) {
-  item.quantity++
-}
-
-function decrement(item: CartItem) {
-  if (item.quantity > 1) item.quantity--
-}
-
-function removeItem(id: number) {
-  items.value = items.value.filter((item) => item.id !== id)
 }
 
 function formatPrice(value: number) {
@@ -118,14 +56,14 @@ function proceedToCheckout() {
     <div class="cart-header">
       <h1 class="page-title">Your Cart</h1>
       <p class="items-count">
-        {{ itemCount }} {{ itemCount === 1 ? 'Item' : 'Items' }} in your selection
+        {{ cart.itemCount }} {{ cart.itemCount === 1 ? 'Item' : 'Items' }} in your selection
       </p>
     </div>
     <div class="header-divider"></div>
 
-    <div v-if="items.length" class="cart-body">
+    <div v-if="cart.items.length" class="cart-body">
       <div class="line-items">
-        <div v-for="item in items" :key="item.id" class="line-item">
+        <div v-for="item in cart.items" :key="item.id" class="line-item">
           <RouterLink :to="`/products/${item.productId}`" class="item-image placeholder-img" />
 
           <div class="item-details">
@@ -136,11 +74,11 @@ function proceedToCheckout() {
             <p class="item-size">Size: {{ item.size }}</p>
 
             <div class="qty-stepper">
-              <button type="button" class="qty-btn" @click="decrement(item)">
+              <button type="button" class="qty-btn" @click="cart.decrement(item)">
                 <PhMinus :size="12" />
               </button>
               <span class="qty-value">{{ item.quantity }}</span>
-              <button type="button" class="qty-btn" @click="increment(item)">
+              <button type="button" class="qty-btn" @click="cart.increment(item)">
                 <PhPlus :size="12" />
               </button>
             </div>
@@ -148,7 +86,9 @@ function proceedToCheckout() {
 
           <div class="item-aside">
             <p class="item-price">{{ formatPrice(item.price) }}</p>
-            <button type="button" class="remove-link" @click="removeItem(item.id)">Remove</button>
+            <button type="button" class="remove-link" @click="cart.removeItem(item.id)">
+              Remove
+            </button>
           </div>
         </div>
       </div>
@@ -159,15 +99,15 @@ function proceedToCheckout() {
 
         <div class="summary-row">
           <span>Subtotal</span>
-          <span>{{ formatPrice(subtotal) }}</span>
+          <span>{{ formatPrice(cart.subtotal) }}</span>
         </div>
         <div class="summary-row">
           <span>Shipping</span>
           <span class="complimentary">Complimentary</span>
         </div>
-        <div v-if="appliedVoucher" class="summary-row discount-row">
-          <span>Discount ({{ appliedVoucher.code }})</span>
-          <span>-{{ formatPrice(discount) }}</span>
+        <div v-if="cart.appliedVoucher" class="summary-row discount-row">
+          <span>Discount ({{ cart.appliedVoucher.code }})</span>
+          <span>-{{ formatPrice(cart.discount) }}</span>
         </div>
 
         <div class="summary-divider"></div>
@@ -179,11 +119,11 @@ function proceedToCheckout() {
               type="text"
               placeholder="Promo code"
               class="voucher-input"
-              :disabled="!!appliedVoucher"
+              :disabled="!!cart.appliedVoucher"
               @keyup.enter="applyVoucher"
             />
             <button
-              v-if="!appliedVoucher"
+              v-if="!cart.appliedVoucher"
               type="button"
               class="voucher-btn"
               @click="applyVoucher"
@@ -193,8 +133,8 @@ function proceedToCheckout() {
             <button v-else type="button" class="voucher-btn" @click="removeVoucher">Remove</button>
           </div>
           <p v-if="voucherError" class="voucher-message is-error">Invalid promo code</p>
-          <p v-else-if="appliedVoucher" class="voucher-message is-success">
-            "{{ appliedVoucher.code }}" applied — {{ Math.round(appliedVoucher.rate * 100) }}% off
+          <p v-else-if="cart.appliedVoucher" class="voucher-message is-success">
+            "{{ cart.appliedVoucher.code }}" applied — {{ Math.round(cart.appliedVoucher.rate * 100) }}% off
           </p>
         </div>
 
@@ -202,7 +142,7 @@ function proceedToCheckout() {
 
         <div class="summary-row total-row">
           <span>Total</span>
-          <span>{{ formatPrice(total) }}</span>
+          <span>{{ formatPrice(cart.total) }}</span>
         </div>
 
         <button type="button" class="checkout-btn" @click="proceedToCheckout">
