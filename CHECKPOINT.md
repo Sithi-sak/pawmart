@@ -14,7 +14,7 @@ Current state: fresh `create-vue` + FastAPI scaffolds, no pages built, no schema
 - [x] **1.2 Home / Landing** (`/`) — hero banner, featured products, category links.
 - [x] **1.3 Product Catalog** (`/products`) — grid with filter/search by pet type, brand, price range (mock product data).
 - [x] **1.4 Product Detail** (`/products/:id`) — images, description, stock availability, add-to-cart.
-- [ ] **1.5 Cart** (`/cart`) — line items, quantity adjust, voucher input, totals.
+- [x] **1.5 Cart** (`/cart`) — line items, quantity adjust, voucher input, totals.
 - [ ] **1.6 Checkout** (`/checkout`) — order summary + KHQR placeholder (static QR image/mock, no real generation yet).
 - [ ] **1.7 Order Confirmation** (`/order/confirm`) — post-payment confirmation screen.
 - [ ] **1.8 Order Tracking** (`/orders/:id`) — status timeline UI (Confirmed → Processing → Shipping → Out for Delivery → Delivered).

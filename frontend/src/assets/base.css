@@ -10,7 +10,7 @@
   --color-ink: #1a1a1a;
 
   --font-serif: 'EB Garamond', Georgia, 'Times New Roman', serif;
-  --font-sans: 'Lato', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
   /* Square corners throughout — overrides Element Plus's default rounding */
   --el-border-radius-base: 0;
@@ -44,7 +44,17 @@
 *::after {
   box-sizing: border-box;
   margin: 0;
-  font-weight: normal;
+  /* font-weight: normal; */
+}
+
+/* Native buttons default to OS widget rendering (appearance: auto), which can
+   snap font-weight to a regular/bold pair instead of applying the exact
+   variable-font weight. Reset to the normal CSS rendering path. */
+button {
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+  color: inherit;
 }
 
 html {

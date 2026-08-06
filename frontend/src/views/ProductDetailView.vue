@@ -116,9 +116,9 @@ function formatPrice(value: number) {
   return `$${value.toFixed(2)}`
 }
 
-function addToBag() {
+function addToCart() {
   ElMessage.success(
-    `Added "${product.value.name}" (${selectedColor.value}, ${selectedSize.value}) to bag`,
+    `Added "${product.value.name}" (${selectedColor.value}, ${selectedSize.value}) to cart`,
   )
 }
 
@@ -179,7 +179,7 @@ function addToWishlist() {
           </div>
         </div>
 
-        <button type="button" class="add-to-bag-btn" @click="addToBag">ADD TO BAG</button>
+        <button type="button" class="add-to-cart-btn" @click="addToCart">ADD TO CART</button>
         <button type="button" class="wishlist-btn" @click="addToWishlist">WISHLIST</button>
 
         <ul class="perks">
@@ -443,7 +443,7 @@ function addToWishlist() {
   color: #fff;
 }
 
-.add-to-bag-btn {
+.add-to-cart-btn {
   display: block;
   width: 100%;
   height: 3rem;
@@ -457,7 +457,7 @@ function addToWishlist() {
   margin-bottom: 0.75rem;
 }
 
-.add-to-bag-btn:hover {
+.add-to-cart-btn:hover {
   background: var(--color-accent-dark);
 }
 

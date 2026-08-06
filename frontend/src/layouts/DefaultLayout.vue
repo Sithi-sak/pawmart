@@ -102,6 +102,7 @@ import { PhShoppingCart, PhUser, PhShareNetwork, PhLink, PhEnvelope } from '@pho
   color: var(--color-text);
   text-decoration: none;
   font-size: 0.8rem;
+  font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   padding-bottom: 0.35rem;
