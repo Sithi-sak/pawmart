@@ -4,6 +4,29 @@
   --color-border: #e4e7ed;
   --color-heading: #1d2129;
   --color-text: #303133;
+
+  --color-accent: #da6d1f;
+  --color-accent-dark: #b8571a;
+  --color-ink: #1a1a1a;
+
+  --font-serif: 'EB Garamond', Georgia, 'Times New Roman', serif;
+  --font-sans: 'Hanken Grotesk', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* Square corners throughout — overrides Element Plus's default rounding */
+  --el-border-radius-base: 0;
+  --el-border-radius-small: 0;
+  --el-border-radius-round: 0;
+  --el-border-radius-circle: 0;
+
+  /* Brand accent throughout Element Plus components (checkboxes, selects, radios, focus rings) */
+  --el-color-primary: var(--color-accent);
+  --el-color-primary-dark-2: var(--color-accent-dark);
+  --el-color-primary-light-3: #e59962;
+  --el-color-primary-light-5: #edb68f;
+  --el-color-primary-light-7: #f4d3bc;
+  --el-color-primary-light-8: #f8e2d2;
+  --el-color-primary-light-9: #fbf0e9;
+  --el-color-primary-rgb: 218, 109, 31;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -24,28 +47,39 @@
   font-weight: normal;
 }
 
+html {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
 body {
   min-height: 100vh;
   color: var(--color-text);
   background: var(--color-background);
   line-height: 1.6;
-  font-family:
-    Inter,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    Roboto,
-    Oxygen,
-    Ubuntu,
-    Cantarell,
-    'Fira Sans',
-    'Droid Sans',
-    'Helvetica Neue',
-    sans-serif;
+  font-family: var(--font-sans);
   font-size: 15px;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-accent);
 }
 
 h1,
@@ -53,4 +87,6 @@ h2,
 h3,
 h4 {
   color: var(--color-heading);
+  font-family: var(--font-serif);
+  font-weight: 500;
 }

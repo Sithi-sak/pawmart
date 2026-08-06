@@ -11,8 +11,8 @@ Current state: fresh `create-vue` + FastAPI scaffolds, no pages built, no schema
 ## Phase 1 — Frontend (static, mock data, Element Plus)
 
 - [x] **1.1 Project shell** — strip Vue starter boilerplate (HelloWorld/TheWelcome/WelcomeItem/icons, counter store), set up Element Plus globally, build base layout (header/nav/footer), configure router with all routes below as empty stub pages.
-- [ ] **1.2 Home / Landing** (`/`) — hero banner, featured products, category links.
-- [ ] **1.3 Product Catalog** (`/products`) — grid with filter/search by pet type, brand, price range (mock product data).
+- [x] **1.2 Home / Landing** (`/`) — hero banner, featured products, category links.
+- [x] **1.3 Product Catalog** (`/products`) — grid with filter/search by pet type, brand, price range (mock product data).
 - [ ] **1.4 Product Detail** (`/products/:id`) — images, description, stock availability, add-to-cart.
 - [ ] **1.5 Cart** (`/cart`) — line items, quantity adjust, voucher input, totals.
 - [ ] **1.6 Checkout** (`/checkout`) — order summary + KHQR placeholder (static QR image/mock, no real generation yet).
@@ -24,6 +24,7 @@ Current state: fresh `create-vue` + FastAPI scaffolds, no pages built, no schema
 - [ ] **1.12 Admin Dashboard shell** (`/admin`) — protected-route layout, sales overview + low-stock alert widgets (mock data).
 - [ ] **1.13 Admin Products** (`/admin/products`) — CRUD table/forms (mock data).
 - [ ] **1.14 Admin Orders** (`/admin/orders`) — order list + status update UI (mock data).
+- [ ] **1.15 Collections** (`/collections`) — category/collection landing grid (mock data), linked from nav.
 
 ## Phase 2 — Backend foundation
 
@@ -55,6 +56,7 @@ Current state: fresh `create-vue` + FastAPI scaffolds, no pages built, no schema
 | Concept-note feature | Tasks |
 |---|---|
 | Product Catalog & Search | 1.3, 1.4, 3.1 |
+| Collections | 1.15 |
 | Shopping Cart & Checkout | 1.5, 1.6, 1.7, 3.2 |
 | Secure Payment via KHQR | 4.1 |
 | Admin Dashboard | 1.12, 1.13, 1.14, 3.7, 3.8 |
