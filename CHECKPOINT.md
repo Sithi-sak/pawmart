@@ -13,7 +13,7 @@ Current state: fresh `create-vue` + FastAPI scaffolds, no pages built, no schema
 - [x] **1.1 Project shell** — strip Vue starter boilerplate (HelloWorld/TheWelcome/WelcomeItem/icons, counter store), set up Element Plus globally, build base layout (header/nav/footer), configure router with all routes below as empty stub pages.
 - [x] **1.2 Home / Landing** (`/`) — hero banner, featured products, category links.
 - [x] **1.3 Product Catalog** (`/products`) — grid with filter/search by pet type, brand, price range (mock product data).
-- [ ] **1.4 Product Detail** (`/products/:id`) — images, description, stock availability, add-to-cart.
+- [x] **1.4 Product Detail** (`/products/:id`) — images, description, stock availability, add-to-cart.
 - [ ] **1.5 Cart** (`/cart`) — line items, quantity adjust, voucher input, totals.
 - [ ] **1.6 Checkout** (`/checkout`) — order summary + KHQR placeholder (static QR image/mock, no real generation yet).
 - [ ] **1.7 Order Confirmation** (`/order/confirm`) — post-payment confirmation screen.

@@ -10,7 +10,7 @@
   --color-ink: #1a1a1a;
 
   --font-serif: 'EB Garamond', Georgia, 'Times New Roman', serif;
-  --font-sans: 'Hanken Grotesk', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-sans: 'Lato', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
   /* Square corners throughout — overrides Element Plus's default rounding */
   --el-border-radius-base: 0;
@@ -49,7 +49,7 @@
 
 html {
   scrollbar-gutter: stable;
-  scrollbar-width: thin;
+  scrollbar-width: none;
   scrollbar-color: var(--color-border) transparent;
 }
 
@@ -63,6 +63,15 @@ body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Element Plus's dialog scroll-lock measures the OS scrollbar width in JS and
+   (if non-zero) shrinks body by that amount via an inline style. Force it
+   back to 100% regardless of what it measures — scrollbar-gutter/width above
+   already keep the layout width constant, so this compensation is never
+   wanted here. */
+body.el-popup-parent--hidden {
+  width: 100% !important;
 }
 
 ::-webkit-scrollbar {
