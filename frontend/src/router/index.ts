@@ -50,6 +50,11 @@ const router = createRouter({
           name: 'pet-profiles',
           component: () => import('../views/PetProfilesView.vue'),
         },
+        {
+          path: 'account/orders',
+          name: 'order-history',
+          component: () => import('../views/OrderHistoryView.vue'),
+        },
       ],
     },
     {

@@ -19,8 +19,8 @@ Current state: fresh `create-vue` + FastAPI scaffolds, no pages built, no schema
 - [x] **1.7 Order Confirmation** (`/order/confirm`) — post-payment confirmation screen.
 - [x] **1.8 Order Tracking** (`/orders/:id`) — status timeline UI (Confirmed → Processing → Shipping → Out for Delivery → Delivered).
 - [x] **1.9 Login / Signup** (`/login`, `/signup`) — forms only, no auth wiring yet.
-- [ ] **1.10 Account** (`/account`) — profile view/edit shell.
-- [ ] **1.11 Pet Profiles** (`/account/pets`) — list + create/edit form (name, species, breed, age, weight, diet).
+- [x] **1.10 Account** (`/account`) — profile view/edit shell.
+- [x] **1.11 Pet Profiles** (`/account/pets`) — list + create/edit form (name, species, breed, age, weight, diet).
 - [ ] **1.12 Admin Dashboard shell** (`/admin`) — protected-route layout, sales overview + low-stock alert widgets (mock data).
 - [ ] **1.13 Admin Products** (`/admin/products`) — CRUD table/forms (mock data).
 - [ ] **1.14 Admin Orders** (`/admin/orders`) — order list + status update UI (mock data).
