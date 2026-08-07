@@ -1,38 +1,31 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
-import { PhCaretLeft, PhEye, PhEyeClosed } from '@phosphor-icons/vue'
+import { reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { PhEye, PhEyeClosed } from '@phosphor-icons/vue'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 
 const form = reactive({
+  email: '',
   password: '',
-  confirmPassword: '',
 })
 
 const showPassword = ref(false)
-const showConfirmPassword = ref(false)
-const submitAttempted = ref(false)
 const submitting = ref(false)
 const errorMessage = ref('')
 
-const passwordsMismatch = computed(
-  () => form.confirmPassword.length > 0 && form.password !== form.confirmPassword,
-)
-
 async function handleSubmit() {
-  submitAttempted.value = true
   errorMessage.value = ''
-  if (form.password.length < 8 || form.password !== form.confirmPassword) return
-
   submitting.value = true
   try {
-    await auth.updatePassword(form.password)
-    router.push('/login')
+    await auth.signInAdmin(form.email, form.password)
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/admin'
+    router.push(redirect)
   } catch (err) {
-    errorMessage.value = err instanceof Error ? err.message : 'Unable to update password.'
+    errorMessage.value = err instanceof Error ? err.message : 'Unable to sign in.'
   } finally {
     submitting.value = false
   }
@@ -41,24 +34,23 @@ async function handleSubmit() {
 
 <template>
   <div class="auth-form">
-    <RouterLink to="/login" class="top-back-link">
-      <PhCaretLeft :size="16" />
-      Back to Login
-    </RouterLink>
-
-    <h1 class="auth-title">Reset Password</h1>
-    <p class="auth-subtitle">Create a secure new password for your account.</p>
+    <h1 class="auth-title">Admin Sign In</h1>
+    <p class="auth-subtitle">Store administration access only.</p>
 
     <form class="form" @submit.prevent="handleSubmit">
       <div class="form-field">
-        <label for="password">New Password</label>
+        <label for="email">Email Address</label>
+        <input id="email" v-model="form.email" type="email" placeholder="admin@pawmart.com" required />
+      </div>
+
+      <div class="form-field">
+        <label for="password">Password</label>
         <div class="input-with-icon">
           <input
             id="password"
             v-model="form.password"
             :type="showPassword ? 'text' : 'password'"
-            placeholder="Enter at least 8 characters"
-            minlength="8"
+            placeholder="••••••••"
             required
           />
           <button
@@ -73,40 +65,12 @@ async function handleSubmit() {
         </div>
       </div>
 
-      <div class="form-field">
-        <label for="confirmPassword">Confirm New Password</label>
-        <div class="input-with-icon">
-          <input
-            id="confirmPassword"
-            v-model="form.confirmPassword"
-            :type="showConfirmPassword ? 'text' : 'password'"
-            placeholder="Re-enter your password"
-            minlength="8"
-            required
-          />
-          <button
-            type="button"
-            class="icon-toggle"
-            :aria-label="showConfirmPassword ? 'Hide password' : 'Show password'"
-            @click="showConfirmPassword = !showConfirmPassword"
-          >
-            <PhEyeClosed v-if="showConfirmPassword" :size="20" />
-            <PhEye v-else :size="20" />
-          </button>
-        </div>
-        <p v-if="passwordsMismatch" class="field-error">Passwords do not match.</p>
-      </div>
-
       <p v-if="errorMessage" class="field-error">{{ errorMessage }}</p>
 
       <button type="submit" class="primary-btn" :disabled="submitting">
-        {{ submitting ? 'Saving…' : 'Set New Password' }}
+        {{ submitting ? 'Signing In…' : 'Sign In' }}
       </button>
     </form>
-
-    <p class="help-note">
-      Having trouble? <a href="#" class="help-link" @click.prevent>Contact support</a>
-    </p>
   </div>
 </template>
 
@@ -115,25 +79,6 @@ async function handleSubmit() {
   width: 100%;
   max-width: 420px;
   margin: 0 auto;
-}
-
-.top-back-link {
-  position: absolute;
-  top: 2rem;
-  right: 2rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.78rem;
-  letter-spacing: 0.08em;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: var(--color-heading);
-  text-decoration: none;
-}
-
-.top-back-link:hover {
-  color: var(--color-accent);
 }
 
 .auth-title {
@@ -214,6 +159,7 @@ async function handleSubmit() {
 .field-error {
   font-size: 0.8rem;
   color: var(--color-accent-dark);
+  margin-top: -0.75rem;
 }
 
 .primary-btn {
@@ -236,23 +182,5 @@ async function handleSubmit() {
 .primary-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
-}
-
-.help-note {
-  margin-top: 2rem;
-  text-align: center;
-  font-size: 0.88rem;
-  color: var(--color-text);
-  opacity: 0.75;
-}
-
-.help-link {
-  color: var(--color-accent);
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.help-link:hover {
-  text-decoration: underline;
 }
 </style>

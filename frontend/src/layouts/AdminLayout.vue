@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router'
+import { RouterLink, RouterView, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
+const router = useRouter()
+
+async function handleSignOut() {
+  await auth.signOut()
+  router.push({ name: 'admin-login' })
+}
 </script>
 
 <template>
@@ -11,7 +20,7 @@ import { RouterLink, RouterView } from 'vue-router'
         <RouterLink to="/admin/products">Products</RouterLink>
         <RouterLink to="/admin/orders">Orders</RouterLink>
       </nav>
-      <RouterLink to="/" class="back-link">&larr; Back to store</RouterLink>
+      <button type="button" class="back-link" @click="handleSignOut">Sign Out</button>
     </aside>
 
     <main class="admin-main">
@@ -65,6 +74,16 @@ import { RouterLink, RouterView } from 'vue-router'
 .back-link {
   font-size: 0.85rem;
   color: var(--color-text);
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.back-link:hover {
+  color: var(--color-accent);
 }
 
 .admin-main {

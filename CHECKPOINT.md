@@ -31,7 +31,7 @@ Current state: fresh `create-vue` + FastAPI scaffolds, no pages built, no schema
 
 - [x] **2.1 FastAPI app structure** — routers, settings via pydantic-settings, CORS, Supabase client init.
 - [x] **2.2 Supabase schema** — tables: products, categories, customers, pet_profiles, orders, order_items, loyalty_points/rewards; RLS policies.
-- [ ] **2.3 Supabase Auth wiring** — real login/signup, session handling, protected route guard on frontend (admin vs customer roles).
+- [x] **2.3 Supabase Auth wiring** — real login/signup, session handling, protected route guard on frontend (admin vs customer roles).
 - [ ] **2.4 Supabase Storage** — product image upload/serving.
 
 ## Phase 3 — Wire frontend ↔ backend (feature by feature)

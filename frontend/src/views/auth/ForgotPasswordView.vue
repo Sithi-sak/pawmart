@@ -1,15 +1,30 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { RouterLink } from 'vue-router'
 import { PhArrowLeft, PhX } from '@phosphor-icons/vue'
+import { isAllowedCustomerEmail, useAuthStore } from '@/stores/auth'
 
-const router = useRouter()
+const auth = useAuthStore()
 const email = ref('')
+const submitting = ref(false)
+const errorMessage = ref('')
+const sent = ref(false)
 
-function handleSubmit() {
-  // Real recovery email dispatch lands with Supabase Auth wiring (task 2.3).
-  // For now, proceed straight to the reset form to demo the flow.
-  router.push('/reset-password')
+async function handleSubmit() {
+  errorMessage.value = ''
+  if (!isAllowedCustomerEmail(email.value)) {
+    errorMessage.value = 'Please use a Gmail address.'
+    return
+  }
+  submitting.value = true
+  try {
+    await auth.sendPasswordReset(email.value)
+    sent.value = true
+  } catch (err) {
+    errorMessage.value = err instanceof Error ? err.message : 'Unable to send recovery email.'
+  } finally {
+    submitting.value = false
+  }
 }
 </script>
 
@@ -20,15 +35,24 @@ function handleSubmit() {
     </RouterLink>
 
     <h1 class="auth-title">Recover Account</h1>
-    <p class="auth-subtitle">Enter your email address to receive recovery instructions.</p>
+    <p v-if="!sent" class="auth-subtitle">
+      Enter your email address to receive recovery instructions.
+    </p>
+    <p v-else class="auth-subtitle">
+      If an account exists for {{ email }}, we've sent a link to reset your password.
+    </p>
 
-    <form class="form" @submit.prevent="handleSubmit">
+    <form v-if="!sent" class="form" @submit.prevent="handleSubmit">
       <div class="form-field">
         <label for="email">Email Address</label>
         <input id="email" v-model="email" type="email" placeholder="your@email.com" required />
       </div>
 
-      <button type="submit" class="primary-btn">Send</button>
+      <p v-if="errorMessage" class="field-error">{{ errorMessage }}</p>
+
+      <button type="submit" class="primary-btn" :disabled="submitting">
+        {{ submitting ? 'Sending…' : 'Send' }}
+      </button>
     </form>
 
     <div class="section-divider"></div>
@@ -124,6 +148,16 @@ function handleSubmit() {
 
 .primary-btn:hover {
   background: var(--color-accent-dark);
+}
+
+.primary-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.field-error {
+  font-size: 0.8rem;
+  color: var(--color-accent-dark);
 }
 
 .section-divider {

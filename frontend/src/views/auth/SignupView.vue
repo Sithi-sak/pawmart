@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import { PhGoogleLogo } from '@phosphor-icons/vue'
+import { isAllowedCustomerEmail, useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
+const router = useRouter()
 
 const form = reactive({
   firstName: '',
@@ -14,16 +18,60 @@ const form = reactive({
 const currentYear = computed(() => new Date().getFullYear())
 
 const submitAttempted = ref(false)
+const submitting = ref(false)
+const errorMessage = ref('')
+const confirmEmailSent = ref(false)
 
-function handleSubmit() {
+async function handleSubmit() {
   submitAttempted.value = true
+  errorMessage.value = ''
   if (!form.agreedToTerms) return
-  // Real account creation lands with Supabase Auth wiring (task 2.3).
+  if (!isAllowedCustomerEmail(form.email)) {
+    errorMessage.value = 'Please sign up with a Gmail address, or use Sign up with Google.'
+    return
+  }
+
+  submitting.value = true
+  try {
+    const fullName = `${form.firstName} ${form.lastName}`.trim()
+    const signedInImmediately = await auth.signUpWithPassword(form.email, form.password, fullName)
+    if (signedInImmediately) {
+      router.push('/account')
+    } else {
+      confirmEmailSent.value = true
+    }
+  } catch (err) {
+    errorMessage.value = err instanceof Error ? err.message : 'Unable to create account.'
+  } finally {
+    submitting.value = false
+  }
+}
+
+async function handleGoogleSignUp() {
+  errorMessage.value = ''
+  try {
+    await auth.signInWithGoogle()
+  } catch (err) {
+    errorMessage.value = err instanceof Error ? err.message : 'Unable to sign up with Google.'
+  }
 }
 </script>
 
 <template>
   <div class="auth-form">
+    <template v-if="confirmEmailSent">
+      <h1 class="auth-title">Check Your Email</h1>
+      <p class="auth-subtitle">
+        We've sent a confirmation link to {{ form.email }}. Confirm your address to finish
+        creating your account.
+      </p>
+      <p class="switch-note">
+        <RouterLink to="/login">Back to Sign In</RouterLink>
+      </p>
+      <p class="auth-footer">&copy; {{ currentYear }} PawMart Inc.</p>
+    </template>
+
+    <template v-else>
     <h1 class="auth-title">Create Account</h1>
     <p class="auth-subtitle">
       Join PawMart for curated gear, pet-care tips, and personalized recommendations.
@@ -59,13 +107,16 @@ function handleSubmit() {
       <p v-if="submitAttempted && !form.agreedToTerms" class="field-error">
         Please agree to the Privacy Policy and Terms of Service to continue.
       </p>
+      <p v-if="errorMessage" class="field-error">{{ errorMessage }}</p>
 
-      <button type="submit" class="primary-btn">Create Account</button>
+      <button type="submit" class="primary-btn" :disabled="submitting">
+        {{ submitting ? 'Creating Account…' : 'Create Account' }}
+      </button>
     </form>
 
     <div class="divider"><span>OR</span></div>
 
-    <button type="button" class="oauth-btn">
+    <button type="button" class="oauth-btn" @click="handleGoogleSignUp">
       <PhGoogleLogo :size="20" weight="bold" />
       Sign up with Google
     </button>
@@ -75,6 +126,7 @@ function handleSubmit() {
     </p>
 
     <p class="auth-footer">&copy; {{ currentYear }} PawMart Inc.</p>
+    </template>
   </div>
 </template>
 
@@ -211,6 +263,11 @@ function handleSubmit() {
 
 .primary-btn:hover {
   background: var(--color-accent-dark);
+}
+
+.primary-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .divider {

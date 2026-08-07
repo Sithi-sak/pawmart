@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { PhEye, PhEyeClosed, PhGoogleLogo } from '@phosphor-icons/vue'
+import { isAllowedCustomerEmail, useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
+const router = useRouter()
+const route = useRoute()
 
 const form = reactive({
   email: '',
@@ -9,9 +14,34 @@ const form = reactive({
 })
 
 const showPassword = ref(false)
+const submitting = ref(false)
+const errorMessage = ref('')
 
-function handleSubmit() {
-  // Real authentication lands with Supabase Auth wiring (task 2.3).
+async function handleSubmit() {
+  errorMessage.value = ''
+  if (!isAllowedCustomerEmail(form.email)) {
+    errorMessage.value = 'Please sign in with a Gmail address, or use Sign in with Google.'
+    return
+  }
+  submitting.value = true
+  try {
+    await auth.signInWithPassword(form.email, form.password)
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/account'
+    router.push(redirect)
+  } catch (err) {
+    errorMessage.value = err instanceof Error ? err.message : 'Unable to sign in.'
+  } finally {
+    submitting.value = false
+  }
+}
+
+async function handleGoogleSignIn() {
+  errorMessage.value = ''
+  try {
+    await auth.signInWithGoogle()
+  } catch (err) {
+    errorMessage.value = err instanceof Error ? err.message : 'Unable to sign in with Google.'
+  }
 }
 </script>
 
@@ -23,7 +53,7 @@ function handleSubmit() {
     <form class="form" @submit.prevent="handleSubmit">
       <div class="form-field">
         <label for="email">Email Address</label>
-        <input id="email" v-model="form.email" type="email" placeholder="name@example.com" required />
+        <input id="email" v-model="form.email" type="email" placeholder="name@gmail.com" required />
       </div>
 
       <div class="form-field">
@@ -51,12 +81,16 @@ function handleSubmit() {
         </div>
       </div>
 
-      <button type="submit" class="primary-btn">Sign In</button>
+      <p v-if="errorMessage" class="field-error">{{ errorMessage }}</p>
+
+      <button type="submit" class="primary-btn" :disabled="submitting">
+        {{ submitting ? 'Signing In…' : 'Sign In' }}
+      </button>
     </form>
 
     <div class="divider"><span>OR</span></div>
 
-    <button type="button" class="oauth-btn">
+    <button type="button" class="oauth-btn" @click="handleGoogleSignIn">
       <PhGoogleLogo :size="20" weight="bold" />
       Sign in with Google
     </button>
@@ -180,6 +214,17 @@ function handleSubmit() {
 
 .primary-btn:hover {
   background: var(--color-accent-dark);
+}
+
+.primary-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.field-error {
+  font-size: 0.8rem;
+  color: var(--color-accent-dark);
+  margin-top: -0.75rem;
 }
 
 .divider {

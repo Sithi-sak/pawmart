@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import {
   PhEnvelopeSimple,
   PhMapPin,
@@ -11,6 +11,10 @@ import {
   PhCalendarCheck,
   PhShoppingBag,
 } from '@phosphor-icons/vue'
+import { useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
+const router = useRouter()
 
 interface Profile {
   name: string
@@ -19,10 +23,15 @@ interface Profile {
 }
 
 const profile = reactive<Profile>({
-  name: 'Joe A.',
-  email: 'joe@gmail.com',
-  location: 'BKK, Phnom Penh',
+  name: auth.customer?.full_name ?? '',
+  email: auth.customer?.email ?? auth.user?.email ?? '',
+  location: auth.customer?.location ?? '',
 })
+
+async function handleSignOut() {
+  await auth.signOut()
+  router.push('/login')
+}
 
 const isEditing = ref(false)
 const editForm = reactive<Profile>({ ...profile })
@@ -150,9 +159,10 @@ function saveCompanion() {
       </div>
 
       <div class="profile-actions">
-        <button v-if="!isEditing" type="button" class="edit-btn" @click="startEdit">
-          Edit Profile
-        </button>
+        <template v-if="!isEditing">
+          <button type="button" class="cancel-btn" @click="handleSignOut">Sign Out</button>
+          <button type="button" class="edit-btn" @click="startEdit">Edit Profile</button>
+        </template>
         <template v-else>
           <button type="button" class="cancel-btn" @click="cancelEdit">Cancel</button>
           <button type="button" class="edit-btn" @click="saveEdit">Save</button>

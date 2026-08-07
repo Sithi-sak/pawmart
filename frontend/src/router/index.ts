@@ -2,6 +2,15 @@ import { createRouter, createWebHistory } from 'vue-router'
 import DefaultLayout from '../layouts/DefaultLayout.vue'
 import AdminLayout from '../layouts/AdminLayout.vue'
 import AuthLayout from '../layouts/AuthLayout.vue'
+import AdminAuthLayout from '../layouts/AdminAuthLayout.vue'
+import { useAuthStore } from '../stores/auth'
+
+declare module 'vue-router' {
+  interface RouteMeta {
+    requiresAuth?: boolean
+    requiresAdmin?: boolean
+  }
+}
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -48,16 +57,23 @@ const router = createRouter({
           component: () => import('../views/OrderTrackingView.vue'),
           props: true,
         },
-        { path: 'account', name: 'account', component: () => import('../views/AccountView.vue') },
+        {
+          path: 'account',
+          name: 'account',
+          component: () => import('../views/AccountView.vue'),
+          meta: { requiresAuth: true },
+        },
         {
           path: 'account/pets',
           name: 'pet-profiles',
           component: () => import('../views/PetProfilesView.vue'),
+          meta: { requiresAuth: true },
         },
         {
           path: 'account/orders',
           name: 'order-history',
           component: () => import('../views/OrderHistoryView.vue'),
+          meta: { requiresAuth: true },
         },
         { path: 'about', name: 'about', component: () => import('../views/AboutView.vue') },
         {
@@ -95,6 +111,17 @@ const router = createRouter({
       ],
     },
     {
+      path: '/admin/login',
+      component: AdminAuthLayout,
+      children: [
+        {
+          path: '',
+          name: 'admin-login',
+          component: () => import('../views/auth/AdminLoginView.vue'),
+        },
+      ],
+    },
+    {
       path: '/admin',
       component: AdminLayout,
       meta: { requiresAdmin: true },
@@ -117,6 +144,30 @@ const router = createRouter({
       ],
     },
   ],
+})
+
+router.beforeEach(async (to) => {
+  if (!to.meta.requiresAuth && !to.meta.requiresAdmin) return true
+
+  const auth = useAuthStore()
+  await auth.init()
+
+  if (to.meta.requiresAdmin) {
+    if (!auth.isAuthenticated || !auth.isAdmin) {
+      return { name: 'admin-login', query: { redirect: to.fullPath } }
+    }
+    return true
+  }
+
+  if (!auth.isAuthenticated) {
+    return { name: 'login', query: { redirect: to.fullPath } }
+  }
+  // Admin credentials are a separate identity from any customer account —
+  // don't let an admin session render customer-facing account pages.
+  if (auth.isAdmin) {
+    return { name: 'admin-dashboard' }
+  }
+  return true
 })
 
 export default router
