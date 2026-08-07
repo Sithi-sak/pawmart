@@ -24,7 +24,8 @@ Current state: fresh `create-vue` + FastAPI scaffolds, no pages built, no schema
 - [x] **1.12 Admin Dashboard shell** (`/admin`) — protected-route layout, sales overview + low-stock alert widgets (mock data).
 - [x] **1.13 Admin Products** (`/admin/products`) — CRUD table/forms (mock data).
 - [x] **1.14 Admin Orders** (`/admin/orders`) — order list + status update UI (mock data).
-- [ ] **1.15 Collections** (`/collections`) — category/collection landing grid (mock data), linked from nav.
+- [x] **1.15 Collections** (`/collections`) — category/collection landing grid (mock data), linked from nav.
+- [x] **1.16 Footer legal/info pages** — About Us (`/about`), Privacy Policy (`/privacy`), Terms of Service (`/terms`), linked from footer.
 
 ## Phase 2 — Backend foundation
 

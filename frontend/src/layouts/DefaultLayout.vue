@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router'
-import { PhShoppingCart, PhUser, PhShareNetwork, PhLink, PhEnvelope } from '@phosphor-icons/vue'
+import { PhShoppingCart, PhUser } from '@phosphor-icons/vue'
 </script>
 
 <template>
@@ -46,17 +46,11 @@ import { PhShoppingCart, PhUser, PhShareNetwork, PhLink, PhEnvelope } from '@pho
         </div>
 
         <nav class="footer-links">
-          <RouterLink to="/">Privacy</RouterLink>
-          <RouterLink to="/">Terms</RouterLink>
-          <RouterLink to="/">About Us</RouterLink>
+          <RouterLink to="/privacy">Privacy</RouterLink>
+          <RouterLink to="/terms">Terms</RouterLink>
+          <RouterLink to="/about">About Us</RouterLink>
           <RouterLink to="/">Contact</RouterLink>
         </nav>
-
-        <div class="footer-social">
-          <PhShareNetwork :size="18" />
-          <PhLink :size="18" />
-          <PhEnvelope :size="18" />
-        </div>
       </div>
     </footer>
   </div>
@@ -213,12 +207,6 @@ import { PhShoppingCart, PhUser, PhShareNetwork, PhLink, PhEnvelope } from '@pho
 
 .footer-links a:hover {
   opacity: 1;
-}
-
-.footer-social {
-  display: flex;
-  gap: 0.9rem;
-  color: #fff;
 }
 
 @media (max-width: 700px) {

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { PhPlus, PhPencilSimple, PhTrash, PhMagnifyingGlass } from '@phosphor-icons/vue'
+import type { UploadUserFile } from 'element-plus'
+import { PhPlus, PhPencilSimple, PhTrash, PhMagnifyingGlass, PhImage } from '@phosphor-icons/vue'
 
 interface Product {
   id: number
@@ -11,6 +12,7 @@ interface Product {
   species: string
   price: number
   stock: number
+  images: string[]
 }
 
 const categories = ['Food & Nutrition', 'Bedding', 'Toys', 'Grooming Kit'] as const
@@ -24,14 +26,14 @@ const brands = [
 ] as const
 
 const products = reactive<Product[]>([
-  { id: 1, name: 'Plush Nest Bed', category: 'Bedding', brand: 'Nordic Home', species: 'Dog', price: 345.0, stock: 18 },
-  { id: 2, name: 'Elevated Feeding Stand', category: 'Food & Nutrition', brand: 'Timber & Co', species: 'Dog', price: 180.0, stock: 24 },
-  { id: 3, name: 'Woven Leather Leash Set', category: 'Toys', brand: 'WildRoots', species: 'Dog', price: 210.0, stock: 12 },
-  { id: 4, name: 'Sisal Scratch Post', category: 'Toys', brand: 'Timber & Co', species: 'Cat', price: 540.0, stock: 9 },
-  { id: 5, name: 'Grooming Brush Kit', category: 'Grooming Kit', brand: 'PawMart Collection', species: 'Dog', price: 125.0, stock: 4 },
-  { id: 6, name: 'Gourmet Chicken & Wild Salmon', category: 'Food & Nutrition', brand: 'Fresh Fields', species: 'Cat', price: 45.0, stock: 30 },
-  { id: 7, name: 'Cloud Cushion Bed', category: 'Bedding', brand: 'Nordic Home', species: 'Cat', price: 96.0, stock: 15 },
-  { id: 8, name: 'Feather Wand Toy', category: 'Toys', brand: 'WildRoots', species: 'Cat', price: 22.0, stock: 2 },
+  { id: 1, name: 'Plush Nest Bed', category: 'Bedding', brand: 'Nordic Home', species: 'Dog', price: 345.0, stock: 18, images: [] },
+  { id: 2, name: 'Elevated Feeding Stand', category: 'Food & Nutrition', brand: 'Timber & Co', species: 'Dog', price: 180.0, stock: 24, images: [] },
+  { id: 3, name: 'Woven Leather Leash Set', category: 'Toys', brand: 'WildRoots', species: 'Dog', price: 210.0, stock: 12, images: [] },
+  { id: 4, name: 'Sisal Scratch Post', category: 'Toys', brand: 'Timber & Co', species: 'Cat', price: 540.0, stock: 9, images: [] },
+  { id: 5, name: 'Grooming Brush Kit', category: 'Grooming Kit', brand: 'PawMart Collection', species: 'Dog', price: 125.0, stock: 4, images: [] },
+  { id: 6, name: 'Gourmet Chicken & Wild Salmon', category: 'Food & Nutrition', brand: 'Fresh Fields', species: 'Cat', price: 45.0, stock: 30, images: [] },
+  { id: 7, name: 'Cloud Cushion Bed', category: 'Bedding', brand: 'Nordic Home', species: 'Cat', price: 96.0, stock: 15, images: [] },
+  { id: 8, name: 'Feather Wand Toy', category: 'Toys', brand: 'WildRoots', species: 'Cat', price: 22.0, stock: 2, images: [] },
 ])
 
 const searchQuery = ref('')
@@ -58,6 +60,7 @@ function emptyForm() {
     species: speciesOptions[0],
     price: null as number | null,
     stock: null as number | null,
+    images: [] as UploadUserFile[],
   }
 }
 
@@ -83,6 +86,7 @@ function openEditDialog(product: Product) {
     species: product.species,
     price: product.price,
     stock: product.stock,
+    images: product.images.map((url, i) => ({ name: `image-${i}`, url }) as UploadUserFile),
   })
   dialogVisible.value = true
 }
@@ -93,6 +97,13 @@ function saveProduct() {
     return
   }
 
+  if (!form.images.length) {
+    ElMessage.warning('Please upload at least one product image.')
+    return
+  }
+
+  const images = form.images.map((f) => f.url).filter((url): url is string => Boolean(url))
+
   if (dialogMode.value === 'add') {
     products.push({
       id: Math.max(0, ...products.map((p) => p.id)) + 1,
@@ -102,6 +113,7 @@ function saveProduct() {
       species: form.species,
       price: form.price,
       stock: form.stock,
+      images,
     })
     ElMessage.success(`Added "${form.name.trim()}"`)
   } else {
@@ -114,6 +126,7 @@ function saveProduct() {
         species: form.species,
         price: form.price,
         stock: form.stock,
+        images,
       })
       ElMessage.success(`Updated "${product.name}"`)
     }
@@ -163,6 +176,14 @@ async function deleteProduct(product: Product) {
 
     <div class="table-card">
       <el-table :data="filteredProducts" style="width: 100%" empty-text="No products match your search.">
+        <el-table-column label="" width="70">
+          <template #default="{ row }">
+            <img v-if="row.images[0]" :src="row.images[0]" class="cell-thumb" alt="" />
+            <div v-else class="cell-thumb cell-thumb--empty">
+              <PhImage :size="18" />
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column prop="name" label="Product" min-width="160">
           <template #default="{ row }">
             <span class="cell-name">{{ row.name }}</span>
@@ -216,6 +237,18 @@ async function deleteProduct(product: Product) {
       align-center
     >
       <form class="product-form" @submit.prevent="saveProduct">
+        <div class="form-field">
+          <label>Product Images</label>
+          <el-upload
+            v-model:file-list="form.images"
+            list-type="picture-card"
+            accept="image/*"
+            :auto-upload="false"
+          >
+            <PhPlus :size="20" />
+          </el-upload>
+          <p class="field-hint">At least one image is required.</p>
+        </div>
         <div class="form-field">
           <label for="p-name">Product Name</label>
           <input id="p-name" v-model="form.name" type="text" placeholder="e.g. Plush Nest Bed" required />
@@ -335,6 +368,22 @@ async function deleteProduct(product: Product) {
   overflow-x: auto;
 }
 
+.cell-thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  object-fit: cover;
+}
+
+.cell-thumb--empty {
+  background: var(--color-background-soft);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  opacity: 0.5;
+}
+
 .cell-name {
   color: var(--color-heading);
   font-weight: 600;
@@ -429,6 +478,12 @@ async function deleteProduct(product: Product) {
   flex-direction: column;
   gap: 0.5rem;
   min-width: 0;
+}
+
+.field-hint {
+  font-size: 0.75rem;
+  color: var(--color-text);
+  opacity: 0.6;
 }
 
 .form-field label {
