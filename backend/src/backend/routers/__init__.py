@@ -1,4 +1,4 @@
-from . import categories, customers, loyalty, orders, pet_profiles, products
+from . import categories, customers, loyalty, orders, pet_profiles, products, storage
 
 routers = [
     products.router,
@@ -7,4 +7,5 @@ routers = [
     pet_profiles.router,
     orders.router,
     loyalty.router,
+    storage.router,
 ]
