@@ -37,7 +37,7 @@ Current state: fresh `create-vue` + FastAPI scaffolds, no pages built, no schema
 ## Phase 3 — Wire frontend ↔ backend (feature by feature)
 
 - [x] **3.1 Product Catalog & Search** — API + connect 1.3/1.4.
-- [ ] **3.2 Cart & Checkout** — order creation API + connect 1.5/1.6/1.7.
+- [x] **3.2 Cart & Checkout** — order creation API + connect 1.5/1.6/1.7.
 - [ ] **3.3 Order Tracking** — status API + connect 1.8.
 - [ ] **3.4 Pet Profile Management** — API + connect 1.11.
 - [ ] **3.5 Rule-based Product Recommendations** — species/age/purchase-history filtering logic + surface on Home/Product pages (not AI/ML — see project memory).

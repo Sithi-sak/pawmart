@@ -1,39 +1,20 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
+import type { Product } from '@/lib/products'
 
 export interface CartItem {
-  id: number
   productId: number
+  slug: string
   name: string
-  variant: string
-  size: string
+  brand: string | null
+  image: string | null
   price: number
   quantity: number
 }
 
 export const useCartStore = defineStore('cart', () => {
-  const items = ref<CartItem[]>([
-    {
-      id: 1,
-      productId: 3,
-      name: 'Woven Leather Leash Set',
-      variant: 'COGNAC / ITALIAN LEATHER',
-      size: 'Medium',
-      price: 210.0,
-      quantity: 1,
-    },
-    {
-      id: 2,
-      productId: 5,
-      name: 'Grooming Brush Kit',
-      variant: 'NATURAL BOAR BRISTLE',
-      size: 'Standard',
-      price: 125.0,
-      quantity: 2,
-    },
-  ])
+  const items = ref<CartItem[]>([])
 
-  // Mock promo codes — real validation/discount lookup comes with the checkout API (3.2).
   const voucherCodes: Record<string, number> = {
     PAWMART10: 0.1,
     WELCOME15: 0.15,
@@ -52,6 +33,23 @@ export const useCartStore = defineStore('cart', () => {
   )
 
   const total = computed(() => subtotal.value - discount.value)
+
+  function addItem(product: Product, quantity = 1) {
+    const existing = items.value.find((item) => item.productId === product.id)
+    if (existing) {
+      existing.quantity += quantity
+      return
+    }
+    items.value.push({
+      productId: product.id,
+      slug: product.slug,
+      name: product.name,
+      brand: product.brand,
+      image: product.images[0] ?? null,
+      price: product.price,
+      quantity,
+    })
+  }
 
   function applyVoucher(code: string) {
     const normalized = code.trim().toUpperCase()
@@ -76,8 +74,8 @@ export const useCartStore = defineStore('cart', () => {
     if (item.quantity > 1) item.quantity--
   }
 
-  function removeItem(id: number) {
-    items.value = items.value.filter((item) => item.id !== id)
+  function removeItem(productId: number) {
+    items.value = items.value.filter((item) => item.productId !== productId)
   }
 
   function clear() {
@@ -92,6 +90,7 @@ export const useCartStore = defineStore('cart', () => {
     subtotal,
     discount,
     total,
+    addItem,
     applyVoucher,
     removeVoucher,
     increment,

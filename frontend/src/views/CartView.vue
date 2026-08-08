@@ -63,15 +63,19 @@ function proceedToCheckout() {
 
     <div v-if="cart.items.length" class="cart-body">
       <div class="line-items">
-        <div v-for="item in cart.items" :key="item.id" class="line-item">
-          <RouterLink :to="`/products/${item.productId}`" class="item-image placeholder-img" />
+        <div v-for="item in cart.items" :key="item.productId" class="line-item">
+          <RouterLink
+            :to="`/products/${item.slug}`"
+            class="item-image"
+            :class="{ 'placeholder-img': !item.image }"
+            :style="item.image ? { backgroundImage: `url(${item.image})` } : undefined"
+          />
 
           <div class="item-details">
-            <RouterLink :to="`/products/${item.productId}`" class="item-name">{{
+            <RouterLink :to="`/products/${item.slug}`" class="item-name">{{
               item.name
             }}</RouterLink>
-            <p class="item-variant">{{ item.variant }}</p>
-            <p class="item-size">Size: {{ item.size }}</p>
+            <p v-if="item.brand" class="item-variant">{{ item.brand.toUpperCase() }}</p>
 
             <div class="qty-stepper">
               <button type="button" class="qty-btn" @click="cart.decrement(item)">
@@ -86,7 +90,7 @@ function proceedToCheckout() {
 
           <div class="item-aside">
             <p class="item-price">{{ formatPrice(item.price) }}</p>
-            <button type="button" class="remove-link" @click="cart.removeItem(item.id)">
+            <button type="button" class="remove-link" @click="cart.removeItem(item.productId)">
               Remove
             </button>
           </div>
@@ -258,6 +262,8 @@ function proceedToCheckout() {
 .item-image {
   display: block;
   aspect-ratio: 1 / 1;
+  background-size: cover;
+  background-position: center;
 }
 
 .item-details {

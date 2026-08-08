@@ -1,18 +1,15 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { RouterLink } from 'vue-router'
-import { useCartStore } from '../stores/cart'
-import type { CartItem } from '../stores/cart'
+import { RouterLink, useRoute } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
+import { fetchOrder, type Order } from '../lib/orders'
 
-const cart = useCartStore()
+const route = useRoute()
+const auth = useAuthStore()
 
-// Snapshot the cart before clearing it, so this confirmation still has
-// something to show once the order is placed and the cart resets.
-const orderItems = ref<CartItem[]>([])
-const orderSubtotal = ref(0)
-const orderTotal = ref(0)
-const orderNumber = ref('')
-
+const order = ref<Order | null>(null)
+const loading = ref(true)
+const loadError = ref(false)
 const arrivalRange = ref('')
 
 function formatPrice(value: number) {
@@ -23,78 +20,109 @@ function formatArrivalDate(date: Date) {
   return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
 }
 
-onMounted(() => {
-  orderItems.value = cart.items.map((item) => ({ ...item }))
-  orderSubtotal.value = cart.subtotal
-  orderTotal.value = cart.total
-  orderNumber.value = `#PM-${Math.floor(100000 + Math.random() * 900000)}`
+onMounted(async () => {
+  await auth.init()
+  const orderId = Number(route.query.orderId)
 
-  const start = new Date()
-  start.setDate(start.getDate() + 3)
-  const end = new Date()
-  end.setDate(end.getDate() + 5)
-  arrivalRange.value = `${formatArrivalDate(start)} — ${formatArrivalDate(end)}, ${end.getFullYear()}`
+  if (!orderId || !auth.session) {
+    loading.value = false
+    loadError.value = true
+    return
+  }
 
-  cart.clear()
+  try {
+    order.value = await fetchOrder(orderId, auth.session.access_token)
+
+    const created = new Date(order.value.created_at)
+    const start = new Date(created)
+    start.setDate(start.getDate() + 3)
+    const end = new Date(created)
+    end.setDate(end.getDate() + 5)
+    arrivalRange.value = `${formatArrivalDate(start)} — ${formatArrivalDate(end)}, ${end.getFullYear()}`
+  } catch {
+    loadError.value = true
+  } finally {
+    loading.value = false
+  }
 })
 </script>
 
 <template>
   <div class="confirmation">
-    <div class="confirmation-header">
-      <h1 class="confirmation-title">Thank You for Choosing Excellence</h1>
-      <p class="order-number">Order Confirmed: {{ orderNumber }}</p>
+    <div v-if="loading" class="state-message">Loading your order…</div>
+
+    <div v-else-if="loadError || !order" class="state-message">
+      <p>We couldn't find that order.</p>
+      <RouterLink to="/account/orders" class="view-all-link">View Order History</RouterLink>
     </div>
 
-    <div class="confirmation-body">
-      <div class="confirmation-image placeholder-img"></div>
+    <template v-else>
+      <div class="confirmation-header">
+        <h1 class="confirmation-title">Thank You for Choosing Excellence</h1>
+        <p class="order-number">Order Confirmed: #{{ order.order_number }}</p>
+        <p v-if="order.payment_status === 'pending_confirmation'" class="pending-note">
+          Payment pending confirmation — we'll notify you once it's verified.
+        </p>
+      </div>
 
-      <div class="confirmation-details">
-        <div class="order-summary">
-          <h2 class="summary-title">Order Summary</h2>
-          <div class="summary-divider"></div>
+      <div class="confirmation-body">
+        <div class="confirmation-image placeholder-img"></div>
 
-          <div class="summary-items">
-            <div v-for="item in orderItems" :key="item.id" class="summary-item">
-              <div class="summary-item-info">
-                <p class="summary-item-name">{{ item.name.toUpperCase() }}</p>
-                <p class="summary-item-variant">{{ item.variant }} / {{ item.size }}</p>
+        <div class="confirmation-details">
+          <div class="order-summary">
+            <h2 class="summary-title">Order Summary</h2>
+            <div class="summary-divider"></div>
+
+            <div class="summary-items">
+              <div v-for="item in order.items" :key="item.id" class="summary-item">
+                <div class="summary-item-info">
+                  <p class="summary-item-name">{{ item.name.toUpperCase() }}</p>
+                  <p class="summary-item-variant">Qty: {{ item.quantity }}</p>
+                </div>
+                <p class="summary-item-price">{{ formatPrice(item.price * item.quantity) }}</p>
               </div>
-              <p class="summary-item-price">{{ formatPrice(item.price * item.quantity) }}</p>
+            </div>
+
+            <div class="summary-divider"></div>
+
+            <div class="summary-row">
+              <span>Subtotal</span>
+              <span>{{ formatPrice(order.subtotal) }}</span>
+            </div>
+            <div class="summary-row">
+              <span>Shipping</span>
+              <span>{{ formatPrice(order.shipping_cost) }}</span>
+            </div>
+            <div v-if="order.discount" class="summary-row">
+              <span>Discount</span>
+              <span>-{{ formatPrice(order.discount) }}</span>
+            </div>
+            <div class="summary-row">
+              <span>Tax</span>
+              <span>{{ formatPrice(order.tax) }}</span>
+            </div>
+
+            <div class="summary-row total-row">
+              <span>Total</span>
+              <span>{{ formatPrice(order.total) }}</span>
             </div>
           </div>
 
-          <div class="summary-divider"></div>
+          <div class="delivery-details">
+            <h2 class="delivery-title">Delivery Details</h2>
+            <div class="delivery-divider"></div>
 
-          <div class="summary-row">
-            <span>Subtotal</span>
-            <span>{{ formatPrice(orderSubtotal) }}</span>
-          </div>
-          <div class="summary-row">
-            <span>Shipping</span>
-            <span>{{ formatPrice(0) }}</span>
+            <p class="arrival-estimate">Estimated Arrival: {{ arrivalRange }}</p>
+            <p class="arrival-note">
+              A member of our care team will call ahead 24 hours before delivery.
+            </p>
           </div>
 
-          <div class="summary-row total-row">
-            <span>Total</span>
-            <span>{{ formatPrice(orderTotal) }}</span>
-          </div>
+          <RouterLink to="/collections" class="return-btn">Return to Collections</RouterLink>
+          <RouterLink to="/account" class="profile-btn">View Your Profile</RouterLink>
         </div>
-
-        <div class="delivery-details">
-          <h2 class="delivery-title">Delivery Details</h2>
-          <div class="delivery-divider"></div>
-
-          <p class="arrival-estimate">Estimated Arrival: {{ arrivalRange }}</p>
-          <p class="arrival-note">
-            A member of our care team will call ahead 24 hours before delivery.
-          </p>
-        </div>
-
-        <RouterLink to="/collections" class="return-btn">Return to Collections</RouterLink>
-        <RouterLink to="/account" class="profile-btn">View Your Profile</RouterLink>
       </div>
-    </div>
+    </template>
   </div>
 </template>
 
@@ -113,9 +141,33 @@ onMounted(() => {
   padding: 2rem 0 5rem;
 }
 
+.state-message {
+  padding: 4rem 0;
+  text-align: center;
+  opacity: 0.7;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.view-all-link {
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  text-decoration: underline;
+  color: var(--color-text);
+}
+
 .confirmation-header {
   text-align: center;
   margin-bottom: 3rem;
+}
+
+.pending-note {
+  margin-top: 0.75rem;
+  font-size: 0.8rem;
+  color: var(--color-text);
+  opacity: 0.7;
 }
 
 .confirmation-title {

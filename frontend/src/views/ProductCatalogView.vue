@@ -4,6 +4,9 @@ import { RouterLink } from 'vue-router'
 import { PhArrowLeft, PhArrowRight, PhMagnifyingGlass, PhShoppingCart, PhPawPrint } from '@phosphor-icons/vue'
 import { ElMessage } from 'element-plus'
 import { fetchCategories, fetchProducts, type Product } from '@/lib/products'
+import { useCartStore } from '@/stores/cart'
+
+const cart = useCartStore()
 
 const species = ['Dog', 'Cat', 'Bird', 'Fish', 'Small Pet']
 
@@ -126,6 +129,7 @@ function pad(n: number) {
 }
 
 function addToCart(p: Product) {
+  cart.addItem(p)
   ElMessage.success(`Added "${p.name}" to cart`)
 }
 </script>

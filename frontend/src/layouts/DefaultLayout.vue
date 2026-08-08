@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router'
 import { PhShoppingCart, PhUser } from '@phosphor-icons/vue'
+import { useCartStore } from '@/stores/cart'
+
+const cart = useCartStore()
 </script>
 
 <template>
@@ -16,7 +19,9 @@ import { PhShoppingCart, PhUser } from '@phosphor-icons/vue'
 
         <div class="nav-actions">
           <RouterLink to="/cart" class="icon-link">
-            <PhShoppingCart :size="20" />
+            <el-badge :value="cart.itemCount" :hidden="cart.itemCount === 0" :max="99">
+              <PhShoppingCart :size="20" />
+            </el-badge>
           </RouterLink>
           <RouterLink to="/account" class="icon-link">
             <PhUser :size="20" />
@@ -112,12 +117,23 @@ import { PhShoppingCart, PhUser } from '@phosphor-icons/vue'
 .nav-actions {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
 .icon-link {
   display: flex;
+  align-items: center;
   color: var(--color-text);
+}
+
+.icon-link :deep(.el-badge) {
+  display: flex;
+  align-items: center;
+}
+
+.icon-link :deep(.el-badge__content) {
+  top: 2px;
+  right: 2px;
 }
 
 .site-main {

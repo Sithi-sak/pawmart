@@ -31,6 +31,21 @@ export const useAuthStore = defineStore('auth', () => {
 
   let initPromise: Promise<void> | null = null
 
+  // Google (and any other OAuth provider) populates user_metadata with
+  // different keys depending on what the provider returns and when — prefer
+  // full_name/name, fall back to combining given_name + family_name.
+  function deriveFullName(authUser: User): string | null {
+    const metadata = authUser.user_metadata ?? {}
+    const fullName = metadata.full_name as string | undefined
+    const name = metadata.name as string | undefined
+    const givenFamily = [metadata.given_name, metadata.family_name]
+      .filter((part): part is string => !!part)
+      .join(' ')
+      .trim()
+
+    return fullName || name || givenFamily || null
+  }
+
   // customers row doesn't exist yet on first-ever sign-in (fresh signup, or
   // first Google login which skips the signup form entirely).
   async function ensureCustomerRow(authUser: User) {
@@ -42,17 +57,26 @@ export const useAuthStore = defineStore('auth', () => {
 
     if (existing) {
       customer.value = existing as Customer
+      // Backfill a name that wasn't available yet on an earlier sign-in
+      // (e.g. Google metadata not populated in time) once it shows up.
+      if (!existing.full_name) {
+        const derived = deriveFullName(authUser)
+        if (derived) {
+          const { data: updated } = await supabase
+            .from('customers')
+            .update({ full_name: derived })
+            .eq('id', authUser.id)
+            .select()
+            .single()
+          if (updated) customer.value = updated as Customer
+        }
+      }
       return
     }
 
-    const fullName =
-      (authUser.user_metadata?.full_name as string | undefined) ??
-      (authUser.user_metadata?.name as string | undefined) ??
-      null
-
     const { data: created, error } = await supabase
       .from('customers')
-      .insert({ id: authUser.id, email: authUser.email, full_name: fullName })
+      .insert({ id: authUser.id, email: authUser.email, full_name: deriveFullName(authUser) })
       .select()
       .single()
 
@@ -127,7 +151,7 @@ export const useAuthStore = defineStore('auth', () => {
   async function signInWithGoogle() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/account` },
+      options: { redirectTo: window.location.origin },
     })
     if (error) throw error
   }

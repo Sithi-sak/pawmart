@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import {
   PhLock,
   PhCreditCard,
@@ -12,6 +13,8 @@ import {
   PhCircleNotch,
 } from '@phosphor-icons/vue'
 import { useCartStore } from '../stores/cart'
+import { useAuthStore } from '../stores/auth'
+import { createOrder, type Order } from '../lib/orders'
 
 type Step = 'shipping' | 'payment' | 'review'
 
@@ -22,6 +25,7 @@ const steps: { key: Step; number: string; label: string }[] = [
 ]
 
 const cart = useCartStore()
+const auth = useAuthStore()
 const router = useRouter()
 
 const currentStep = ref<Step>('shipping')
@@ -99,28 +103,60 @@ function editStep(step: Step) {
 
 const isProcessing = ref(false)
 const khqrModalVisible = ref(false)
+const placedOrder = ref<Order | null>(null)
 
 const maskedCardNumber = computed(() => {
   const digits = paymentForm.cardNumber.replace(/\s/g, '')
   return digits.length >= 4 ? digits.slice(-4) : '••••'
 })
 
-function placeOrder() {
-  if (paymentMethod.value === 'khqr') {
-    khqrModalVisible.value = true
+async function placeOrder() {
+  if (!auth.session) {
+    router.push({ name: 'login', query: { redirect: '/checkout' } })
     return
   }
 
-  // Mock processing — real charge/redirect handling lands with the checkout API (3.2).
   isProcessing.value = true
-  setTimeout(() => {
-    router.push('/order/confirm')
-  }, 1200)
+  try {
+    const order = await createOrder(
+      {
+        items: cart.items.map((item) => ({
+          product_id: item.productId,
+          quantity: item.quantity,
+        })),
+        shipping: {
+          full_name: shippingForm.fullName,
+          phone: shippingForm.phone,
+          street: shippingForm.street,
+          city: shippingForm.city,
+          postal_code: shippingForm.postalCode,
+          method: shippingForm.method,
+        },
+        payment_method: paymentMethod.value,
+        voucher_code: cart.appliedVoucher?.code ?? null,
+      },
+      auth.session.access_token,
+    )
+    placedOrder.value = order
+
+    if (paymentMethod.value === 'khqr') {
+      khqrModalVisible.value = true
+    } else {
+      cart.clear()
+      router.push({ name: 'order-confirm', query: { orderId: String(order.id) } })
+    }
+  } catch (err) {
+    ElMessage.error(err instanceof Error ? err.message : 'Could not place order')
+  } finally {
+    isProcessing.value = false
+  }
 }
 
 function confirmKhqrPayment() {
   khqrModalVisible.value = false
-  router.push('/order/confirm')
+  if (!placedOrder.value) return
+  cart.clear()
+  router.push({ name: 'order-confirm', query: { orderId: String(placedOrder.value.id) } })
 }
 
 const paymentMethodLabel = computed(
@@ -379,14 +415,16 @@ const shippingMethodLabel = computed(() =>
           <div class="review-section">
             <h2 class="review-section-title">Your Selection ({{ cart.itemCount }})</h2>
             <div class="review-items">
-              <div v-for="item in cart.items" :key="item.id" class="review-item">
+              <div v-for="item in cart.items" :key="item.productId" class="review-item">
                 <RouterLink
-                  :to="`/products/${item.productId}`"
-                  class="review-item-image placeholder-img"
+                  :to="`/products/${item.slug}`"
+                  class="review-item-image"
+                  :class="{ 'placeholder-img': !item.image }"
+                  :style="item.image ? { backgroundImage: `url(${item.image})` } : undefined"
                 />
                 <div class="review-item-details">
                   <p class="review-item-name">{{ item.name }}</p>
-                  <p class="review-item-variant">{{ item.variant }} / Size: {{ item.size }}</p>
+                  <p v-if="item.brand" class="review-item-variant">{{ item.brand }}</p>
                 </div>
                 <div class="review-item-aside">
                   <p class="review-item-price">{{ formatPrice(item.price * item.quantity) }}</p>
@@ -403,11 +441,16 @@ const shippingMethodLabel = computed(() =>
         <div class="summary-divider"></div>
 
         <div v-if="currentStep !== 'review'" class="summary-items">
-          <div v-for="item in cart.items" :key="item.id" class="summary-item">
-            <RouterLink :to="`/products/${item.productId}`" class="summary-item-image placeholder-img" />
+          <div v-for="item in cart.items" :key="item.productId" class="summary-item">
+            <RouterLink
+              :to="`/products/${item.slug}`"
+              class="summary-item-image"
+              :class="{ 'placeholder-img': !item.image }"
+              :style="item.image ? { backgroundImage: `url(${item.image})` } : undefined"
+            />
             <div class="summary-item-details">
               <p class="summary-item-name">{{ item.name }}</p>
-              <p class="summary-item-variant">{{ item.variant }} / SIZE: {{ item.size.toUpperCase() }}</p>
+              <p v-if="item.brand" class="summary-item-variant">{{ item.brand.toUpperCase() }}</p>
               <div class="summary-item-bottom">
                 <span class="summary-item-qty">Qty: {{ item.quantity }}</span>
                 <span class="summary-item-price">{{ formatPrice(item.price * item.quantity) }}</span>
@@ -474,7 +517,7 @@ const shippingMethodLabel = computed(() =>
     >
       <div class="khqr-modal-content">
         <div class="khqr-placeholder">KHQR CODE</div>
-        <p class="khqr-modal-amount">{{ formatPrice(orderTotal) }}</p>
+        <p class="khqr-modal-amount">{{ formatPrice(placedOrder?.total ?? orderTotal) }}</p>
         <p class="khqr-modal-note">
           Scan this code with any Bakong-linked banking app, then confirm once the transfer is
           complete.
@@ -1020,6 +1063,8 @@ const shippingMethodLabel = computed(() =>
 .review-item-image {
   display: block;
   aspect-ratio: 1 / 1;
+  background-size: cover;
+  background-position: center;
 }
 
 .review-item-name {
@@ -1086,6 +1131,8 @@ const shippingMethodLabel = computed(() =>
 .summary-item-image {
   display: block;
   aspect-ratio: 1 / 1;
+  background-size: cover;
+  background-position: center;
 }
 
 .summary-item-details {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import {
   PhEnvelopeSimple,
@@ -23,17 +23,33 @@ interface Profile {
 }
 
 const profile = reactive<Profile>({
-  name: auth.customer?.full_name ?? '',
-  email: auth.customer?.email ?? auth.user?.email ?? '',
-  location: auth.customer?.location ?? '',
+  name: '',
+  email: '',
+  location: '',
 })
+
+const isEditing = ref(false)
+
+// auth.customer can populate asynchronously after this component has
+// already mounted (e.g. right after an OAuth redirect) — snapshotting it
+// once at setup time meant the name sometimes rendered blank. Keep it live
+// instead, except while the user has unsaved edits open.
+watch(
+  () => auth.customer,
+  (customer) => {
+    if (isEditing.value) return
+    profile.name = customer?.full_name ?? ''
+    profile.email = customer?.email ?? auth.user?.email ?? ''
+    profile.location = customer?.location ?? ''
+  },
+  { immediate: true },
+)
 
 async function handleSignOut() {
   await auth.signOut()
   router.push('/login')
 }
 
-const isEditing = ref(false)
 const editForm = reactive<Profile>({ ...profile })
 
 function startEdit() {

@@ -4,6 +4,9 @@ import { RouterLink } from 'vue-router'
 import { PhCaretDown, PhTruck, PhShieldCheck } from '@phosphor-icons/vue'
 import { ElMessage } from 'element-plus'
 import { fetchProductBySlug, fetchRelatedProducts, type Product } from '@/lib/products'
+import { useCartStore } from '@/stores/cart'
+
+const cart = useCartStore()
 
 const props = defineProps<{ slug?: string }>()
 
@@ -80,6 +83,7 @@ function decrementQuantity() {
 
 function addToCart() {
   if (!product.value) return
+  cart.addItem(product.value, quantity.value)
   ElMessage.success(`Added ${quantity.value} × "${product.value.name}" to cart`)
 }
 

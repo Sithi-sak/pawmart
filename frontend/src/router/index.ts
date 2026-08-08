@@ -45,11 +45,13 @@ const router = createRouter({
           path: 'checkout',
           name: 'checkout',
           component: () => import('../views/CheckoutView.vue'),
+          meta: { requiresAuth: true },
         },
         {
           path: 'order/confirm',
           name: 'order-confirm',
           component: () => import('../views/OrderConfirmationView.vue'),
+          meta: { requiresAuth: true },
         },
         {
           path: 'orders/:id',

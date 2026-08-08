@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import { PhEye, PhEyeClosed } from '@phosphor-icons/vue'
 import GoogleLogo from '@/components/icons/GoogleLogo.vue'
 import { isAllowedCustomerEmail, useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
 const router = useRouter()
-const route = useRoute()
 
 const form = reactive({
   email: '',
@@ -27,8 +26,7 @@ async function handleSubmit() {
   submitting.value = true
   try {
     await auth.signInWithPassword(form.email, form.password)
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/account'
-    router.push(redirect)
+    router.push('/')
   } catch (err) {
     errorMessage.value = err instanceof Error ? err.message : 'Unable to sign in.'
   } finally {
