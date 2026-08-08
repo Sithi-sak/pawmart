@@ -1,22 +1,11 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { PhArrowLeft, PhArrowRight, PhMagnifyingGlass, PhShoppingCart, PhPawPrint } from '@phosphor-icons/vue'
 import { ElMessage } from 'element-plus'
-
-interface Product {
-  id: number
-  name: string
-  category: string
-  brand: string
-  species: string
-  price: number
-  isNew?: boolean
-}
+import { fetchCategories, fetchProducts, type Product } from '@/lib/products'
 
 const species = ['Dog', 'Cat', 'Bird', 'Fish', 'Small Pet']
-const categories = ['All Products', 'Food & Nutrition', 'Bedding', 'Toys', 'Grooming Kit']
-const brands = ['PawMart Collection', 'Nordic Home', 'WildRoots', 'Timber & Co', 'Fresh Fields']
 
 const priceRanges = [
   { label: '$0 — $50', min: 0, max: 50 },
@@ -32,24 +21,32 @@ const sortOptions = [
   { value: 'name', label: 'Name: A-Z' },
 ]
 
-const products: Product[] = [
-  { id: 1, name: 'Plush Nest Bed', category: 'Bedding', brand: 'Nordic Home', species: 'Dog', price: 345.0, isNew: true },
-  { id: 2, name: 'Elevated Feeding Stand', category: 'Food & Nutrition', brand: 'Timber & Co', species: 'Dog', price: 180.0 },
-  { id: 3, name: 'Woven Leather Leash Set', category: 'Toys', brand: 'WildRoots', species: 'Dog', price: 210.0 },
-  { id: 4, name: 'Sisal Scratch Post', category: 'Toys', brand: 'Timber & Co', species: 'Cat', price: 540.0 },
-  { id: 5, name: 'Grooming Brush Kit', category: 'Grooming Kit', brand: 'PawMart Collection', species: 'Dog', price: 125.0 },
-  { id: 6, name: 'Gourmet Chicken & Wild Salmon', category: 'Food & Nutrition', brand: 'Fresh Fields', species: 'Cat', price: 45.0 },
-  { id: 7, name: 'Cloud Cushion Bed', category: 'Bedding', brand: 'Nordic Home', species: 'Cat', price: 96.0 },
-  { id: 8, name: 'Feather Wand Toy', category: 'Toys', brand: 'WildRoots', species: 'Cat', price: 22.0, isNew: true },
-  { id: 9, name: 'Aviary Perch Set', category: 'Bedding', brand: 'Timber & Co', species: 'Bird', price: 68.0 },
-  { id: 10, name: 'Freshwater Tank Filter', category: 'Food & Nutrition', brand: 'WildRoots', species: 'Fish', price: 58.0 },
-  { id: 11, name: 'Small Pet Hideaway Hut', category: 'Bedding', brand: 'PawMart Collection', species: 'Small Pet', price: 39.0 },
-  { id: 12, name: 'Salmon & Pumpkin Bites', category: 'Food & Nutrition', brand: 'Fresh Fields', species: 'Dog', price: 32.0, isNew: true },
-  { id: 13, name: 'Nail Trimmer & File Set', category: 'Grooming Kit', brand: 'PawMart Collection', species: 'Cat', price: 28.0 },
-  { id: 14, name: 'Bird Nutrition Blend', category: 'Food & Nutrition', brand: 'Fresh Fields', species: 'Bird', price: 19.0 },
-  { id: 15, name: 'Deluxe Chew Rope', category: 'Toys', brand: 'WildRoots', species: 'Dog', price: 14.0 },
-  { id: 16, name: 'Small Pet Grooming Kit', category: 'Grooming Kit', brand: 'Nordic Home', species: 'Small Pet', price: 54.0 },
-]
+const products = ref<Product[]>([])
+const categoryNames = ref<string[]>([])
+const loading = ref(true)
+const loadError = ref(false)
+
+const brands = computed(() =>
+  Array.from(new Set(products.value.map((p) => p.brand).filter((b): b is string => !!b))).sort(),
+)
+
+const categoryOptions = computed(() => ['All Products', ...categoryNames.value])
+
+async function loadCatalog() {
+  loading.value = true
+  loadError.value = false
+  try {
+    const [productRows, categoryRows] = await Promise.all([fetchProducts(), fetchCategories()])
+    products.value = productRows
+    categoryNames.value = categoryRows.map((c) => c.name)
+  } catch {
+    loadError.value = true
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(loadCatalog)
 
 const searchQuery = ref('')
 const selectedSpecies = ref<string | null>(null)
@@ -65,18 +62,18 @@ function toggleSpecies(s: string) {
 }
 
 const filteredProducts = computed(() => {
-  let result = products.slice()
+  let result = products.value.slice()
 
   if (selectedSpecies.value) {
     result = result.filter((p) => p.species === selectedSpecies.value)
   }
 
   if (selectedCategory.value !== 'All Products') {
-    result = result.filter((p) => p.category === selectedCategory.value)
+    result = result.filter((p) => p.categories?.name === selectedCategory.value)
   }
 
   if (selectedBrands.value.length) {
-    result = result.filter((p) => selectedBrands.value.includes(p.brand))
+    result = result.filter((p) => p.brand && selectedBrands.value.includes(p.brand))
   }
 
   if (selectedPriceRanges.value.length) {
@@ -91,7 +88,8 @@ const filteredProducts = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
   if (query) {
     result = result.filter(
-      (p) => p.name.toLowerCase().includes(query) || p.brand.toLowerCase().includes(query),
+      (p) =>
+        p.name.toLowerCase().includes(query) || (p.brand?.toLowerCase().includes(query) ?? false),
     )
   }
 
@@ -173,7 +171,7 @@ function addToCart(p: Product) {
           <h3 class="filter-title">Categories</h3>
           <ul class="category-list">
             <li
-              v-for="c in categories"
+              v-for="c in categoryOptions"
               :key="c"
               :class="{ 'is-active': selectedCategory === c }"
               @click="selectedCategory = c"
@@ -210,21 +208,33 @@ function addToCart(p: Product) {
       </aside>
 
       <div class="results">
-        <div v-if="paginatedProducts.length" class="product-grid">
+        <div v-if="loading" class="empty-state">
+          <p>Loading products…</p>
+        </div>
+
+        <div v-else-if="loadError" class="empty-state">
+          <p>Couldn't load products right now. Please try again shortly.</p>
+        </div>
+
+        <div v-else-if="paginatedProducts.length" class="product-grid">
           <RouterLink
             v-for="p in paginatedProducts"
             :key="p.id"
-            :to="`/products/${p.id}`"
+            :to="`/products/${p.slug}`"
             class="product-card"
           >
-            <div class="product-image placeholder-img">
-              <span v-if="p.isNew" class="new-badge">NEW</span>
+            <div
+              class="product-image"
+              :class="{ 'placeholder-img': !p.images.length }"
+              :style="p.images.length ? { backgroundImage: `url(${p.images[0]})` } : undefined"
+            >
+              <span v-if="p.is_new" class="new-badge">NEW</span>
             </div>
             <div class="product-info">
               <h3 class="product-name">{{ p.name }}</h3>
-              <p class="product-category">{{ p.category.toUpperCase() }}</p>
+              <p class="product-category">{{ (p.categories?.name ?? '').toUpperCase() }}</p>
               <div class="product-footer">
-                <p class="product-price">${{ p.price.toFixed(2) }}</p>
+                <p class="product-price">${{ Number(p.price).toFixed(2) }}</p>
                 <button type="button" class="cart-btn" @click.prevent="addToCart(p)">
                   <PhShoppingCart :size="16" />
                 </button>
@@ -416,6 +426,8 @@ function addToCart(p: Product) {
 .product-image {
   position: relative;
   aspect-ratio: 3 / 2;
+  background-size: cover;
+  background-position: center;
 }
 
 .new-badge {

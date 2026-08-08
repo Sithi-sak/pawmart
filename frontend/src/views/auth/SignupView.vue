@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
-import { PhGoogleLogo } from '@phosphor-icons/vue'
+import GoogleLogo from '@/components/icons/GoogleLogo.vue'
 import { isAllowedCustomerEmail, useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
@@ -117,7 +117,7 @@ async function handleGoogleSignUp() {
     <div class="divider"><span>OR</span></div>
 
     <button type="button" class="oauth-btn" @click="handleGoogleSignUp">
-      <PhGoogleLogo :size="20" weight="bold" />
+      <GoogleLogo :size="20" />
       Sign up with Google
     </button>
 
@@ -165,6 +165,7 @@ async function handleGoogleSignUp() {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+  min-width: 0;
 }
 
 .form-field label {
@@ -301,6 +302,7 @@ async function handleGoogleSignUp() {
   color: var(--color-heading);
   font-family: inherit;
   font-size: 0.85rem;
+  line-height: 0;
   letter-spacing: 0.05em;
   font-weight: 600;
   text-transform: uppercase;

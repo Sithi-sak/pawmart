@@ -36,7 +36,7 @@ Current state: fresh `create-vue` + FastAPI scaffolds, no pages built, no schema
 
 ## Phase 3 — Wire frontend ↔ backend (feature by feature)
 
-- [ ] **3.1 Product Catalog & Search** — API + connect 1.3/1.4.
+- [x] **3.1 Product Catalog & Search** — API + connect 1.3/1.4.
 - [ ] **3.2 Cart & Checkout** — order creation API + connect 1.5/1.6/1.7.
 - [ ] **3.3 Order Tracking** — status API + connect 1.8.
 - [ ] **3.4 Pet Profile Management** — API + connect 1.11.
@@ -64,6 +64,8 @@ Current state: fresh `create-vue` + FastAPI scaffolds, no pages built, no schema
 3. **Review** — read-only recap of shipping + payment method (masked for Visa), line items, then a single **"Place Order"** button in the sidebar is where the method-specific action actually fires: Visa/ABA simulate processing and go straight to `/order/confirm`; KHQR opens a "Scan to Pay" modal with the QR + an **"I Have Paid"** button (this is the real MVP path from task 4.1 — manual self-report, then admin confirms in Admin Orders).
 
 Backend implication: the order needs to persist shipping address, chosen shipping method/cost, chosen payment method, and (for KHQR) a payment reference/status defaulting to "pending admin confirmation" — all on one order record created at "Place Order" time. There's no intermediate per-step API call, the wizard only submits once at the end. `/order/confirm` (task 1.7) currently reads straight from the cart store and clears it on mount — once there's a real order API, it should instead read the just-created order by id.
+
+Known gap from 3.1: `CartView.vue`/`CheckoutView.vue` still link to `/products/${item.productId}` using the mock cart's numeric `productId`, but product detail routing now uses slugs (`/products/:slug`, task 3.1). These links 404 until cart items are wired to real products with real slugs — fix as part of this task.
 
 ## Feature ↔ Task cross-reference
 

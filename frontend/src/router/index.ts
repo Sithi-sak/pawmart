@@ -35,7 +35,7 @@ const router = createRouter({
           component: () => import('../views/CollectionsView.vue'),
         },
         {
-          path: 'products/:id',
+          path: 'products/:slug',
           name: 'product-detail',
           component: () => import('../views/ProductDetailView.vue'),
           props: true,

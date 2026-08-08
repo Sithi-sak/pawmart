@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
-import { PhEye, PhEyeClosed, PhGoogleLogo } from '@phosphor-icons/vue'
+import { PhEye, PhEyeClosed } from '@phosphor-icons/vue'
+import GoogleLogo from '@/components/icons/GoogleLogo.vue'
 import { isAllowedCustomerEmail, useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
@@ -91,7 +92,7 @@ async function handleGoogleSignIn() {
     <div class="divider"><span>OR</span></div>
 
     <button type="button" class="oauth-btn" @click="handleGoogleSignIn">
-      <PhGoogleLogo :size="20" weight="bold" />
+      <GoogleLogo :size="20" />
       Sign in with Google
     </button>
 
@@ -258,6 +259,7 @@ async function handleGoogleSignIn() {
   color: var(--color-heading);
   font-family: inherit;
   font-size: 0.85rem;
+  line-height: 0;
   letter-spacing: 0.05em;
   font-weight: 600;
   text-transform: uppercase;
