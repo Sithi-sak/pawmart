@@ -1,5 +1,11 @@
 <script setup lang="ts">
+import { onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import { fetchRecommendedProducts } from '@/lib/recommendations'
+import type { Product } from '@/lib/products'
+
+const auth = useAuthStore()
 
 interface Collection {
   key: string
@@ -16,19 +22,22 @@ const collections: Collection[] = [
   { key: 'lifestyle', title: 'Lifestyle', subtitle: 'Toys & Enrichment' },
 ]
 
-interface Product {
-  id: number
-  category: string
-  name: string
-  price: number
-}
+const recommendedProducts = ref<Product[]>([])
+const personalized = ref(false)
+const loadingRecommendations = ref(true)
 
-const seasonalProducts: Product[] = [
-  { id: 1, category: 'Accessories', name: 'Woven Collar', price: 18.0 },
-  { id: 2, category: 'Bedding', name: 'Plush Nest Bed', price: 54.0 },
-  { id: 3, category: 'Nutrition', name: 'Grain-Free Kibble', price: 32.0 },
-  { id: 4, category: 'Lifestyle', name: 'Rope Chew Toy', price: 14.0 },
-]
+onMounted(async () => {
+  await auth.init()
+  try {
+    const result = await fetchRecommendedProducts(auth.customer?.id ?? null, { limit: 4 })
+    recommendedProducts.value = result.products
+    personalized.value = result.personalized
+  } catch {
+    recommendedProducts.value = []
+  } finally {
+    loadingRecommendations.value = false
+  }
+})
 
 function formatPrice(value: number) {
   return `$${value.toFixed(2)}`
@@ -74,24 +83,30 @@ function formatPrice(value: number) {
       </div>
     </section>
 
-    <!-- Seasonal releases -->
-    <section class="section section-soft">
+    <!-- Recommended products -->
+    <section v-if="loadingRecommendations || recommendedProducts.length" class="section section-soft">
       <div class="section-header">
         <div>
-          <h2 class="section-title">Seasonal Releases</h2>
-          <p class="section-subtitle">Fresh picks for every paw, this season.</p>
+          <h2 class="section-title">{{ personalized ? 'Recommended For You' : 'New Arrivals' }}</h2>
+          <p class="section-subtitle">
+            {{ personalized ? 'Picked based on your pets and past orders.' : 'Fresh picks for every paw.' }}
+          </p>
         </div>
         <RouterLink to="/products" class="view-all-link">View All Products</RouterLink>
       </div>
-      <div class="products-grid">
+      <div v-if="!loadingRecommendations" class="products-grid">
         <RouterLink
-          v-for="p in seasonalProducts"
+          v-for="p in recommendedProducts"
           :key="p.id"
-          :to="`/products/${p.id}`"
+          :to="`/products/${p.slug}`"
           class="product-card"
         >
-          <div class="product-image placeholder-img"></div>
-          <p class="product-category">{{ p.category }}</p>
+          <div
+            class="product-image"
+            :class="{ 'placeholder-img': !p.images.length }"
+            :style="p.images.length ? { backgroundImage: `url(${p.images[0]})` } : undefined"
+          ></div>
+          <p class="product-category">{{ p.categories?.name ?? p.species }}</p>
           <h3 class="product-name">{{ p.name }}</h3>
           <p class="product-price">{{ formatPrice(p.price) }}</p>
         </RouterLink>

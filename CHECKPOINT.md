@@ -40,7 +40,7 @@ Current state: fresh `create-vue` + FastAPI scaffolds, no pages built, no schema
 - [x] **3.2 Cart & Checkout** — order creation API + connect 1.5/1.6/1.7.
 - [x] **3.3 Order Tracking** — status API + connect 1.8.
 - [x] **3.4 Pet Profile Management** — API + connect 1.11.
-- [ ] **3.5 Rule-based Product Recommendations** — species/age/purchase-history filtering logic + surface on Home/Product pages (not AI/ML — see project memory).
+- [x] **3.5 Rule-based Product Recommendations** — species/age/purchase-history filtering logic + surface on Home/Product pages (not AI/ML — see project memory).
 - [ ] **3.6 Loyalty & Reward System** — points accrual/redemption API + connect to Account/Checkout.
 - [ ] **3.7 Admin Dashboard** — product CRUD, inventory, low-stock alerts, sales overview API + connect 1.12/1.13.
 - [ ] **3.8 Admin Orders** — order processing API + connect 1.14.

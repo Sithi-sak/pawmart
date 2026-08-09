@@ -4,14 +4,19 @@ import { RouterLink } from 'vue-router'
 import { PhCaretDown, PhTruck, PhShieldCheck } from '@phosphor-icons/vue'
 import { ElMessage } from 'element-plus'
 import { fetchProductBySlug, fetchRelatedProducts, type Product } from '@/lib/products'
+import { fetchRecommendedProducts } from '@/lib/recommendations'
+import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
 
 const cart = useCartStore()
+const auth = useAuthStore()
 
 const props = defineProps<{ slug?: string }>()
 
 const product = ref<Product | null>(null)
 const relatedProducts = ref<Product[]>([])
+const recommendedProducts = ref<Product[]>([])
+const personalized = ref(false)
 const loading = ref(true)
 const loadError = ref(false)
 const quantity = ref(1)
@@ -21,6 +26,8 @@ async function loadProduct(slug: string | undefined) {
   loadError.value = false
   product.value = null
   relatedProducts.value = []
+  recommendedProducts.value = []
+  personalized.value = false
   quantity.value = 1
 
   if (!slug) {
@@ -33,7 +40,14 @@ async function loadProduct(slug: string | undefined) {
     const found = await fetchProductBySlug(slug)
     product.value = found
     if (found) {
-      relatedProducts.value = await fetchRelatedProducts(found.category_id, found.id)
+      await auth.init()
+      const [related, recommended] = await Promise.all([
+        fetchRelatedProducts(found.category_id, found.id),
+        fetchRecommendedProducts(auth.customer?.id ?? null, { excludeProductId: found.id, limit: 4 }),
+      ])
+      relatedProducts.value = related
+      recommendedProducts.value = recommended.products
+      personalized.value = recommended.personalized
     }
   } catch {
     loadError.value = true
@@ -209,6 +223,35 @@ function addToWishlist() {
         <div class="related-grid">
           <RouterLink
             v-for="p in relatedProducts"
+            :key="p.id"
+            :to="`/products/${p.slug}`"
+            class="related-card"
+          >
+            <div
+              class="related-image"
+              :class="{ 'placeholder-img': !p.images.length }"
+              :style="p.images.length ? { backgroundImage: `url(${p.images[0]})` } : undefined"
+            ></div>
+            <div class="related-info">
+              <p class="related-category">{{ (p.categories?.name ?? '').toUpperCase() }}</p>
+              <h3 class="related-name">{{ p.name }}</h3>
+              <p class="related-price">{{ formatPrice(p.price) }}</p>
+            </div>
+          </RouterLink>
+        </div>
+      </section>
+
+      <section v-if="personalized && recommendedProducts.length" class="related">
+        <div class="related-header">
+          <div>
+            <p class="eyebrow">PICKED FOR YOUR PETS</p>
+            <h2 class="section-title">Recommended For You</h2>
+          </div>
+        </div>
+
+        <div class="related-grid">
+          <RouterLink
+            v-for="p in recommendedProducts"
             :key="p.id"
             :to="`/products/${p.slug}`"
             class="related-card"
