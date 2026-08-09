@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import {
   PhCurrencyDollar,
   PhShoppingBagOpen,
@@ -9,6 +9,8 @@ import {
   PhTrendDown,
   PhWarning,
 } from '@phosphor-icons/vue'
+import { fetchDashboardStats, type DashboardStats } from '@/lib/adminDashboard'
+import { LOW_STOCK_THRESHOLD, fetchProducts, isLowStock, type Product } from '@/lib/products'
 
 interface Stat {
   label: string
@@ -18,36 +20,85 @@ interface Stat {
   icon: typeof PhCurrencyDollar
 }
 
-const stats: Stat[] = [
-  { label: 'Total Revenue', value: '$48,920.00', delta: '+12.4% vs last month', trend: 'up', icon: PhCurrencyDollar },
-  { label: 'Orders This Month', value: '342', delta: '+18 vs last month', trend: 'up', icon: PhShoppingBagOpen },
-  { label: 'New Customers', value: '57', delta: '+5 this week', trend: 'up', icon: PhUsers },
-  { label: 'Avg. Order Value', value: '$143.00', delta: '-2.1% vs last month', trend: 'down', icon: PhChartLineUp },
-]
+const currencyFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
 
-interface LowStockProduct {
-  id: number
-  name: string
-  sku: string
-  category: string
-  stock: number
-  threshold: number
+function formatDelta(current: number, previous: number): { text: string; trend: 'up' | 'down' } {
+  if (previous === 0) {
+    return current > 0 ? { text: 'New this month', trend: 'up' } : { text: 'No change', trend: 'up' }
+  }
+  const pct = ((current - previous) / previous) * 100
+  const sign = pct >= 0 ? '+' : ''
+  return { text: `${sign}${pct.toFixed(1)}% vs last month`, trend: pct >= 0 ? 'up' : 'down' }
 }
 
-const lowStockProducts: LowStockProduct[] = [
-  { id: 5, name: 'Grooming Brush Kit', sku: 'PM-GBK-05', category: 'Grooming Kit', stock: 4, threshold: 10 },
-  { id: 8, name: 'Feather Wand Toy', sku: 'PM-FWT-08', category: 'Toys', stock: 2, threshold: 15 },
-  { id: 12, name: 'Salmon & Pumpkin Bites', sku: 'PM-SPB-12', category: 'Food & Nutrition', stock: 0, threshold: 20 },
-  { id: 15, name: 'Deluxe Chew Rope', sku: 'PM-DCR-15', category: 'Toys', stock: 6, threshold: 12 },
-]
+const dashboardStats = ref<DashboardStats | null>(null)
+const products = ref<Product[]>([])
+const loading = ref(true)
+const loadError = ref(false)
 
-function stockStatus(product: LowStockProduct) {
+const stats = computed<Stat[]>(() => {
+  const s = dashboardStats.value
+  if (!s) return []
+
+  const revenueDelta = formatDelta(s.revenueThisMonth, s.revenueLastMonth)
+  const ordersDelta = formatDelta(s.ordersThisMonth, s.ordersLastMonth)
+  const avgOrderDelta = formatDelta(s.avgOrderValueThisMonth, s.avgOrderValueLastMonth)
+
+  return [
+    {
+      label: 'Total Revenue',
+      value: currencyFormatter.format(s.revenueThisMonth),
+      delta: revenueDelta.text,
+      trend: revenueDelta.trend,
+      icon: PhCurrencyDollar,
+    },
+    {
+      label: 'Orders This Month',
+      value: String(s.ordersThisMonth),
+      delta: ordersDelta.text,
+      trend: ordersDelta.trend,
+      icon: PhShoppingBagOpen,
+    },
+    {
+      label: 'New Customers',
+      value: String(s.newCustomersThisMonth),
+      delta: `+${s.newCustomersThisWeek} this week`,
+      trend: 'up',
+      icon: PhUsers,
+    },
+    {
+      label: 'Avg. Order Value',
+      value: currencyFormatter.format(s.avgOrderValueThisMonth),
+      delta: avgOrderDelta.text,
+      trend: avgOrderDelta.trend,
+      icon: PhChartLineUp,
+    },
+  ]
+})
+
+const lowStockProducts = computed(() =>
+  products.value.filter(isLowStock).sort((a, b) => a.stock - b.stock),
+)
+
+function stockStatus(product: Product) {
   if (product.stock === 0) return 'Out of Stock'
-  if (product.stock <= product.threshold / 3) return 'Critical'
+  if (product.stock <= LOW_STOCK_THRESHOLD / 3) return 'Critical'
   return 'Low'
 }
 
-const sortedLowStock = computed(() => lowStockProducts.slice().sort((a, b) => a.stock - b.stock))
+onMounted(async () => {
+  loading.value = true
+  loadError.value = false
+  try {
+    const [statsResult, productRows] = await Promise.all([fetchDashboardStats(), fetchProducts()])
+    dashboardStats.value = statsResult
+    products.value = productRows
+  } catch {
+    loadError.value = true
+  } finally {
+    loading.value = false
+  }
+})
 </script>
 
 <template>
@@ -57,57 +108,58 @@ const sortedLowStock = computed(() => lowStockProducts.slice().sort((a, b) => a.
       <h1 class="page-title">Dashboard</h1>
     </div>
 
-    <div class="stats-grid">
-      <div v-for="stat in stats" :key="stat.label" class="stat-card">
-        <!-- <div class="stat-icon">
-          <component :is="stat.icon" :size="20" weight="bold" />
-        </div> -->
-        <p class="stat-label">{{ stat.label }}</p>
-        <p class="stat-value">{{ stat.value }}</p>
-        <p class="stat-delta" :class="stat.trend === 'up' ? 'is-up' : 'is-down'">
-          <component :is="stat.trend === 'up' ? PhTrendUp : PhTrendDown" :size="14" weight="bold" />
-          {{ stat.delta }}
-        </p>
-      </div>
+    <div v-if="loading" class="state-message">Loading dashboard…</div>
+    <div v-else-if="loadError" class="state-message">
+      Couldn't load dashboard data right now. Please try again shortly.
     </div>
-
-    <div class="widget-card">
-      <div class="widget-header">
-        <div class="widget-heading">
-          <PhWarning :size="18" weight="bold" />
-          <h2>Low Stock Alerts</h2>
+    <template v-else>
+      <div class="stats-grid">
+        <div v-for="stat in stats" :key="stat.label" class="stat-card">
+          <!-- <div class="stat-icon">
+            <component :is="stat.icon" :size="20" weight="bold" />
+          </div> -->
+          <p class="stat-label">{{ stat.label }}</p>
+          <p class="stat-value">{{ stat.value }}</p>
+          <p class="stat-delta" :class="stat.trend === 'up' ? 'is-up' : 'is-down'">
+            <component :is="stat.trend === 'up' ? PhTrendUp : PhTrendDown" :size="14" weight="bold" />
+            {{ stat.delta }}
+          </p>
         </div>
-        <span class="widget-count">{{ lowStockProducts.length }} items</span>
       </div>
 
-      <el-table :data="sortedLowStock" style="width: 100%">
-        <el-table-column prop="name" label="Product">
-          <template #default="{ row }">
-            <span class="cell-name">{{ row.name }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="sku" label="SKU">
-          <template #default="{ row }">
-            <span class="cell-muted">{{ row.sku }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="category" label="Category">
-          <template #default="{ row }">
-            <span class="cell-muted">{{ row.category }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="Stock">
-          <template #default="{ row }">{{ row.stock }} / {{ row.threshold }}</template>
-        </el-table-column>
-        <el-table-column label="Status">
-          <template #default="{ row }">
-            <span class="status-badge" :class="{ 'is-critical': stockStatus(row) !== 'Low' }">
-              {{ stockStatus(row) }}
-            </span>
-          </template>
-        </el-table-column>
-      </el-table>
-    </div>
+      <div class="widget-card">
+        <div class="widget-header">
+          <div class="widget-heading">
+            <PhWarning :size="18" weight="bold" />
+            <h2>Low Stock Alerts</h2>
+          </div>
+          <span class="widget-count">{{ lowStockProducts.length }} items</span>
+        </div>
+
+        <el-table :data="lowStockProducts" style="width: 100%" empty-text="No low-stock products right now.">
+          <el-table-column prop="name" label="Product">
+            <template #default="{ row }">
+              <span class="cell-name">{{ row.name }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="Category">
+            <template #default="{ row }">
+              <span class="cell-muted">{{ row.categories?.name ?? '—' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="Stock">
+            <template #default="{ row }">{{ row.stock }} / {{ LOW_STOCK_THRESHOLD }}</template>
+          </el-table-column>
+          <el-table-column label="Status">
+            <template #default="{ row }">
+              <span class="status-badge" :class="{ 'is-critical': stockStatus(row) !== 'Low' }">
+                {{ stockStatus(row) }}
+              </span>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -131,6 +183,13 @@ const sortedLowStock = computed(() => lowStockProducts.slice().sort((a, b) => a.
 
 .page-title {
   font-size: 2rem;
+}
+
+.state-message {
+  padding: 2.5rem 0;
+  text-align: center;
+  color: var(--color-text);
+  opacity: 0.65;
 }
 
 /* Stats */

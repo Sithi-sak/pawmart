@@ -42,7 +42,7 @@ Current state: fresh `create-vue` + FastAPI scaffolds, no pages built, no schema
 - [x] **3.4 Pet Profile Management** — API + connect 1.11.
 - [x] **3.5 Rule-based Product Recommendations** — species/age/purchase-history filtering logic + surface on Home/Product pages (not AI/ML — see project memory).
 - [x] **3.6 Loyalty & Reward System** — points accrual/redemption API + connect to Account/Checkout.
-- [ ] **3.7 Admin Dashboard** — product CRUD, inventory, low-stock alerts, sales overview API + connect 1.12/1.13.
+- [x] **3.7 Admin Dashboard** — product CRUD, inventory, low-stock alerts, sales overview API + connect 1.12/1.13.
 - [ ] **3.8 Admin Orders** — order processing API + connect 1.14.
 - [ ] **3.9 Docker Compose** — full stack (frontend, backend, and any local services) runnable with one command.
 
@@ -86,6 +86,10 @@ Known gap: can't fully verify this end-to-end yet. Placing an order (Visa/ABA) a
 ## Loyalty notes (task 3.6)
 
 Points (5 per $1 of subtotal-after-discount) are credited automatically when an order's `payment_status` is `paid` — true today for Visa/ABA. KHQR orders stay `pending_confirmation` and earn nothing yet, since nothing transitions that status to `paid` until admin manual confirmation is wired in 4.1; `award_points_for_order` (backend/src/backend/routers/loyalty.py) will already do the right thing once that transition exists, no changes needed there. Redemption is real (`POST /api/loyalty/redeem/{reward_id}`, wired in Account) but a redeemed reward isn't yet a usable checkout discount — it just debits the points ledger.
+
+## Admin Dashboard notes (task 3.7)
+
+Product CRUD (`AdminProductsView.vue`) and dashboard stats/low-stock (`AdminDashboardView.vue`) go straight through Supabase via RLS (`admins manage products`, plus admin's `is_admin()` read access on `orders`/`customers`) — same pattern as pet profiles (3.4), no new backend router needed. Product image upload now actually wires to the `/api/storage/product-images` endpoint built in 2.4 (previously unused — the form only staged local blob previews). Low stock uses a single shop-wide `LOW_STOCK_THRESHOLD` (10, in `frontend/src/lib/products.ts`) since there's no per-product reorder-threshold column. "Total Revenue" / "Avg. Order Value" only count `payment_status = 'paid'` orders, so pending KHQR orders (see loyalty notes above) don't inflate the sales overview until 4.1 wires admin confirmation.
 
 ## Feature ↔ Task cross-reference
 

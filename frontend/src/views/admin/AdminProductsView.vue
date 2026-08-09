@@ -1,63 +1,72 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { UploadUserFile } from 'element-plus'
 import { PhPlus, PhPencilSimple, PhTrash, PhMagnifyingGlass, PhImage } from '@phosphor-icons/vue'
+import { useAuthStore } from '@/stores/auth'
+import { uploadProductImage } from '@/lib/storage'
+import {
+  createProduct,
+  deleteProduct as deleteProductRequest,
+  fetchCategories,
+  fetchProducts,
+  isLowStock,
+  updateProduct,
+  type Category,
+  type Product,
+} from '@/lib/products'
 
-interface Product {
-  id: number
-  name: string
-  category: string
-  brand: string
-  species: string
-  price: number
-  stock: number
-  images: string[]
+const auth = useAuthStore()
+
+const speciesOptions = ['Dog', 'Cat', 'Bird', 'Fish', 'Small Pet'] as const
+
+const products = ref<Product[]>([])
+const categories = ref<Category[]>([])
+const loading = ref(true)
+const loadError = ref(false)
+
+const brandOptions = computed(() =>
+  Array.from(new Set(products.value.map((p) => p.brand).filter((b): b is string => !!b))).sort(),
+)
+
+async function loadProducts() {
+  loading.value = true
+  loadError.value = false
+  try {
+    const [productRows, categoryRows] = await Promise.all([fetchProducts(), fetchCategories()])
+    products.value = productRows
+    categories.value = categoryRows
+  } catch {
+    loadError.value = true
+  } finally {
+    loading.value = false
+  }
 }
 
-const categories = ['Food & Nutrition', 'Bedding', 'Toys', 'Grooming Kit'] as const
-const speciesOptions = ['Dog', 'Cat', 'Bird', 'Fish', 'Small Pet'] as const
-const brands = [
-  'PawMart Collection',
-  'Nordic Home',
-  'WildRoots',
-  'Timber & Co',
-  'Fresh Fields',
-] as const
-
-const products = reactive<Product[]>([
-  { id: 1, name: 'Plush Nest Bed', category: 'Bedding', brand: 'Nordic Home', species: 'Dog', price: 345.0, stock: 18, images: [] },
-  { id: 2, name: 'Elevated Feeding Stand', category: 'Food & Nutrition', brand: 'Timber & Co', species: 'Dog', price: 180.0, stock: 24, images: [] },
-  { id: 3, name: 'Woven Leather Leash Set', category: 'Toys', brand: 'WildRoots', species: 'Dog', price: 210.0, stock: 12, images: [] },
-  { id: 4, name: 'Sisal Scratch Post', category: 'Toys', brand: 'Timber & Co', species: 'Cat', price: 540.0, stock: 9, images: [] },
-  { id: 5, name: 'Grooming Brush Kit', category: 'Grooming Kit', brand: 'PawMart Collection', species: 'Dog', price: 125.0, stock: 4, images: [] },
-  { id: 6, name: 'Gourmet Chicken & Wild Salmon', category: 'Food & Nutrition', brand: 'Fresh Fields', species: 'Cat', price: 45.0, stock: 30, images: [] },
-  { id: 7, name: 'Cloud Cushion Bed', category: 'Bedding', brand: 'Nordic Home', species: 'Cat', price: 96.0, stock: 15, images: [] },
-  { id: 8, name: 'Feather Wand Toy', category: 'Toys', brand: 'WildRoots', species: 'Cat', price: 22.0, stock: 2, images: [] },
-])
+onMounted(loadProducts)
 
 const searchQuery = ref('')
 
 const filteredProducts = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
-  if (!query) return products
-  return products.filter(
-    (p) => p.name.toLowerCase().includes(query) || p.brand.toLowerCase().includes(query),
+  if (!query) return products.value
+  return products.value.filter(
+    (p) => p.name.toLowerCase().includes(query) || (p.brand ?? '').toLowerCase().includes(query),
   )
 })
 
 function stockStatus(stock: number) {
   if (stock === 0) return { label: 'Out of Stock', tone: 'is-critical' }
-  if (stock <= 5) return { label: 'Low Stock', tone: 'is-low' }
+  if (isLowStock({ stock })) return { label: 'Low Stock', tone: 'is-low' }
   return { label: 'In Stock', tone: 'is-ok' }
 }
 
 function emptyForm() {
   return {
     name: '',
-    category: categories[0],
-    brand: brands[0],
-    species: speciesOptions[0],
+    category_id: null as number | null,
+    brand: '',
+    species: speciesOptions[0] as string,
     price: null as number | null,
     stock: null as number | null,
     images: [] as UploadUserFile[],
@@ -68,11 +77,12 @@ const dialogVisible = ref(false)
 const dialogMode = ref<'add' | 'edit'>('add')
 const editingId = ref<number | null>(null)
 const form = reactive(emptyForm())
+const saving = ref(false)
 
 function openAddDialog() {
   dialogMode.value = 'add'
   editingId.value = null
-  Object.assign(form, emptyForm())
+  Object.assign(form, emptyForm(), { category_id: categories.value[0]?.id ?? null })
   dialogVisible.value = true
 }
 
@@ -81,9 +91,9 @@ function openEditDialog(product: Product) {
   editingId.value = product.id
   Object.assign(form, {
     name: product.name,
-    category: product.category,
-    brand: product.brand,
-    species: product.species,
+    category_id: product.category_id,
+    brand: product.brand ?? '',
+    species: product.species ?? speciesOptions[0],
     price: product.price,
     stock: product.stock,
     images: product.images.map((url, i) => ({ name: `image-${i}`, url }) as UploadUserFile),
@@ -91,7 +101,7 @@ function openEditDialog(product: Product) {
   dialogVisible.value = true
 }
 
-function saveProduct() {
+async function saveProduct() {
   if (!form.name.trim() || form.price === null || form.stock === null) {
     ElMessage.warning('Please fill in name, price, and stock.')
     return
@@ -102,37 +112,51 @@ function saveProduct() {
     return
   }
 
-  const images = form.images.map((f) => f.url).filter((url): url is string => Boolean(url))
+  const accessToken = auth.session?.access_token
+  if (!accessToken) {
+    ElMessage.error('Your session has expired. Please sign in again.')
+    return
+  }
 
-  if (dialogMode.value === 'add') {
-    products.push({
-      id: Math.max(0, ...products.map((p) => p.id)) + 1,
+  saving.value = true
+  try {
+    const images: string[] = []
+    for (const file of form.images) {
+      if (file.raw) {
+        const uploaded = await uploadProductImage(file.raw, accessToken)
+        images.push(uploaded.url)
+      } else if (file.url) {
+        images.push(file.url)
+      }
+    }
+
+    const payload = {
+      category_id: form.category_id,
       name: form.name.trim(),
-      category: form.category,
-      brand: form.brand,
+      brand: form.brand.trim() || null,
       species: form.species,
       price: form.price,
       stock: form.stock,
       images,
-    })
-    ElMessage.success(`Added "${form.name.trim()}"`)
-  } else {
-    const product = products.find((p) => p.id === editingId.value)
-    if (product) {
-      Object.assign(product, {
-        name: form.name.trim(),
-        category: form.category,
-        brand: form.brand,
-        species: form.species,
-        price: form.price,
-        stock: form.stock,
-        images,
-      })
-      ElMessage.success(`Updated "${product.name}"`)
     }
-  }
 
-  dialogVisible.value = false
+    if (dialogMode.value === 'add') {
+      const created = await createProduct(payload)
+      products.value.unshift(created)
+      ElMessage.success(`Added "${created.name}"`)
+    } else if (editingId.value !== null) {
+      const updated = await updateProduct(editingId.value, payload)
+      const index = products.value.findIndex((p) => p.id === editingId.value)
+      if (index !== -1) products.value[index] = updated
+      ElMessage.success(`Updated "${updated.name}"`)
+    }
+
+    dialogVisible.value = false
+  } catch (err) {
+    ElMessage.error(err instanceof Error ? err.message : 'Failed to save product.')
+  } finally {
+    saving.value = false
+  }
 }
 
 async function deleteProduct(product: Product) {
@@ -146,9 +170,14 @@ async function deleteProduct(product: Product) {
     return
   }
 
-  const index = products.findIndex((p) => p.id === product.id)
-  if (index !== -1) products.splice(index, 1)
-  ElMessage.success(`Removed "${product.name}"`)
+  try {
+    await deleteProductRequest(product.id)
+    const index = products.value.findIndex((p) => p.id === product.id)
+    if (index !== -1) products.value.splice(index, 1)
+    ElMessage.success(`Removed "${product.name}"`)
+  } catch (err) {
+    ElMessage.error(err instanceof Error ? err.message : 'Failed to delete product.')
+  }
 }
 </script>
 
@@ -174,7 +203,11 @@ async function deleteProduct(product: Product) {
       <span class="result-count">{{ filteredProducts.length }} Products</span>
     </div>
 
-    <div class="table-card">
+    <div v-if="loading" class="state-message">Loading products…</div>
+    <div v-else-if="loadError" class="state-message">
+      Couldn't load products right now. Please try again shortly.
+    </div>
+    <div v-else class="table-card">
       <el-table :data="filteredProducts" style="width: 100%" empty-text="No products match your search.">
         <el-table-column label="" width="70">
           <template #default="{ row }">
@@ -189,19 +222,19 @@ async function deleteProduct(product: Product) {
             <span class="cell-name">{{ row.name }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="category" label="Category">
+        <el-table-column label="Category">
           <template #default="{ row }">
-            <span class="cell-muted">{{ row.category }}</span>
+            <span class="cell-muted">{{ row.categories?.name ?? '—' }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="brand" label="Brand">
           <template #default="{ row }">
-            <span class="cell-muted">{{ row.brand }}</span>
+            <span class="cell-muted">{{ row.brand ?? '—' }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="species" label="Species">
           <template #default="{ row }">
-            <span class="cell-muted">{{ row.species }}</span>
+            <span class="cell-muted">{{ row.species ?? '—' }}</span>
           </template>
         </el-table-column>
         <el-table-column label="Price">
@@ -256,8 +289,8 @@ async function deleteProduct(product: Product) {
         <div class="form-row">
           <div class="form-field">
             <label for="p-category">Category</label>
-            <el-select id="p-category" v-model="form.category" size="large" style="width: 100%">
-              <el-option v-for="c in categories" :key="c" :label="c" :value="c" />
+            <el-select id="p-category" v-model="form.category_id" size="large" style="width: 100%">
+              <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
             </el-select>
           </div>
           <div class="form-field">
@@ -269,8 +302,17 @@ async function deleteProduct(product: Product) {
         </div>
         <div class="form-field">
           <label for="p-brand">Brand</label>
-          <el-select id="p-brand" v-model="form.brand" size="large" style="width: 100%">
-            <el-option v-for="b in brands" :key="b" :label="b" :value="b" />
+          <el-select
+            id="p-brand"
+            v-model="form.brand"
+            size="large"
+            style="width: 100%"
+            filterable
+            allow-create
+            default-first-option
+            placeholder="Select or type a brand"
+          >
+            <el-option v-for="b in brandOptions" :key="b" :label="b" :value="b" />
           </el-select>
         </div>
         <div class="form-row">
@@ -285,9 +327,11 @@ async function deleteProduct(product: Product) {
         </div>
 
         <div class="form-actions">
-          <button type="button" class="cancel-btn" @click="dialogVisible = false">Cancel</button>
-          <button type="submit" class="save-btn">
-            {{ dialogMode === 'add' ? 'Add Product' : 'Save Changes' }}
+          <button type="button" class="cancel-btn" @click="dialogVisible = false" :disabled="saving">
+            Cancel
+          </button>
+          <button type="submit" class="save-btn" :disabled="saving">
+            {{ saving ? 'Saving…' : dialogMode === 'add' ? 'Add Product' : 'Save Changes' }}
           </button>
         </div>
       </form>
@@ -341,6 +385,13 @@ async function deleteProduct(product: Product) {
 
 .add-btn:hover {
   background: var(--color-accent-dark);
+}
+
+.state-message {
+  padding: 2.5rem 0;
+  text-align: center;
+  color: var(--color-text);
+  opacity: 0.65;
 }
 
 .toolbar {
@@ -533,6 +584,12 @@ async function deleteProduct(product: Product) {
 
 .cancel-btn:hover {
   border-color: var(--color-accent);
+}
+
+.cancel-btn:disabled,
+.save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .save-btn {

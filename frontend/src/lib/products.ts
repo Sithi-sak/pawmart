@@ -24,6 +24,49 @@ export interface Product {
 
 const PRODUCT_COLUMNS = '*, categories(id, name, slug)'
 
+// No per-product reorder threshold in the schema — a single shop-wide
+// threshold is enough for the low-stock widget (task 3.7).
+export const LOW_STOCK_THRESHOLD = 10
+
+export function isLowStock(product: Pick<Product, 'stock'>): boolean {
+  return product.stock <= LOW_STOCK_THRESHOLD
+}
+
+export interface ProductInput {
+  category_id: number | null
+  name: string
+  brand: string | null
+  species: string | null
+  price: number
+  stock: number
+  images: string[]
+}
+
+function slugify(name: string): string {
+  return (
+    name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'product'
+  )
+}
+
+async function uniqueSlug(name: string): Promise<string> {
+  const base = slugify(name)
+  let candidate = base
+  for (let suffix = 2; ; suffix++) {
+    const { data, error } = await supabase
+      .from('products')
+      .select('id')
+      .eq('slug', candidate)
+      .maybeSingle()
+    if (error) throw error
+    if (!data) return candidate
+    candidate = `${base}-${suffix}`
+  }
+}
+
 export async function fetchProducts(): Promise<Product[]> {
   const { data, error } = await supabase
     .from('products')
@@ -32,6 +75,39 @@ export async function fetchProducts(): Promise<Product[]> {
 
   if (error) throw error
   return data as unknown as Product[]
+}
+
+// Admin CRUD (task 3.7). Writes rely on RLS ("admins manage products")
+// rather than a backend endpoint — same pattern as pet_profiles (3.4).
+export async function createProduct(input: ProductInput): Promise<Product> {
+  const slug = await uniqueSlug(input.name)
+  const { data, error } = await supabase
+    .from('products')
+    .insert({ ...input, slug })
+    .select(PRODUCT_COLUMNS)
+    .single()
+
+  if (error) throw error
+  return data as unknown as Product
+}
+
+// Doesn't touch slug/description/is_new — the admin form doesn't manage
+// those, and a slug change here would break existing links to the product.
+export async function updateProduct(id: number, input: ProductInput): Promise<Product> {
+  const { data, error } = await supabase
+    .from('products')
+    .update(input)
+    .eq('id', id)
+    .select(PRODUCT_COLUMNS)
+    .single()
+
+  if (error) throw error
+  return data as unknown as Product
+}
+
+export async function deleteProduct(id: number): Promise<void> {
+  const { error } = await supabase.from('products').delete().eq('id', id)
+  if (error) throw error
 }
 
 export async function fetchCategories(): Promise<Category[]> {
