@@ -61,7 +61,11 @@ function proceedToCheckout() {
     </div>
     <div class="header-divider"></div>
 
-    <div v-if="cart.items.length" class="cart-body">
+    <div v-if="cart.loading" class="empty-cart">
+      <p>Loading your cart&hellip;</p>
+    </div>
+
+    <div v-else-if="cart.items.length" class="cart-body">
       <div class="line-items">
         <div v-for="item in cart.items" :key="item.productId" class="line-item">
           <RouterLink
@@ -472,6 +476,7 @@ function proceedToCheckout() {
   color: #fff;
   font-size: 0.85rem;
   letter-spacing: 0.08em;
+  line-height: 0;
   font-weight: 500;
   cursor: pointer;
   margin-bottom: 1.5rem;

@@ -84,7 +84,19 @@ export const useAuthStore = defineStore('auth', () => {
     customer.value = created as Customer
   }
 
+  // supabase-js re-announces the current session (event: INITIAL_SESSION)
+  // as soon as onAuthStateChange is subscribed, right after the explicit
+  // getSession() call below already applied it. Without this guard that
+  // redundant announcement is treated as a fresh login: customer briefly
+  // goes null and back, which double-runs anything reacting to it (e.g.
+  // the cart's guest-cart merge on login).
   async function applySession(next: Session | null) {
+    if (next?.user && next.user.id === user.value?.id) {
+      session.value = next
+      user.value = next.user
+      return
+    }
+
     session.value = next
     user.value = next?.user ?? null
     customer.value = null
