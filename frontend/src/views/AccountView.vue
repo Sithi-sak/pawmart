@@ -909,6 +909,8 @@ async function saveCompanion() {
 }
 
 .reward-card {
+  display: flex;
+  flex-direction: column;
   border: 1px solid var(--color-border);
   padding: 1.5rem;
 }
@@ -938,6 +940,7 @@ async function saveCompanion() {
   display: block;
   width: 100%;
   height: 2.5rem;
+  margin-top: auto;
   background: var(--color-background);
   border: 1px solid var(--color-border);
   color: var(--color-heading);
