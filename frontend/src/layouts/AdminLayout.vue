@@ -32,7 +32,8 @@ async function handleSignOut() {
 <style scoped>
 .admin-shell {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .admin-sidebar {
@@ -43,6 +44,7 @@ async function handleSignOut() {
   gap: 1.5rem;
   padding: 1.5rem 1rem;
   border-right: 1px solid var(--color-border);
+  overflow-y: auto;
 }
 
 .brand {
@@ -88,6 +90,8 @@ async function handleSignOut() {
 
 .admin-main {
   flex: 1;
+  min-height: 0;
   padding: 1.5rem;
+  overflow-y: auto;
 }
 </style>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { UploadUserFile } from 'element-plus'
 import { PhPlus, PhPencilSimple, PhTrash, PhMagnifyingGlass, PhImage } from '@phosphor-icons/vue'
@@ -53,6 +53,19 @@ const filteredProducts = computed(() => {
   return products.value.filter(
     (p) => p.name.toLowerCase().includes(query) || (p.brand ?? '').toLowerCase().includes(query),
   )
+})
+
+const pageSize = ref(10)
+const currentPage = ref(1)
+
+// Land back on a valid page whenever filtering shrinks the result set.
+watch(searchQuery, () => {
+  currentPage.value = 1
+})
+
+const pagedProducts = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return filteredProducts.value.slice(start, start + pageSize.value)
 })
 
 function stockStatus(stock: number) {
@@ -195,7 +208,12 @@ async function deleteProduct(product: Product) {
     </div>
 
     <div class="toolbar">
-      <el-input v-model="searchQuery" placeholder="Search products or brands" size="large" class="search-input">
+      <el-input
+        v-model="searchQuery"
+        placeholder="Search products or brands"
+        size="large"
+        class="search-input"
+      >
         <template #prefix>
           <PhMagnifyingGlass :size="16" />
         </template>
@@ -207,60 +225,79 @@ async function deleteProduct(product: Product) {
     <div v-else-if="loadError" class="state-message">
       Couldn't load products right now. Please try again shortly.
     </div>
-    <div v-else class="table-card">
-      <el-table :data="filteredProducts" style="width: 100%" empty-text="No products match your search.">
-        <el-table-column label="" width="70">
-          <template #default="{ row }">
-            <img v-if="row.images[0]" :src="row.images[0]" class="cell-thumb" alt="" />
-            <div v-else class="cell-thumb cell-thumb--empty">
-              <PhImage :size="18" />
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="name" label="Product" min-width="160">
-          <template #default="{ row }">
-            <span class="cell-name">{{ row.name }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="Category">
-          <template #default="{ row }">
-            <span class="cell-muted">{{ row.categories?.name ?? '—' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="brand" label="Brand">
-          <template #default="{ row }">
-            <span class="cell-muted">{{ row.brand ?? '—' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="species" label="Species">
-          <template #default="{ row }">
-            <span class="cell-muted">{{ row.species ?? '—' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="Price">
-          <template #default="{ row }">${{ row.price.toFixed(2) }}</template>
-        </el-table-column>
-        <el-table-column prop="stock" label="Stock" />
-        <el-table-column label="Status">
-          <template #default="{ row }">
-            <span class="status-badge" :class="stockStatus(row.stock).tone">
-              {{ stockStatus(row.stock).label }}
-            </span>
-          </template>
-        </el-table-column>
-        <el-table-column label="" width="100" align="right">
-          <template #default="{ row }">
-            <div class="cell-actions">
-              <button type="button" class="icon-btn" @click="openEditDialog(row)">
-                <PhPencilSimple :size="16" />
-              </button>
-              <button type="button" class="icon-btn is-danger" @click="deleteProduct(row)">
-                <PhTrash :size="16" />
-              </button>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
+    <div v-else class="products-body">
+      <div class="table-card">
+        <el-table
+          :data="pagedProducts"
+          height="100%"
+          style="width: 100%"
+          :empty-text="
+            products.length === 0 ? 'No products yet.' : 'No products match your search.'
+          "
+        >
+          <el-table-column label="" width="70">
+            <template #default="{ row }">
+              <img v-if="row.images[0]" :src="row.images[0]" class="cell-thumb" alt="" />
+              <div v-else class="cell-thumb cell-thumb--empty">
+                <PhImage :size="18" />
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column prop="name" label="Product" min-width="160">
+            <template #default="{ row }">
+              <span class="cell-name">{{ row.name }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="Category">
+            <template #default="{ row }">
+              <span class="cell-muted">{{ row.categories?.name ?? '—' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="brand" label="Brand">
+            <template #default="{ row }">
+              <span class="cell-muted">{{ row.brand ?? '—' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="species" label="Species">
+            <template #default="{ row }">
+              <span class="cell-muted">{{ row.species ?? '—' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="Price">
+            <template #default="{ row }">${{ row.price.toFixed(2) }}</template>
+          </el-table-column>
+          <el-table-column prop="stock" label="Stock" />
+          <el-table-column label="Status">
+            <template #default="{ row }">
+              <span class="status-badge" :class="stockStatus(row.stock).tone">
+                {{ stockStatus(row.stock).label }}
+              </span>
+            </template>
+          </el-table-column>
+          <el-table-column label="" width="100" align="right">
+            <template #default="{ row }">
+              <div class="cell-actions">
+                <button type="button" class="icon-btn" @click="openEditDialog(row)">
+                  <PhPencilSimple :size="16" />
+                </button>
+                <button type="button" class="icon-btn is-danger" @click="deleteProduct(row)">
+                  <PhTrash :size="16" />
+                </button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+
+      <div v-if="filteredProducts.length > 0" class="pagination-bar">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :total="filteredProducts.length"
+          :page-sizes="[10, 20, 50]"
+          layout="total, sizes, prev, pager, next"
+        />
+      </div>
     </div>
 
     <el-dialog
@@ -284,7 +321,13 @@ async function deleteProduct(product: Product) {
         </div>
         <div class="form-field">
           <label for="p-name">Product Name</label>
-          <input id="p-name" v-model="form.name" type="text" placeholder="e.g. Plush Nest Bed" required />
+          <input
+            id="p-name"
+            v-model="form.name"
+            type="text"
+            placeholder="e.g. Plush Nest Bed"
+            required
+          />
         </div>
         <div class="form-row">
           <div class="form-field">
@@ -318,7 +361,14 @@ async function deleteProduct(product: Product) {
         <div class="form-row">
           <div class="form-field">
             <label for="p-price">Price ($)</label>
-            <input id="p-price" v-model.number="form.price" type="number" min="0" step="0.01" required />
+            <input
+              id="p-price"
+              v-model.number="form.price"
+              type="number"
+              min="0"
+              step="0.01"
+              required
+            />
           </div>
           <div class="form-field">
             <label for="p-stock">Stock</label>
@@ -327,7 +377,12 @@ async function deleteProduct(product: Product) {
         </div>
 
         <div class="form-actions">
-          <button type="button" class="cancel-btn" @click="dialogVisible = false" :disabled="saving">
+          <button
+            type="button"
+            class="cancel-btn"
+            @click="dialogVisible = false"
+            :disabled="saving"
+          >
             Cancel
           </button>
           <button type="submit" class="save-btn" :disabled="saving">
@@ -341,10 +396,13 @@ async function deleteProduct(product: Product) {
 
 <style scoped>
 .admin-products {
-  padding-bottom: 2rem;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .page-header {
+  flex-shrink: 0;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -388,13 +446,17 @@ async function deleteProduct(product: Product) {
 }
 
 .state-message {
+  flex: 1;
+  min-height: 0;
   padding: 2.5rem 0;
   text-align: center;
   color: var(--color-text);
   opacity: 0.65;
+  overflow-y: auto;
 }
 
 .toolbar {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -413,10 +475,26 @@ async function deleteProduct(product: Product) {
   white-space: nowrap;
 }
 
+.products-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .table-card {
+  flex: 1;
+  min-height: 0;
   background: var(--color-background);
   border: 1px solid var(--color-border);
   overflow-x: auto;
+}
+
+.pagination-bar {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 1rem;
 }
 
 .cell-thumb {
