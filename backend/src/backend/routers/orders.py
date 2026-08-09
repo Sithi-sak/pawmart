@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 from ..core.deps import CurrentCustomer, get_current_customer, require_admin
 from ..core.supabase import get_supabase
+from .loyalty import award_points_for_order
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
 
@@ -161,6 +162,8 @@ def create_order(
         supabase.table("products").update({"stock": product["stock"] - item.quantity}).eq(
             "id", item.product_id
         ).execute()
+
+    award_points_for_order(supabase, customer.id, order)
 
     return {**order, "items": inserted_items, "status_history": history}
 

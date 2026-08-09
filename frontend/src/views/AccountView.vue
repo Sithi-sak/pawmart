@@ -14,6 +14,7 @@ import {
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { fetchPets, createPet, type Pet } from '@/lib/pets'
+import { fetchRewards, redeemReward, type Reward } from '@/lib/loyalty'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -93,25 +94,49 @@ const recentOrders: RecentOrder[] = [
   { id: 3, name: 'Cashmere Pet Throw', status: 'Delivered', date: 'Sep 24', price: 420 },
 ]
 
-interface Reward {
-  id: number
-  title: string
-  description: string
-}
+const rewards = reactive<Reward[]>([])
+const rewardsLoading = ref(true)
+const redeemingId = ref<number | null>(null)
 
-const rewards: Reward[] = [
-  { id: 1, title: '15% Off', description: 'Lorem ipsum dolor sit amet' },
-  { id: 2, title: 'Complimentary', description: 'Lorem ipsum dolor sit amet' },
-  { id: 3, title: '$50 Credit', description: 'Lorem ipsum dolor sit amet' },
-]
+onMounted(async () => {
+  try {
+    rewards.push(...(await fetchRewards()))
+  } finally {
+    rewardsLoading.value = false
+  }
+})
 
-const pointsBalance = 14250
-const pointsTarget = 15000
-const pointsRemaining = computed(() => pointsTarget - pointsBalance)
-const pointsProgress = computed(() => (pointsBalance / pointsTarget) * 100)
+const pointsBalance = computed(() => auth.customer?.loyalty_points_balance ?? 0)
+// Progress bar tracks the next reward this customer hasn't unlocked yet,
+// falling back to the priciest reward once every reward is affordable.
+const pointsTarget = computed(() => {
+  const nextUnaffordable = rewards
+    .filter((r) => r.points_cost > pointsBalance.value)
+    .sort((a, b) => a.points_cost - b.points_cost)[0]
+  const highest = rewards.reduce((max, r) => Math.max(max, r.points_cost), 0)
+  return nextUnaffordable?.points_cost ?? highest ?? pointsBalance.value
+})
+const pointsRemaining = computed(() => Math.max(0, pointsTarget.value - pointsBalance.value))
+const pointsProgress = computed(() =>
+  pointsTarget.value > 0 ? Math.min(100, (pointsBalance.value / pointsTarget.value) * 100) : 0,
+)
 
 function formatPoints(value: number) {
   return value.toLocaleString('en-US')
+}
+
+async function handleRedeem(reward: Reward) {
+  if (!auth.session || pointsBalance.value < reward.points_cost) return
+  redeemingId.value = reward.id
+  try {
+    const result = await redeemReward(reward.id, auth.session.access_token)
+    if (auth.customer) auth.customer.loyalty_points_balance = result.balance
+    ElMessage.success(`Redeemed "${reward.title}"`)
+  } catch (err) {
+    ElMessage.error(err instanceof Error ? err.message : 'Could not redeem this reward')
+  } finally {
+    redeemingId.value = null
+  }
 }
 
 function formatPrice(value: number) {
@@ -320,10 +345,6 @@ async function saveCompanion() {
           <p class="eyebrow">Loyalty Program</p>
           <h2 class="loyalty-title">Paws Rewards</h2>
         </div>
-        <div class="tier-info">
-          <p class="tier-label">Current Tier</p>
-          <p class="tier-value">Platinum Member</p>
-        </div>
       </div>
 
       <div class="loyalty-body">
@@ -333,7 +354,12 @@ async function saveCompanion() {
             {{ formatPoints(pointsBalance) }}<span class="points-unit">Points</span>
           </p>
           <p class="points-note">
-            You are {{ formatPoints(pointsRemaining) }} points away from your next Paws reward.
+            <template v-if="pointsRemaining > 0">
+              You are {{ formatPoints(pointsRemaining) }} points away from your next Paws reward.
+            </template>
+            <template v-else-if="rewards.length">
+              You can redeem any reward below right now.
+            </template>
           </p>
           <div class="progress-track">
             <div class="progress-fill" :style="{ width: `${pointsProgress}%` }"></div>
@@ -346,11 +372,20 @@ async function saveCompanion() {
 
         <div class="rewards-section">
           <p class="rewards-label">Available Rewards</p>
-          <div class="rewards-grid">
+          <p v-if="rewardsLoading" class="pets-loading">Loading rewards…</p>
+          <div v-else class="rewards-grid">
             <div v-for="reward in rewards" :key="reward.id" class="reward-card">
               <h3 class="reward-title">{{ reward.title }}</h3>
               <p class="reward-description">{{ reward.description }}</p>
-              <button type="button" class="redeem-btn">Redeem</button>
+              <p class="reward-cost">{{ formatPoints(reward.points_cost) }} points</p>
+              <button
+                type="button"
+                class="redeem-btn"
+                :disabled="pointsBalance < reward.points_cost || redeemingId === reward.id"
+                @click="handleRedeem(reward)"
+              >
+                {{ redeemingId === reward.id ? 'Redeeming…' : 'Redeem' }}
+              </button>
             </div>
           </div>
         </div>
@@ -789,25 +824,6 @@ async function saveCompanion() {
   font-size: 2.25rem;
 }
 
-.tier-info {
-  text-align: right;
-}
-
-.tier-label {
-  font-size: 0.72rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--color-text);
-  opacity: 0.6;
-  margin-bottom: 0.3rem;
-}
-
-.tier-value {
-  font-family: var(--font-serif);
-  font-size: 1.3rem;
-  color: var(--color-accent);
-}
-
 .loyalty-body {
   display: grid;
   grid-template-columns: 340px 1fr;
@@ -906,6 +922,15 @@ async function saveCompanion() {
   font-size: 0.82rem;
   color: var(--color-text);
   opacity: 0.65;
+  margin-bottom: 0.75rem;
+}
+
+.reward-cost {
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--color-accent);
   margin-bottom: 1.25rem;
 }
 
@@ -927,6 +952,16 @@ async function saveCompanion() {
 .redeem-btn:hover {
   border-color: var(--color-accent);
   color: var(--color-accent);
+}
+
+.redeem-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.redeem-btn:disabled:hover {
+  border-color: var(--color-border);
+  color: var(--color-heading);
 }
 
 .earn-heading {
@@ -1026,10 +1061,6 @@ async function saveCompanion() {
   .loyalty-header {
     flex-direction: column;
     gap: 1rem;
-  }
-
-  .tier-info {
-    text-align: left;
   }
 
   .loyalty-body {

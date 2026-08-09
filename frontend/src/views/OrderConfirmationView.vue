@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { fetchOrder, type Order } from '../lib/orders'
+import { POINTS_PER_DOLLAR } from '../lib/loyalty'
 
 const route = useRoute()
 const auth = useAuthStore()
@@ -11,6 +12,11 @@ const order = ref<Order | null>(null)
 const loading = ref(true)
 const loadError = ref(false)
 const arrivalRange = ref('')
+
+const pointsEarned = computed(() => {
+  if (!order.value || order.value.payment_status !== 'paid') return 0
+  return Math.floor((order.value.subtotal - order.value.discount) * POINTS_PER_DOLLAR)
+})
 
 function formatPrice(value: number) {
   return `$${value.toFixed(2)}`
@@ -62,6 +68,9 @@ onMounted(async () => {
         <p class="order-number">Order Confirmed: #{{ order.order_number }}</p>
         <p v-if="order.payment_status === 'pending_confirmation'" class="pending-note">
           Payment pending confirmation — we'll notify you once it's verified.
+        </p>
+        <p v-else-if="pointsEarned > 0" class="pending-note">
+          You earned {{ pointsEarned.toLocaleString('en-US') }} Paws Rewards points on this order.
         </p>
       </div>
 

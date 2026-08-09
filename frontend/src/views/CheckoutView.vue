@@ -15,6 +15,7 @@ import {
 import { useCartStore } from '../stores/cart'
 import { useAuthStore } from '../stores/auth'
 import { createOrder, type Order } from '../lib/orders'
+import { POINTS_PER_DOLLAR } from '../lib/loyalty'
 
 type Step = 'shipping' | 'payment' | 'review'
 
@@ -55,6 +56,11 @@ const shippingCost = computed(() => (shippingForm.method === 'express' ? 25.0 : 
 const estimatedTax = computed(() => (cart.total + shippingCost.value) * 0.0875)
 
 const orderTotal = computed(() => cart.total + shippingCost.value + estimatedTax.value)
+
+// Points are only credited once a payment actually clears (see orders.py's
+// award_points_for_order) — for KHQR that's still a manual admin step (4.1),
+// so this estimate only reflects what Visa/ABA orders earn immediately.
+const estimatedPoints = computed(() => Math.floor((cart.subtotal - cart.discount) * POINTS_PER_DOLLAR))
 
 type PaymentMethod = 'visa' | 'aba_payway' | 'khqr'
 
@@ -486,6 +492,15 @@ const shippingMethodLabel = computed(() =>
           <span>Total</span>
           <span>{{ formatPrice(orderTotal) }}</span>
         </div>
+
+        <p v-if="estimatedPoints > 0" class="points-note">
+          <template v-if="paymentMethod === 'khqr'">
+            Earn {{ estimatedPoints.toLocaleString('en-US') }} points once payment is confirmed
+          </template>
+          <template v-else>
+            You'll earn {{ estimatedPoints.toLocaleString('en-US') }} points with this order
+          </template>
+        </p>
 
         <template v-if="currentStep === 'review'">
           <button
@@ -1197,6 +1212,12 @@ const shippingMethodLabel = computed(() =>
 
 .total-row span:last-child {
   color: var(--color-accent);
+}
+
+.points-note {
+  font-size: 0.78rem;
+  color: var(--color-accent);
+  margin-bottom: 1.25rem;
 }
 
 .secure-note {
