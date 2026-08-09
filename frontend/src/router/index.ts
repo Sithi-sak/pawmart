@@ -58,6 +58,7 @@ const router = createRouter({
           name: 'order-tracking',
           component: () => import('../views/OrderTrackingView.vue'),
           props: true,
+          meta: { requiresAuth: true },
         },
         {
           path: 'account',

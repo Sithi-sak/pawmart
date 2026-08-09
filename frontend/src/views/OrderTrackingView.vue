@@ -1,167 +1,220 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import { PhCheck, PhArchive, PhTruck, PhMapPin, PhPackage, PhHeadset } from '@phosphor-icons/vue'
+import { useAuthStore } from '../stores/auth'
+import { fetchOrder, type Order, type OrderStatus } from '../lib/orders'
 
 const props = defineProps<{ id: string }>()
+const auth = useAuthStore()
 
-interface TrackingStep {
-  key: string
+const order = ref<Order | null>(null)
+const loading = ref(true)
+const loadError = ref(false)
+
+interface StepDef {
+  key: OrderStatus
   label: string
-  date: string | null
   icon: typeof PhCheck
 }
 
-// Mock tracking data — real status lookup by order id lands with task 3.3.
-const orderNumber = computed(() => `#PM-${props.id.padStart(6, '0')}`)
-
-const steps: TrackingStep[] = [
-  { key: 'placed', label: 'Order Placed', date: 'Oct 12, 10:30 AM', icon: PhCheck },
-  { key: 'confirmed', label: 'Confirmed', date: 'Oct 12, 11:15 AM', icon: PhCheck },
-  { key: 'processing', label: 'Processing', date: 'Oct 13, 09:00 AM', icon: PhArchive },
-  { key: 'shipped', label: 'Shipped', date: null, icon: PhTruck },
-  { key: 'out_for_delivery', label: 'Out for Delivery', date: null, icon: PhMapPin },
-  { key: 'delivered', label: 'Delivered', date: null, icon: PhPackage },
+const STEP_DEFS: StepDef[] = [
+  { key: 'confirmed', label: 'Confirmed', icon: PhCheck },
+  { key: 'processing', label: 'Processing', icon: PhArchive },
+  { key: 'shipping', label: 'Shipping', icon: PhTruck },
+  { key: 'out_for_delivery', label: 'Out for Delivery', icon: PhMapPin },
+  { key: 'delivered', label: 'Delivered', icon: PhPackage },
 ]
 
-const currentStepIndex = 2
+const currentStepIndex = computed(() =>
+  order.value ? STEP_DEFS.findIndex((s) => s.key === order.value!.status) : -1,
+)
 
-interface OrderItem {
-  id: number
-  name: string
-  variant: string
-  price: number
-  quantity: number
-  sku: string
+const historyDateByStatus = computed(() => {
+  const map = new Map<OrderStatus, string>()
+  for (const entry of order.value?.status_history ?? []) {
+    map.set(entry.status, entry.created_at)
+  }
+  return map
+})
+
+const steps = computed(() =>
+  STEP_DEFS.map((step) => ({
+    ...step,
+    date: historyDateByStatus.value.get(step.key) ?? null,
+  })),
+)
+
+const SHIPPING_METHOD_LABELS = { standard: 'Standard Shipping', express: 'Express Shipping' }
+const ETA_DAYS_FROM_ORDER = { standard: [3, 5], express: [1, 2] } as const
+
+const estimatedArrival = computed(() => {
+  if (!order.value) return ''
+  if (order.value.status === 'delivered') return 'Delivered'
+
+  const [minDays, maxDays] = ETA_DAYS_FROM_ORDER[order.value.shipping_method]
+  const created = new Date(order.value.created_at)
+  const start = new Date(created)
+  start.setDate(start.getDate() + minDays)
+  const end = new Date(created)
+  end.setDate(end.getDate() + maxDays)
+
+  const fmt = (d: Date) => d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })
+  return `${fmt(start)} – ${fmt(end)}`
+})
+
+function formatStepDate(iso: string) {
+  return new Date(iso).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
 }
-
-const orderItems: OrderItem[] = [
-  {
-    id: 1,
-    name: 'Sienna Artisan Leather Collar',
-    variant: 'Color: Cognac / Hardware: Polished Brass / Size: Medium',
-    price: 245.0,
-    quantity: 1,
-    sku: 'PM-LTC-09',
-  },
-  {
-    id: 2,
-    name: 'Architectural Ceramic Bowl',
-    variant: 'Finish: Matte Charcoal / Material: High-fire Stoneware',
-    price: 180.0,
-    quantity: 1,
-    sku: 'PM-ACB-42',
-  },
-]
-
-const subtotal = computed(() => orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0))
-const shipping = 0
-const estimatedTax = computed(() => subtotal.value * 0.085)
-const total = computed(() => subtotal.value + shipping + estimatedTax.value)
 
 function formatPrice(value: number) {
   return `$${value.toFixed(2)}`
 }
+
+onMounted(async () => {
+  await auth.init()
+  const orderId = Number(props.id)
+
+  if (!orderId || !auth.session) {
+    loading.value = false
+    loadError.value = true
+    return
+  }
+
+  try {
+    order.value = await fetchOrder(orderId, auth.session.access_token)
+  } catch {
+    loadError.value = true
+  } finally {
+    loading.value = false
+  }
+})
 </script>
 
 <template>
   <div class="tracking">
-    <div class="tracking-header">
-      <div>
-        <p class="eyebrow">Order Status</p>
-        <h1 class="tracking-title">Track Order</h1>
-      </div>
-      <div class="order-number-card">
-        <p class="order-number-label">Order Number</p>
-        <p class="order-number-value">{{ orderNumber }}</p>
-      </div>
+    <div v-if="loading" class="state-message">Loading your order…</div>
+
+    <div v-else-if="loadError || !order" class="state-message">
+      <p>We couldn't find that order.</p>
+      <RouterLink to="/account/orders" class="view-all-link">View Order History</RouterLink>
     </div>
 
-    <div class="header-divider"></div>
-
-    <div class="timeline">
-      <template v-for="(step, i) in steps" :key="step.key">
-        <div class="timeline-step" :class="{ 'is-done': i <= currentStepIndex }">
-          <div class="step-icon">
-            <component :is="step.icon" :size="18" weight="bold" />
-          </div>
-          <p class="step-label">{{ step.label }}</p>
-          <p v-if="step.date" class="step-date">{{ step.date }}</p>
+    <template v-else>
+      <div class="tracking-header">
+        <div>
+          <p class="eyebrow">Order Status</p>
+          <h1 class="tracking-title">Track Order</h1>
         </div>
-        <div
-          v-if="i < steps.length - 1"
-          class="timeline-connector"
-          :class="{ 'is-done': i < currentStepIndex }"
-        ></div>
-      </template>
-    </div>
-
-    <div class="tracking-body">
-      <div class="delivery-card">
-        <h2 class="card-title">Delivery Information</h2>
-        <div class="card-divider"></div>
-
-        <p class="field-label">Estimated Arrival</p>
-        <p class="field-highlight">Thursday, October 17</p>
-        <p class="field-value">Between 9:00 AM - 5:00 PM</p>
-
-        <p class="field-label">Shipping Address</p>
-        <p class="field-value">BKK, Daun Penh St. 4</p>
-
-        <p class="field-label">Carrier</p>
-        <p class="field-value">PawMart Logistics</p>
-        <p class="field-value tracking-link">Tracking: LLX-9921-001</p>
-
-        <button type="button" class="contact-btn">
-          Contact
-          <PhHeadset :size="18" />
-        </button>
+        <div class="order-number-card">
+          <p class="order-number-label">Order Number</p>
+          <p class="order-number-value">#{{ order.order_number }}</p>
+        </div>
       </div>
 
-      <div class="items-card">
-        <div class="items-header">
-          <h2 class="card-title">Order Details</h2>
-          <span class="items-count">{{ orderItems.length }} Items</span>
-        </div>
-        <div class="card-divider"></div>
+      <p v-if="order.payment_status === 'pending_confirmation'" class="pending-note">
+        Payment pending confirmation — we'll notify you once it's verified.
+      </p>
 
-        <div class="order-items">
-          <div v-for="item in orderItems" :key="item.id" class="order-item">
-            <div class="order-item-image placeholder-img"></div>
-            <div class="order-item-details">
-              <p class="order-item-name">{{ item.name }}</p>
-              <p class="order-item-variant">{{ item.variant }}</p>
-              <div class="order-item-meta">
-                <span class="qty-badge">QTY: {{ item.quantity }}</span>
-                <span class="sku-badge">SKU: {{ item.sku }}</span>
-              </div>
+      <div class="header-divider"></div>
+
+      <div class="timeline">
+        <template v-for="(step, i) in steps" :key="step.key">
+          <div class="timeline-step" :class="{ 'is-done': i <= currentStepIndex }">
+            <div class="step-icon">
+              <component :is="step.icon" :size="18" weight="bold" />
             </div>
-            <p class="order-item-price">{{ formatPrice(item.price * item.quantity) }}</p>
+            <div class="step-text">
+              <p class="step-label">{{ step.label }}</p>
+              <p v-if="step.date" class="step-date">{{ formatStepDate(step.date) }}</p>
+            </div>
+          </div>
+          <div
+            v-if="i < steps.length - 1"
+            class="timeline-connector"
+            :class="{ 'is-done': i < currentStepIndex }"
+          ></div>
+        </template>
+      </div>
+
+      <div class="tracking-body">
+        <div class="delivery-card">
+          <h2 class="card-title">Delivery Information</h2>
+          <div class="card-divider"></div>
+
+          <p class="field-label">Estimated Arrival</p>
+          <p class="field-highlight">{{ estimatedArrival }}</p>
+
+          <p class="field-label">Shipping Address</p>
+          <p class="field-value">{{ order.shipping_full_name }}</p>
+          <p class="field-value">
+            {{ order.shipping_street }}, {{ order.shipping_city }} {{ order.shipping_postal_code }}
+          </p>
+
+          <p class="field-label">Shipping Method</p>
+          <p class="field-value">{{ SHIPPING_METHOD_LABELS[order.shipping_method] }}</p>
+
+          <button type="button" class="contact-btn">
+            Contact
+            <PhHeadset :size="18" />
+          </button>
+        </div>
+
+        <div class="items-card">
+          <div class="items-header">
+            <h2 class="card-title">Order Details</h2>
+            <span class="items-count">{{ order.items.length }} Items</span>
+          </div>
+          <div class="card-divider"></div>
+
+          <div class="order-items">
+            <div v-for="item in order.items" :key="item.id" class="order-item">
+              <div class="order-item-image placeholder-img"></div>
+              <div class="order-item-details">
+                <p class="order-item-name">{{ item.name }}</p>
+                <p v-if="item.variant" class="order-item-variant">{{ item.variant }}</p>
+                <div class="order-item-meta">
+                  <span class="qty-badge">QTY: {{ item.quantity }}</span>
+                  <span v-if="item.sku" class="sku-badge">SKU: {{ item.sku }}</span>
+                </div>
+              </div>
+              <p class="order-item-price">{{ formatPrice(item.price * item.quantity) }}</p>
+            </div>
+          </div>
+
+          <div class="totals-divider"></div>
+
+          <div class="totals-row">
+            <span>Subtotal</span>
+            <span>{{ formatPrice(order.subtotal) }}</span>
+          </div>
+          <div class="totals-row">
+            <span>Shipping</span>
+            <span>{{ order.shipping_cost ? formatPrice(order.shipping_cost) : 'Complimentary' }}</span>
+          </div>
+          <div v-if="order.discount" class="totals-row">
+            <span>Discount</span>
+            <span>-{{ formatPrice(order.discount) }}</span>
+          </div>
+          <div class="totals-row">
+            <span>Tax</span>
+            <span>{{ formatPrice(order.tax) }}</span>
+          </div>
+
+          <div class="card-divider"></div>
+
+          <div class="totals-row total-row">
+            <span>Total</span>
+            <span>{{ formatPrice(order.total) }}</span>
           </div>
         </div>
-
-        <div class="totals-divider"></div>
-
-        <div class="totals-row">
-          <span>Subtotal</span>
-          <span>{{ formatPrice(subtotal) }}</span>
-        </div>
-        <div class="totals-row">
-          <span>Shipping (Complimentary)</span>
-          <span>{{ formatPrice(shipping) }}</span>
-        </div>
-        <div class="totals-row">
-          <span>Estimated Tax</span>
-          <span>{{ formatPrice(estimatedTax) }}</span>
-        </div>
-
-        <div class="card-divider"></div>
-
-        <div class="totals-row total-row">
-          <span>Total</span>
-          <span>{{ formatPrice(total) }}</span>
-        </div>
       </div>
-    </div>
+    </template>
   </div>
 </template>
 
@@ -180,12 +233,29 @@ function formatPrice(value: number) {
   padding: 1rem 0 5rem;
 }
 
+.state-message {
+  padding: 4rem 0;
+  text-align: center;
+  opacity: 0.7;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.view-all-link {
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  text-decoration: underline;
+  color: var(--color-text);
+}
+
 .tracking-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 2rem;
-  margin-bottom: 2rem;
+  margin-bottom: 1.25rem;
 }
 
 .eyebrow {
@@ -223,6 +293,13 @@ function formatPrice(value: number) {
   color: var(--color-heading);
 }
 
+.pending-note {
+  font-size: 0.85rem;
+  color: var(--color-text);
+  opacity: 0.75;
+  margin-bottom: 1.5rem;
+}
+
 .header-divider {
   height: 1px;
   background: var(--color-border);
@@ -250,6 +327,7 @@ function formatPrice(value: number) {
   justify-content: center;
   width: 2.75rem;
   height: 2.75rem;
+  flex-shrink: 0;
   border: 1px solid var(--color-border);
   color: var(--color-text);
   opacity: 0.5;
@@ -346,10 +424,6 @@ function formatPrice(value: number) {
 .field-value {
   font-size: 0.9rem;
   color: var(--color-text);
-}
-
-.tracking-link {
-  text-decoration: underline;
 }
 
 .contact-btn {
@@ -488,26 +562,74 @@ function formatPrice(value: number) {
   color: var(--color-accent);
 }
 
-@media (max-width: 900px) {
+/* Mobile: stack header, collapse timeline to a vertical list (closer to
+   how Shopee/Lazada-style tracking reads on a phone), single-column body. */
+@media (max-width: 700px) {
   .tracking-header {
     flex-direction: column;
   }
 
-  .timeline {
-    flex-wrap: wrap;
-    gap: 1.5rem 0;
+  .tracking-title {
+    font-size: 2.1rem;
   }
 
-  .timeline-connector {
-    display: none;
+  .header-divider {
+    margin-bottom: 2rem;
+  }
+
+  .timeline {
+    flex-direction: column;
+    align-items: stretch;
+    margin-bottom: 2.5rem;
   }
 
   .timeline-step {
-    width: 33%;
+    flex-direction: row;
+    align-items: center;
+    text-align: left;
+    gap: 1rem;
+  }
+
+  .step-text {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+
+  .timeline-connector {
+    width: 1px;
+    height: 1.5rem;
+    flex: none;
+    margin: 0.15rem 0 0.15rem 1.375rem;
   }
 
   .tracking-body {
     grid-template-columns: 1fr;
+  }
+
+  .delivery-card,
+  .items-card {
+    padding: 1.25rem;
+  }
+
+  .order-item {
+    grid-template-columns: 64px 1fr;
+    grid-template-areas:
+      'image details'
+      'image price';
+  }
+
+  .order-item-image {
+    grid-area: image;
+  }
+
+  .order-item-details {
+    grid-area: details;
+  }
+
+  .order-item-price {
+    grid-area: price;
   }
 }
 </style>

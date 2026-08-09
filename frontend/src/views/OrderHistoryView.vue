@@ -1,44 +1,48 @@
 <script setup lang="ts">
+import { onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { PhCaretLeft, PhTruck } from '@phosphor-icons/vue'
+import { useAuthStore } from '../stores/auth'
+import { fetchOrders, type OrderSummary, type OrderStatus } from '../lib/orders'
 
-interface Order {
-  id: number
-  name: string
-  status: string
-  date: string
-  price: number
+const auth = useAuthStore()
+
+const orders = ref<OrderSummary[]>([])
+const loading = ref(true)
+const loadError = ref(false)
+
+const STATUS_LABELS: Record<OrderStatus, string> = {
+  confirmed: 'Confirmed',
+  processing: 'Processing',
+  shipping: 'Shipping',
+  out_for_delivery: 'Out for Delivery',
+  delivered: 'Delivered',
 }
 
-const orders: Order[] = [
-  { id: 1, name: 'The Signature Collar', status: 'Delivered', date: 'Oct 12, 2025', price: 245 },
-  { id: 2, name: 'Matte Ceramic Bowl', status: 'Shipped', date: 'Oct 08, 2025', price: 85 },
-  { id: 3, name: 'Cashmere Pet Throw', status: 'Delivered', date: 'Sep 24, 2025', price: 420 },
-  {
-    id: 4,
-    name: 'Architectural Ceramic Bowl',
-    status: 'Delivered',
-    date: 'Aug 30, 2025',
-    price: 180,
-  },
-  { id: 5, name: 'Plush Nest Bed', status: 'Delivered', date: 'Aug 02, 2025', price: 345 },
-  { id: 6, name: 'Sisal Scratch Post', status: 'Delivered', date: 'Jul 19, 2025', price: 540 },
-  {
-    id: 7,
-    name: 'Gourmet Chicken & Wild Salmon',
-    status: 'Delivered',
-    date: 'Jun 27, 2025',
-    price: 45,
-  },
-]
-
-function orderNumber(id: number) {
-  return `#PM-${id.toString().padStart(6, '0')}`
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 function formatPrice(value: number) {
   return `$${value.toFixed(2)}`
 }
+
+onMounted(async () => {
+  await auth.init()
+  if (!auth.session) {
+    loading.value = false
+    loadError.value = true
+    return
+  }
+
+  try {
+    orders.value = await fetchOrders(auth.session.access_token)
+  } catch {
+    loadError.value = true
+  } finally {
+    loading.value = false
+  }
+})
 </script>
 
 <template>
@@ -57,19 +61,27 @@ function formatPrice(value: number) {
 
     <div class="header-divider"></div>
 
-    <div class="order-list">
+    <div v-if="loading" class="state-message">Loading your orders…</div>
+    <div v-else-if="loadError" class="state-message">We couldn't load your orders. Try again later.</div>
+    <div v-else-if="orders.length === 0" class="state-message">
+      <p>You haven't placed any orders yet.</p>
+      <RouterLink to="/products" class="view-all-link">Browse Products</RouterLink>
+    </div>
+
+    <div v-else class="order-list">
       <div v-for="order in orders" :key="order.id" class="order-card">
         <div class="order-thumb placeholder-img"></div>
 
         <div class="order-info">
-          <p class="order-name">{{ order.name }}</p>
+          <p class="order-name">Order #{{ order.order_number }}</p>
           <p class="order-meta">
-            {{ orderNumber(order.id) }} &bull; {{ order.status.toUpperCase() }} &bull;
-            {{ order.date.toUpperCase() }}
+            {{ order.item_count }} {{ order.item_count === 1 ? 'ITEM' : 'ITEMS' }} &bull;
+            {{ STATUS_LABELS[order.status].toUpperCase() }} &bull;
+            {{ formatDate(order.created_at).toUpperCase() }}
           </p>
         </div>
 
-        <p class="order-price">{{ formatPrice(order.price) }}</p>
+        <p class="order-price">{{ formatPrice(order.total) }}</p>
 
         <RouterLink :to="`/orders/${order.id}`" class="track-btn">
           <PhTruck :size="16" />

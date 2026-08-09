@@ -38,7 +38,7 @@ Current state: fresh `create-vue` + FastAPI scaffolds, no pages built, no schema
 
 - [x] **3.1 Product Catalog & Search** — API + connect 1.3/1.4.
 - [x] **3.2 Cart & Checkout** — order creation API + connect 1.5/1.6/1.7.
-- [ ] **3.3 Order Tracking** — status API + connect 1.8.
+- [x] **3.3 Order Tracking** — status API + connect 1.8.
 - [ ] **3.4 Pet Profile Management** — API + connect 1.11.
 - [ ] **3.5 Rule-based Product Recommendations** — species/age/purchase-history filtering logic + surface on Home/Product pages (not AI/ML — see project memory).
 - [ ] **3.6 Loyalty & Reward System** — points accrual/redemption API + connect to Account/Checkout.
@@ -66,6 +66,10 @@ Current state: fresh `create-vue` + FastAPI scaffolds, no pages built, no schema
 Backend implication: the order needs to persist shipping address, chosen shipping method/cost, chosen payment method, and (for KHQR) a payment reference/status defaulting to "pending admin confirmation" — all on one order record created at "Place Order" time. There's no intermediate per-step API call, the wizard only submits once at the end. `/order/confirm` (task 1.7) currently reads straight from the cart store and clears it on mount — once there's a real order API, it should instead read the just-created order by id.
 
 Known gap from 3.1: `CartView.vue`/`CheckoutView.vue` still link to `/products/${item.productId}` using the mock cart's numeric `productId`, but product detail routing now uses slugs (`/products/:slug`, task 3.1). These links 404 until cart items are wired to real products with real slugs — fix as part of this task.
+
+## Order Tracking notes (task 3.3)
+
+Known gap: can't fully verify this end-to-end yet. Placing an order (Visa/ABA) already creates a real row and `/orders/:id` renders its real status/timeline, but there's no UI to advance that status yet (the status dropdown in Admin Orders is still mock — that wiring is task 3.8) and KHQR payment confirmation isn't built (task 4.1). Come back and verify the full checkout → tracking flow once 3.8 and 4.1 are both done.
 
 ## Feature ↔ Task cross-reference
 

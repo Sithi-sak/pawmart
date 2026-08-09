@@ -10,11 +10,20 @@ export interface OrderItem {
   quantity: number
 }
 
+export type OrderStatus = 'confirmed' | 'processing' | 'shipping' | 'out_for_delivery' | 'delivered'
+
+export interface OrderStatusHistoryEntry {
+  id: number
+  order_id: number
+  status: OrderStatus
+  created_at: string
+}
+
 export interface Order {
   id: number
   order_number: string
   customer_id: string
-  status: string
+  status: OrderStatus
   shipping_full_name: string
   shipping_phone: string
   shipping_street: string
@@ -30,6 +39,16 @@ export interface Order {
   total: number
   created_at: string
   items: OrderItem[]
+  status_history: OrderStatusHistoryEntry[]
+}
+
+export interface OrderSummary {
+  id: number
+  order_number: string
+  status: OrderStatus
+  total: number
+  created_at: string
+  item_count: number
 }
 
 export interface CreateOrderPayload {
@@ -73,4 +92,19 @@ export function createOrder(payload: CreateOrderPayload, accessToken: string): P
 
 export function fetchOrder(id: number, accessToken: string): Promise<Order> {
   return request<Order>(`/api/orders/${id}`, accessToken)
+}
+
+export function fetchOrders(accessToken: string): Promise<OrderSummary[]> {
+  return request<OrderSummary[]>('/api/orders', accessToken)
+}
+
+export function updateOrderStatus(
+  id: number,
+  newStatus: OrderStatus,
+  accessToken: string,
+): Promise<Order> {
+  return request<Order>(`/api/orders/${id}/status`, accessToken, {
+    method: 'PATCH',
+    body: JSON.stringify({ status: newStatus }),
+  })
 }
