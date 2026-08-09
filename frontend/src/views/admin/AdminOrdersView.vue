@@ -1,39 +1,33 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { PhMagnifyingGlass } from '@phosphor-icons/vue'
+import { useAuthStore } from '@/stores/auth'
+import { fetchOrders, updateOrderStatus, type OrderStatus, type OrderSummary } from '@/lib/orders'
 
-type OrderStatus = 'Confirmed' | 'Processing' | 'Shipping' | 'Out for Delivery' | 'Delivered'
+const STATUSES: OrderStatus[] = ['confirmed', 'processing', 'shipping', 'out_for_delivery', 'delivered']
 
-interface Order {
-  id: number
-  orderNumber: string
-  customer: string
-  date: string
-  items: number
-  total: number
-  paymentMethod: 'Visa' | 'ABA PayWay' | 'KHQR'
-  paymentStatus: 'Paid' | 'Pending Confirmation'
-  status: OrderStatus
+const STATUS_LABELS: Record<OrderStatus, string> = {
+  confirmed: 'Confirmed',
+  processing: 'Processing',
+  shipping: 'Shipping',
+  out_for_delivery: 'Out for Delivery',
+  delivered: 'Delivered',
 }
 
-const statuses: OrderStatus[] = ['Confirmed', 'Processing', 'Shipping', 'Out for Delivery', 'Delivered']
+const PAYMENT_METHOD_LABELS = { visa: 'Visa', aba_payway: 'ABA PayWay', khqr: 'KHQR' }
 
-const orders = reactive<Order[]>([
-  { id: 1, orderNumber: 'PM-000128', customer: 'Sokha Chan', date: 'Aug 6, 2026', items: 3, total: 245.5, paymentMethod: 'KHQR', paymentStatus: 'Pending Confirmation', status: 'Confirmed' },
-  { id: 2, orderNumber: 'PM-000127', customer: 'Dara Pich', date: 'Aug 6, 2026', items: 1, total: 96.0, paymentMethod: 'Visa', paymentStatus: 'Paid', status: 'Processing' },
-  { id: 3, orderNumber: 'PM-000126', customer: 'Ranyi Sok', date: 'Aug 5, 2026', items: 2, total: 365.0, paymentMethod: 'ABA PayWay', paymentStatus: 'Paid', status: 'Shipping' },
-  { id: 4, orderNumber: 'PM-000125', customer: 'Vibol Heng', date: 'Aug 5, 2026', items: 4, total: 512.0, paymentMethod: 'KHQR', paymentStatus: 'Pending Confirmation', status: 'Confirmed' },
-  { id: 5, orderNumber: 'PM-000124', customer: 'Chanthy Kim', date: 'Aug 4, 2026', items: 1, total: 22.0, paymentMethod: 'Visa', paymentStatus: 'Paid', status: 'Out for Delivery' },
-  { id: 6, orderNumber: 'PM-000123', customer: 'Bopha Long', date: 'Aug 3, 2026', items: 2, total: 180.0, paymentMethod: 'ABA PayWay', paymentStatus: 'Paid', status: 'Delivered' },
-  { id: 7, orderNumber: 'PM-000122', customer: 'Sovann Mao', date: 'Aug 3, 2026', items: 1, total: 54.0, paymentMethod: 'Visa', paymentStatus: 'Paid', status: 'Delivered' },
-])
+const auth = useAuthStore()
+const orders = ref<OrderSummary[]>([])
+const loading = ref(true)
+const loadError = ref(false)
+const updatingId = ref<number | null>(null)
 
 const searchQuery = ref('')
 const activeStatus = ref<OrderStatus | 'All'>('All')
 
 const filteredOrders = computed(() => {
-  let result = orders as Order[]
+  let result = orders.value
 
   if (activeStatus.value !== 'All') {
     result = result.filter((o) => o.status === activeStatus.value)
@@ -42,7 +36,10 @@ const filteredOrders = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
   if (query) {
     result = result.filter(
-      (o) => o.orderNumber.toLowerCase().includes(query) || o.customer.toLowerCase().includes(query),
+      (o) =>
+        o.order_number.toLowerCase().includes(query) ||
+        (o.customer?.full_name ?? '').toLowerCase().includes(query) ||
+        (o.customer?.email ?? '').toLowerCase().includes(query),
     )
   }
 
@@ -50,17 +47,53 @@ const filteredOrders = computed(() => {
 })
 
 function statusCount(status: OrderStatus) {
-  return orders.filter((o) => o.status === status).length
+  return orders.value.filter((o) => o.status === status).length
 }
 
-function updateStatus(order: Order, status: OrderStatus) {
-  order.status = status
-  ElMessage.success(`${order.orderNumber} updated to "${status}"`)
+// Orders only ever move forward (enforced backend-side too, see 3.3/3.8
+// checkpoint notes) — so a status can only be advanced to a later step.
+function nextStatusOptions(current: OrderStatus): OrderStatus[] {
+  return STATUSES.slice(STATUSES.indexOf(current) + 1)
+}
+
+async function handleStatusChange(order: OrderSummary, nextStatus: OrderStatus) {
+  if (!auth.session) return
+  updatingId.value = order.id
+  try {
+    const updated = await updateOrderStatus(order.id, nextStatus, auth.session.access_token)
+    order.status = updated.status
+    ElMessage.success(`${order.order_number} updated to "${STATUS_LABELS[updated.status]}"`)
+  } catch (err) {
+    ElMessage.error(err instanceof Error ? err.message : 'Could not update order status')
+  } finally {
+    updatingId.value = null
+  }
 }
 
 function formatPrice(value: number) {
   return `$${value.toFixed(2)}`
 }
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+onMounted(async () => {
+  await auth.init()
+  if (!auth.session) {
+    loading.value = false
+    loadError.value = true
+    return
+  }
+
+  try {
+    orders.value = await fetchOrders(auth.session.access_token)
+  } catch {
+    loadError.value = true
+  } finally {
+    loading.value = false
+  }
+})
 </script>
 
 <template>
@@ -80,14 +113,14 @@ function formatPrice(value: number) {
         All ({{ orders.length }})
       </button>
       <button
-        v-for="s in statuses"
+        v-for="s in STATUSES"
         :key="s"
         type="button"
         class="filter-pill"
         :class="{ 'is-active': activeStatus === s }"
         @click="activeStatus = s"
       >
-        {{ s }} ({{ statusCount(s) }})
+        {{ STATUS_LABELS[s] }} ({{ statusCount(s) }})
       </button>
     </div>
 
@@ -105,35 +138,36 @@ function formatPrice(value: number) {
       <span class="result-count">{{ filteredOrders.length }} Orders</span>
     </div>
 
-    <div class="table-card">
+    <div v-if="loading" class="state-message">Loading orders…</div>
+    <div v-else-if="loadError" class="state-message">
+      Couldn't load orders right now. Please try again shortly.
+    </div>
+    <div v-else class="table-card">
       <el-table :data="filteredOrders" style="width: 100%" empty-text="No orders match your filters.">
-        <el-table-column prop="orderNumber" label="Order">
+        <el-table-column prop="order_number" label="Order">
           <template #default="{ row }">
-            <span class="cell-name">{{ row.orderNumber }}</span>
+            <span class="cell-name">{{ row.order_number }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="customer" label="Customer">
+        <el-table-column label="Customer">
           <template #default="{ row }">
-            <span class="cell-muted">{{ row.customer }}</span>
+            <span class="cell-muted">{{ row.customer?.full_name ?? row.customer?.email ?? '—' }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="date" label="Date">
+        <el-table-column label="Date">
           <template #default="{ row }">
-            <span class="cell-muted">{{ row.date }}</span>
+            <span class="cell-muted">{{ formatDate(row.created_at) }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="items" label="Items" />
+        <el-table-column prop="item_count" label="Items" />
         <el-table-column label="Total">
           <template #default="{ row }">{{ formatPrice(row.total) }}</template>
         </el-table-column>
         <el-table-column label="Payment" min-width="150">
           <template #default="{ row }">
-            <p class="payment-method">{{ row.paymentMethod }}</p>
-            <span
-              class="payment-badge"
-              :class="{ 'is-pending': row.paymentStatus === 'Pending Confirmation' }"
-            >
-              {{ row.paymentStatus }}
+            <p class="payment-method">{{ PAYMENT_METHOD_LABELS[row.payment_method] }}</p>
+            <span class="payment-badge" :class="{ 'is-pending': row.payment_status === 'pending_confirmation' }">
+              {{ row.payment_status === 'pending_confirmation' ? 'Pending Confirmation' : 'Paid' }}
             </span>
           </template>
         </el-table-column>
@@ -143,9 +177,11 @@ function formatPrice(value: number) {
               :model-value="row.status"
               size="default"
               class="status-select"
-              @change="(value: OrderStatus) => updateStatus(row, value)"
+              :disabled="updatingId === row.id || nextStatusOptions(row.status).length === 0"
+              @change="(value: OrderStatus) => handleStatusChange(row, value)"
             >
-              <el-option v-for="s in statuses" :key="s" :label="s" :value="s" />
+              <el-option :label="STATUS_LABELS[row.status as OrderStatus]" :value="row.status" />
+              <el-option v-for="s in nextStatusOptions(row.status)" :key="s" :label="STATUS_LABELS[s]" :value="s" />
             </el-select>
           </template>
         </el-table-column>

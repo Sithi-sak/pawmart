@@ -49,6 +49,11 @@ export interface OrderSummary {
   total: number
   created_at: string
   item_count: number
+  payment_method: 'visa' | 'aba_payway' | 'khqr'
+  payment_status: 'paid' | 'pending_confirmation'
+  // Only present when fetched by an admin (task 3.8) — the customer's own
+  // order history doesn't need it, since it's implicitly their own name.
+  customer?: { id: string; full_name: string | null; email: string | null } | null
 }
 
 export interface CreateOrderPayload {

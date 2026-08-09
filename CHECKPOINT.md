@@ -43,7 +43,7 @@ Current state: fresh `create-vue` + FastAPI scaffolds, no pages built, no schema
 - [x] **3.5 Rule-based Product Recommendations** — species/age/purchase-history filtering logic + surface on Home/Product pages (not AI/ML — see project memory).
 - [x] **3.6 Loyalty & Reward System** — points accrual/redemption API + connect to Account/Checkout.
 - [x] **3.7 Admin Dashboard** — product CRUD, inventory, low-stock alerts, sales overview API + connect 1.12/1.13.
-- [ ] **3.8 Admin Orders** — order processing API + connect 1.14.
+- [x] **3.8 Admin Orders** — order processing API + connect 1.14.
 - [ ] **3.9 Docker Compose** — full stack (frontend, backend, and any local services) runnable with one command.
 
 ## Phase 4 — Payment (final task)
@@ -81,7 +81,7 @@ Known gap from 3.1: `CartView.vue`/`CheckoutView.vue` still link to `/products/$
 
 ## Order Tracking notes (task 3.3)
 
-Known gap: can't fully verify this end-to-end yet. Placing an order (Visa/ABA) already creates a real row and `/orders/:id` renders its real status/timeline, but there's no UI to advance that status yet (the status dropdown in Admin Orders is still mock — that wiring is task 3.8) and KHQR payment confirmation isn't built (task 4.1). Come back and verify the full checkout → tracking flow once 3.8 and 4.1 are both done.
+Known gap: can't fully verify this end-to-end yet. Placing an order (Visa/ABA) already creates a real row and `/orders/:id` renders its real status/timeline, and the Admin Orders status dropdown is now wired to the real `PATCH /api/orders/{id}/status` endpoint (task 3.8). Still missing: KHQR payment confirmation isn't built (task 4.1), so a KHQR order can be advanced through delivery statuses by admin but never gets marked `paid`. Come back and verify the full checkout → tracking flow once 4.1 is done.
 
 ## Loyalty notes (task 3.6)
 
@@ -90,6 +90,10 @@ Points (5 per $1 of subtotal-after-discount) are credited automatically when an 
 ## Admin Dashboard notes (task 3.7)
 
 Product CRUD (`AdminProductsView.vue`) and dashboard stats/low-stock (`AdminDashboardView.vue`) go straight through Supabase via RLS (`admins manage products`, plus admin's `is_admin()` read access on `orders`/`customers`) — same pattern as pet profiles (3.4), no new backend router needed. Product image upload now actually wires to the `/api/storage/product-images` endpoint built in 2.4 (previously unused — the form only staged local blob previews). Low stock uses a single shop-wide `LOW_STOCK_THRESHOLD` (10, in `frontend/src/lib/products.ts`) since there's no per-product reorder-threshold column. "Total Revenue" / "Avg. Order Value" only count `payment_status = 'paid'` orders, so pending KHQR orders (see loyalty notes above) don't inflate the sales overview until 4.1 wires admin confirmation.
+
+## Admin Orders notes (task 3.8)
+
+Unlike 3.7's dashboard/product reads, this went through the existing `backend/src/backend/routers/orders.py` router (built in 3.2/3.3) rather than direct Supabase-from-frontend, since order status transitions already lived there with real business logic (forward-only enforcement). `GET /api/orders` now returns every order (joined with `customers.full_name`/`email`) when the caller is admin, instead of just the caller's own orders — same endpoint, branching on `customer.role`, so `OrderHistoryView` (customer-facing) is unaffected. `AdminOrdersView.vue` calls this plus the existing `PATCH /api/orders/{id}/status`; the status `<el-select>` only ever offers statuses after the order's current one (mirrors the backend's forward-only check) so a disallowed transition can't be attempted from the UI. KHQR "admin manual confirm" (payment_status → paid) is still task 4.1, not built here — see Order Tracking notes above.
 
 ## Feature ↔ Task cross-reference
 

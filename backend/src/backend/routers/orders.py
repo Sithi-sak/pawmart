@@ -173,14 +173,12 @@ def list_orders(
     customer: CurrentCustomer = Depends(get_current_customer),  # noqa: B008
 ) -> list[dict]:
     supabase = get_supabase()
-    orders = (
-        supabase.table("orders")
-        .select("*")
-        .eq("customer_id", customer.id)
-        .order("created_at", desc=True)
-        .execute()
-        .data
-    )
+    is_admin_caller = customer.role == "admin"
+
+    query = supabase.table("orders").select("*").order("created_at", desc=True)
+    if not is_admin_caller:
+        query = query.eq("customer_id", customer.id)
+    orders = query.execute().data
 
     order_ids = [o["id"] for o in orders]
     items = (
@@ -192,7 +190,26 @@ def list_orders(
     for item in items:
         item_counts[item["order_id"]] = item_counts.get(item["order_id"], 0) + item["quantity"]
 
-    return [{**o, "item_count": item_counts.get(o["id"], 0)} for o in orders]
+    customers_by_id: dict[str, dict] = {}
+    if is_admin_caller and orders:
+        customer_ids = list({o["customer_id"] for o in orders})
+        customer_rows = (
+            supabase.table("customers")
+            .select("id, full_name, email")
+            .in_("id", customer_ids)
+            .execute()
+            .data
+        )
+        customers_by_id = {c["id"]: c for c in customer_rows}
+
+    return [
+        {
+            **o,
+            "item_count": item_counts.get(o["id"], 0),
+            **({"customer": customers_by_id.get(o["customer_id"])} if is_admin_caller else {}),
+        }
+        for o in orders
+    ]
 
 
 @router.get("/{order_id}")
