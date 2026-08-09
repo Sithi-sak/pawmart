@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   PhCaretLeft,
   PhPlus,
@@ -9,44 +10,21 @@ import {
   PhScales,
   PhForkKnife,
 } from '@phosphor-icons/vue'
+import { useAuthStore } from '@/stores/auth'
+import { fetchPets, createPet, updatePet, deletePet as deletePetRequest, type Pet } from '@/lib/pets'
 
-interface Pet {
-  id: number
-  name: string
-  species: string
-  breed: string
-  age: number
-  weight: number
-  diet: string
-}
+const auth = useAuthStore()
 
-const pets = reactive<Pet[]>([
-  {
-    id: 1,
-    name: 'Luna',
-    species: 'Canine',
-    breed: 'Greyhound',
-    age: 4,
-    weight: 28,
-    diet: 'Grain-free kibble, twice daily',
-  },
-  {
-    id: 2,
-    name: 'Oliver',
-    species: 'Feline',
-    breed: 'Persian Cat',
-    age: 2,
-    weight: 4.5,
-    diet: 'Wet food, morning and evening',
-  },
-])
+const pets = reactive<Pet[]>([])
+const loading = ref(true)
+const loadError = ref(false)
 
-const speciesOptions = ['Canine', 'Feline', 'Avian', 'Reptile', 'Small Mammal', 'Other']
+const speciesOptions = ['Dog', 'Cat', 'Bird', 'Reptile', 'Small Pet', 'Other']
 
 function emptyForm() {
   return {
     name: '',
-    species: 'Canine',
+    species: 'Dog',
     breed: '',
     age: null as number | null,
     weight: null as number | null,
@@ -54,8 +32,20 @@ function emptyForm() {
   }
 }
 
+onMounted(async () => {
+  await auth.init()
+  try {
+    pets.push(...(await fetchPets()))
+  } catch {
+    loadError.value = true
+  } finally {
+    loading.value = false
+  }
+})
+
 const isAddingPet = ref(false)
 const newPet = reactive(emptyForm())
+const saving = ref(false)
 
 function openAddPet() {
   Object.assign(newPet, emptyForm())
@@ -67,18 +57,25 @@ function cancelAddPet() {
   isAddingPet.value = false
 }
 
-function saveNewPet() {
-  if (!newPet.name.trim() || !newPet.age) return
-  pets.push({
-    id: Date.now(),
-    name: newPet.name.trim(),
-    species: newPet.species,
-    breed: newPet.breed.trim(),
-    age: newPet.age,
-    weight: newPet.weight ?? 0,
-    diet: newPet.diet.trim(),
-  })
-  isAddingPet.value = false
+async function saveNewPet() {
+  if (!newPet.name.trim() || !newPet.age || !auth.customer) return
+  saving.value = true
+  try {
+    const pet = await createPet(auth.customer.id, {
+      name: newPet.name.trim(),
+      species: newPet.species,
+      breed: newPet.breed.trim() || null,
+      age: newPet.age,
+      weight: newPet.weight,
+      diet: newPet.diet.trim() || null,
+    })
+    pets.push(pet)
+    isAddingPet.value = false
+  } catch {
+    ElMessage.error('Could not save this companion. Try again.')
+  } finally {
+    saving.value = false
+  }
 }
 
 const editingPetId = ref<number | null>(null)
@@ -89,10 +86,10 @@ function startEditPet(pet: Pet) {
   Object.assign(editForm, {
     name: pet.name,
     species: pet.species,
-    breed: pet.breed,
+    breed: pet.breed ?? '',
     age: pet.age,
     weight: pet.weight,
-    diet: pet.diet,
+    diet: pet.diet ?? '',
   })
   editingPetId.value = pet.id
 }
@@ -101,24 +98,47 @@ function cancelEditPet() {
   editingPetId.value = null
 }
 
-function saveEditPet() {
+async function saveEditPet() {
   if (!editForm.name.trim() || !editForm.age) return
   const pet = pets.find((p) => p.id === editingPetId.value)
   if (!pet) return
-  Object.assign(pet, {
-    name: editForm.name.trim(),
-    species: editForm.species,
-    breed: editForm.breed.trim(),
-    age: editForm.age,
-    weight: editForm.weight ?? 0,
-    diet: editForm.diet.trim(),
-  })
-  editingPetId.value = null
+  saving.value = true
+  try {
+    const updated = await updatePet(pet.id, {
+      name: editForm.name.trim(),
+      species: editForm.species,
+      breed: editForm.breed.trim() || null,
+      age: editForm.age,
+      weight: editForm.weight,
+      diet: editForm.diet.trim() || null,
+    })
+    Object.assign(pet, updated)
+    editingPetId.value = null
+  } catch {
+    ElMessage.error('Could not save changes. Try again.')
+  } finally {
+    saving.value = false
+  }
 }
 
-function deletePet(id: number) {
-  const index = pets.findIndex((p) => p.id === id)
-  if (index !== -1) pets.splice(index, 1)
+async function deletePet(pet: Pet) {
+  try {
+    await ElMessageBox.confirm(`Remove ${pet.name} from your pets?`, 'Remove Companion', {
+      confirmButtonText: 'Remove',
+      cancelButtonText: 'Cancel',
+      type: 'warning',
+    })
+  } catch {
+    return
+  }
+
+  try {
+    await deletePetRequest(pet.id)
+    const index = pets.findIndex((p) => p.id === pet.id)
+    if (index !== -1) pets.splice(index, 1)
+  } catch {
+    ElMessage.error('Could not remove this companion. Try again.')
+  }
 }
 </script>
 
@@ -194,7 +214,7 @@ function deletePet(id: number) {
 
           <div class="form-actions">
             <button type="button" class="cancel-btn" @click="cancelAddPet">Cancel</button>
-            <button type="submit" class="save-btn">Save Companion</button>
+            <button type="submit" class="save-btn" :disabled="saving">Save Companion</button>
           </div>
         </form>
       </div>
@@ -254,7 +274,7 @@ function deletePet(id: number) {
 
             <div class="form-actions">
               <button type="button" class="cancel-btn" @click="cancelEditPet">Cancel</button>
-              <button type="submit" class="save-btn">Save Changes</button>
+              <button type="submit" class="save-btn" :disabled="saving">Save Changes</button>
             </div>
           </form>
         </template>
@@ -264,13 +284,17 @@ function deletePet(id: number) {
           <div class="pet-details">
             <h3 class="pet-name">{{ pet.name }}</h3>
             <p class="pet-meta">
-              {{ pet.species.toUpperCase() }} &bull; {{ pet.breed.toUpperCase() }} &bull;
+              {{ pet.species.toUpperCase() }}
+              <template v-if="pet.breed">&bull; {{ pet.breed.toUpperCase() }}</template>
+              &bull;
               {{ pet.age }}
               {{ pet.age === 1 ? 'YEAR' : 'YEARS' }}
             </p>
 
             <div class="pet-facts">
-              <span class="pet-fact"><PhScales :size="15" />{{ pet.weight }} kg</span>
+              <span v-if="pet.weight != null" class="pet-fact"
+                ><PhScales :size="15" />{{ pet.weight }} kg</span
+              >
               <span class="pet-fact"
                 ><PhForkKnife :size="15" />{{ pet.diet || 'No diet notes yet' }}</span
               >
@@ -282,7 +306,7 @@ function deletePet(id: number) {
               <PhPencilSimple :size="14" />
               Edit
             </button>
-            <button type="button" class="pet-action is-danger" @click="deletePet(pet.id)">
+            <button type="button" class="pet-action is-danger" @click="deletePet(pet)">
               <PhTrash :size="14" />
               Remove
             </button>
@@ -290,13 +314,18 @@ function deletePet(id: number) {
         </template>
       </div>
 
-      <div v-if="!pets.length && !isAddingPet" class="empty-state">
+      <div v-if="!loading && !loadError && !pets.length && !isAddingPet" class="empty-state">
         <p>You haven't added any companions yet.</p>
         <button type="button" class="add-btn" @click="openAddPet">
           <PhPlus :size="16" />
           Add Companion
         </button>
       </div>
+    </div>
+
+    <div v-if="loading" class="state-message">Loading your companions…</div>
+    <div v-else-if="loadError" class="state-message">
+      We couldn't load your pets. Try again later.
     </div>
   </div>
 </template>
@@ -384,6 +413,12 @@ function deletePet(id: number) {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 1.5rem;
+}
+
+.state-message {
+  padding: 4rem 0;
+  text-align: center;
+  opacity: 0.7;
 }
 
 .pet-card {
@@ -554,8 +589,13 @@ function deletePet(id: number) {
   cursor: pointer;
 }
 
-.save-btn:hover {
+.save-btn:hover:not(:disabled) {
   background: var(--color-accent-dark);
+}
+
+.save-btn:disabled {
+  opacity: 0.75;
+  cursor: default;
 }
 
 /* Empty state */

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import {
   PhEnvelopeSimple,
@@ -11,7 +11,9 @@ import {
   PhCalendarCheck,
   PhShoppingBag,
 } from '@phosphor-icons/vue'
+import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
+import { fetchPets, createPet, type Pet } from '@/lib/pets'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -66,19 +68,16 @@ function cancelEdit() {
   isEditing.value = false
 }
 
-interface Pet {
-  id: number
-  name: string
-  species: string
-  breed: string
-  age: number
-  status: 'active' | 'inactive'
-}
+const pets = reactive<Pet[]>([])
+const petsLoading = ref(true)
 
-const pets = reactive<Pet[]>([
-  { id: 1, name: 'Luna', species: 'Canine', breed: 'Greyhound', age: 4, status: 'active' },
-  { id: 2, name: 'Oliver', species: 'Feline', breed: 'Persian Cat', age: 2, status: 'active' },
-])
+onMounted(async () => {
+  try {
+    pets.push(...(await fetchPets()))
+  } finally {
+    petsLoading.value = false
+  }
+})
 
 interface RecentOrder {
   id: number
@@ -119,33 +118,38 @@ function formatPrice(value: number) {
   return `$${value.toFixed(2)}`
 }
 
-const speciesOptions = ['Canine', 'Feline', 'Avian', 'Reptile', 'Small Mammal', 'Other']
+const speciesOptions = ['Dog', 'Cat', 'Bird', 'Reptile', 'Small Pet', 'Other']
 
 const isAddingPet = ref(false)
 
 const newPet = reactive({
   name: '',
-  species: 'Canine',
+  species: 'Dog',
   breed: '',
   age: null as number | null,
 })
 
 function openAddPet() {
-  Object.assign(newPet, { name: '', species: 'Canine', breed: '', age: null })
+  Object.assign(newPet, { name: '', species: 'Dog', breed: '', age: null })
   isAddingPet.value = true
 }
 
-function saveCompanion() {
-  if (!newPet.name.trim() || !newPet.age) return
-  pets.push({
-    id: Date.now(),
-    name: newPet.name.trim(),
-    species: newPet.species,
-    breed: newPet.breed.trim(),
-    age: newPet.age,
-    status: 'active',
-  })
-  isAddingPet.value = false
+async function saveCompanion() {
+  if (!newPet.name.trim() || !newPet.age || !auth.customer) return
+  try {
+    const pet = await createPet(auth.customer.id, {
+      name: newPet.name.trim(),
+      species: newPet.species,
+      breed: newPet.breed.trim() || null,
+      age: newPet.age,
+      weight: null,
+      diet: null,
+    })
+    pets.push(pet)
+    isAddingPet.value = false
+  } catch {
+    ElMessage.error('Could not save this companion. Try again.')
+  }
 }
 </script>
 
@@ -198,14 +202,19 @@ function saveCompanion() {
           </RouterLink>
         </div>
 
-        <div class="pets-grid">
+        <p v-if="petsLoading" class="pets-loading">Loading your pets…</p>
+
+        <div v-else class="pets-grid">
           <RouterLink v-for="pet in pets" :key="pet.id" to="/account/pets" class="pet-card">
             <div class="pet-image placeholder-img">
-              <span v-if="pet.status === 'active'" class="status-badge">Active</span>
+              <span class="status-badge">Active</span>
             </div>
             <div class="pet-details">
               <h3 class="pet-name">{{ pet.name }}</h3>
-              <p class="pet-meta">{{ pet.breed.toUpperCase() }} &bull; {{ pet.age }} YEARS</p>
+              <p class="pet-meta">
+                <template v-if="pet.breed">{{ pet.breed.toUpperCase() }} &bull; </template
+                >{{ pet.age }} YEARS
+              </p>
             </div>
           </RouterLink>
         </div>
@@ -544,6 +553,13 @@ function saveCompanion() {
 
 .manage-link:hover {
   color: var(--color-accent-dark);
+}
+
+.pets-loading {
+  font-size: 0.85rem;
+  color: var(--color-text);
+  opacity: 0.65;
+  margin-bottom: 1.5rem;
 }
 
 .pets-grid {
