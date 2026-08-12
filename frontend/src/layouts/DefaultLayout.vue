@@ -37,7 +37,7 @@ const cart = useCartStore()
     <footer class="site-footer">
       <div class="footer-newsletter">
         <h2>Stay in the Loop</h2>
-        <p>New arrivals, seasonal collections, and pet-care tips — straight to your inbox.</p>
+        <p>Get new arrivals, seasonal collections, and pet-care tips delivered straight to your inbox.</p>
         <div class="newsletter-form">
           <el-input placeholder="Your email address" size="large" />
           <el-button type="primary" class="accent-btn" size="large">Subscribe</el-button>
@@ -54,6 +54,7 @@ const cart = useCartStore()
           <RouterLink to="/privacy">Privacy</RouterLink>
           <RouterLink to="/terms">Terms</RouterLink>
           <RouterLink to="/about">About Us</RouterLink>
+          <RouterLink to="/sell">Become a Seller</RouterLink>
           <RouterLink to="/">Contact</RouterLink>
         </nav>
       </div>
