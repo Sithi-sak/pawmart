@@ -4,6 +4,12 @@ import { RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { fetchRecommendedProducts } from '@/lib/recommendations'
 import type { Product } from '@/lib/products'
+import petCareImg from '@/assets/images/pet_care.jpg'
+import bedImg from '@/assets/images/bed.jpg'
+import essentialsImg from '@/assets/images/essentials.png'
+import nutritionImg from '@/assets/images/nutrition.jpg'
+import lifestyleImg from '@/assets/images/lifestyle.png'
+import heroImg from '@/assets/images/hero.jpg'
 
 const auth = useAuthStore()
 
@@ -13,13 +19,14 @@ interface Collection {
   subtitle: string
   label?: string
   featured?: boolean
+  image: string
 }
 
 const collections: Collection[] = [
-  { key: 'featured', title: 'Comfort Beds', subtitle: 'Shop Premium Bedding', label: 'FEATURED', featured: true },
-  { key: 'essentials', title: 'Essentials', subtitle: 'Bowls, Leashes & More' },
-  { key: 'nutrition', title: 'Nutrition', subtitle: 'Food & Supplements' },
-  { key: 'lifestyle', title: 'Lifestyle', subtitle: 'Toys & Enrichment' },
+  { key: 'featured', title: 'Comfort Beds', subtitle: 'Shop Premium Bedding', label: 'FEATURED', featured: true, image: bedImg },
+  { key: 'essentials', title: 'Essentials', subtitle: 'Bowls, Leashes & More', image: essentialsImg },
+  { key: 'nutrition', title: 'Nutrition', subtitle: 'Food & Supplements', image: nutritionImg },
+  { key: 'lifestyle', title: 'Lifestyle', subtitle: 'Toys & Enrichment', image: lifestyleImg },
 ]
 
 const recommendedProducts = ref<Product[]>([])
@@ -47,15 +54,18 @@ function formatPrice(value: number) {
 <template>
   <div class="home">
     <!-- Hero -->
-    <section class="hero placeholder-img">
+    <section
+      class="hero"
+      :style="{
+        backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45)), url(${heroImg})`,
+      }"
+    >
       <div class="hero-content">
         <h1 class="hero-title">
-          THE ART OF<br />
-          <span class="accent-italic">PET LIVING.</span>
+          The Care Your Pet Deserves<br />
         </h1>
         <p class="hero-copy">
-          Thoughtfully curated food, gear, and comfort for the animals who share our homes —
-          because every pet deserves a life well lived.
+          We thoughtfully curate food, gear, and comfort for the animals who share our homes so that every pet can enjoy a life well lived.
         </p>
         <RouterLink to="/products">
           <el-button type="primary" class="accent-btn" size="large">EXPLORE COLLECTIONS</el-button>
@@ -71,8 +81,11 @@ function formatPrice(value: number) {
           v-for="c in collections"
           :key="c.key"
           to="/products"
-          class="collection-card placeholder-img"
+          class="collection-card"
           :class="[`collection-card--${c.key}`, { 'is-featured': c.featured }]"
+          :style="{
+            backgroundImage: `linear-gradient(transparent 40%, rgba(0, 0, 0, 0.65) 100%), url(${c.image})`,
+          }"
         >
           <span v-if="c.label" class="collection-tag">{{ c.label }}</span>
           <div class="collection-info">
@@ -116,7 +129,7 @@ function formatPrice(value: number) {
     <!-- Philosophy -->
     <section class="section philosophy">
       <div class="philosophy-media">
-        <div class="philosophy-image placeholder-img"></div>
+        <div class="philosophy-image" :style="{ backgroundImage: `url(${petCareImg})` }"></div>
         <div class="philosophy-accent"></div>
       </div>
       <div class="philosophy-content">
@@ -130,7 +143,9 @@ function formatPrice(value: number) {
           From everyday essentials to seasonal comforts, we work to make caring for your pet feel
           less like a chore and more like an act of love.
         </p>
-        <el-button class="dark-btn" size="large">Learn More About Us</el-button>
+        <RouterLink to="/about">
+          <el-button class="dark-btn" size="large">Learn More About Us</el-button>
+        </RouterLink>
       </div>
     </section>
   </div>
@@ -212,11 +227,13 @@ function formatPrice(value: number) {
 
 /* Hero */
 .hero {
-  min-height: 480px;
+  min-height: 560px;
   display: flex;
   align-items: center;
   margin: -1.5rem calc(-1 * 1.5rem) 0;
   padding: 3rem;
+  background-size: cover;
+  background-position: center;
 }
 
 .hero-content {
@@ -224,14 +241,15 @@ function formatPrice(value: number) {
 }
 
 .hero-title {
-  font-size: 2.75rem;
+  font-size: 3.2rem;
   line-height: 1.15;
   margin-bottom: 1rem;
+  color: #fff;
 }
 
 .hero-copy {
   margin-bottom: 1.5rem;
-  color: var(--color-text);
+  color: #fff;
 }
 
 /* Collections */
@@ -251,6 +269,8 @@ function formatPrice(value: number) {
   text-decoration: none;
   color: #fff;
   overflow: hidden;
+  background-size: cover;
+  background-position: center;
 }
 
 .collection-card--featured {
@@ -289,6 +309,8 @@ function formatPrice(value: number) {
 .collection-info h3 {
   font-size: 1.5rem;
   margin-bottom: 0.15rem;
+  color: #fff;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
 }
 
 .collection-info p {
@@ -369,6 +391,8 @@ function formatPrice(value: number) {
   aspect-ratio: 4 / 5;
   position: relative;
   z-index: 1;
+  background-size: cover;
+  background-position: center;
 }
 
 .philosophy-accent {

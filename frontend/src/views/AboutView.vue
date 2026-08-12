@@ -91,7 +91,7 @@ const features: Feature[] = [
       <div class="studio-grid">
         <div class="studio-founder">
           <div class="founder-image placeholder-img"></div>
-          <h3>Dara Sok</h3>
+          <h3>Chea Bunthay</h3>
           <p class="founder-role">Founder &amp; Creative Director</p>
           <p class="founder-bio">
             Dara founded PawMart after years of searching for pet furniture that matched the rest
@@ -245,7 +245,7 @@ const features: Feature[] = [
 }
 
 .craft-image {
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 1 / 1;
 }
 
 .craft-title {

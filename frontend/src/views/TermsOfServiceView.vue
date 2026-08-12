@@ -112,8 +112,6 @@ const obligations: string[] = [
         <el-button type="primary" class="accent-btn" size="large">CONTACT LEGAL</el-button>
       </div>
     </section>
-
-    <div class="banner placeholder-img"></div>
   </div>
 </template>
 
@@ -250,12 +248,6 @@ const obligations: string[] = [
 .meta-tagline {
   font-style: italic;
   color: var(--color-text);
-}
-
-/* Banner */
-.banner {
-  height: 320px;
-  margin: 0 calc(-1 * 1.5rem);
 }
 
 @media (max-width: 700px) {

@@ -1,10 +1,22 @@
 <script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router'
+import { computed } from 'vue'
+import { RouterLink, RouterView, useRoute } from 'vue-router'
+import authCover from '@/assets/images/auth_cover.jpg'
+import authSignin from '@/assets/images/auth_signin.jpg'
+import authSignup from '@/assets/images/auth_signup.jpg'
+
+const route = useRoute()
+
+const visualImage = computed(() => {
+  if (route.name === 'login') return authSignin
+  if (route.name === 'signup') return authSignup
+  return authCover
+})
 </script>
 
 <template>
   <div class="auth-shell">
-    <div class="auth-visual placeholder-img">
+    <div class="auth-visual" :style="{ backgroundImage: `url(${visualImage})` }">
       <RouterLink to="/" class="auth-brand">PAWMART</RouterLink>
     </div>
     <div class="auth-panel">
@@ -14,16 +26,6 @@ import { RouterLink, RouterView } from 'vue-router'
 </template>
 
 <style scoped>
-.placeholder-img {
-  background: linear-gradient(165deg, #9a9a9a 0%, #d8d8d8 100%);
-}
-
-@media (prefers-color-scheme: dark) {
-  .placeholder-img {
-    background: linear-gradient(165deg, #4a4a4a 0%, #2c2c2c 100%);
-  }
-}
-
 .auth-shell {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -32,6 +34,8 @@ import { RouterLink, RouterView } from 'vue-router'
 
 .auth-visual {
   position: relative;
+  background-size: cover;
+  background-position: center;
 }
 
 .auth-brand {
@@ -44,6 +48,7 @@ import { RouterLink, RouterView } from 'vue-router'
   letter-spacing: 0.1em;
   color: #fff;
   text-decoration: none;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
 }
 
 .auth-panel {

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
 import { PhDog, PhCat, PhHorse, PhBird } from '@phosphor-icons/vue'
+import collectionCover from '@/assets/images/collection_cover.jpg'
 
 interface Species {
   key: string
@@ -48,7 +49,12 @@ const collections: Collection[] = [
 <template>
   <div class="collections">
     <!-- Hero -->
-    <section class="hero placeholder-img">
+    <section
+      class="hero"
+      :style="{
+        backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45)), url(${collectionCover})`,
+      }"
+    >
       <div class="hero-content">
         <h1 class="hero-title">
           EVERY COMPANION,<br />
@@ -171,6 +177,8 @@ const collections: Collection[] = [
   text-align: center;
   margin: -1.5rem calc(-1 * 1.5rem) 0;
   padding: 3rem;
+  background-size: cover;
+  background-position: center;
 }
 
 .hero-content {
@@ -181,11 +189,12 @@ const collections: Collection[] = [
   font-size: 2.5rem;
   line-height: 1.15;
   margin-bottom: 1rem;
+  color: #fff;
 }
 
 .hero-copy {
   margin-bottom: 1.5rem;
-  color: var(--color-text);
+  color: #fff;
 }
 
 /* Shop by species */

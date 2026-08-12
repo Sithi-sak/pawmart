@@ -522,7 +522,7 @@ async function saveCompanion() {
   color: #fff;
   font-size: 0.8rem;
   letter-spacing: 0.06em;
-  font-weight: 600;
+  font-weight: 500;
   text-transform: uppercase;
   cursor: pointer;
 }
@@ -539,7 +539,7 @@ async function saveCompanion() {
   color: var(--color-heading);
   font-size: 0.8rem;
   letter-spacing: 0.06em;
-  font-weight: 600;
+  font-weight: 500;
   text-transform: uppercase;
   cursor: pointer;
 }

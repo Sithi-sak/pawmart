@@ -1,14 +1,27 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
-import { PhArrowLeft, PhArrowRight, PhMagnifyingGlass, PhShoppingCart, PhPawPrint } from '@phosphor-icons/vue'
+import { PhArrowLeft, PhArrowRight, PhMagnifyingGlass, PhShoppingCart } from '@phosphor-icons/vue'
 import { ElMessage } from 'element-plus'
 import { fetchCategories, fetchProducts, type Product } from '@/lib/products'
 import { useCartStore } from '@/stores/cart'
+import dogImg from '@/assets/images/dog.jpg'
+import catImg from '@/assets/images/cat.jpg'
+import birdImg from '@/assets/images/bird.jpg'
+import fishImg from '@/assets/images/fish.jpg'
+import smallPetImg from '@/assets/images/small_pets.png'
 
 const cart = useCartStore()
 
 const species = ['Dog', 'Cat', 'Bird', 'Fish', 'Small Pet']
+
+const speciesImages: Record<string, string> = {
+  Dog: dogImg,
+  Cat: catImg,
+  Bird: birdImg,
+  Fish: fishImg,
+  'Small Pet': smallPetImg,
+}
 
 const priceRanges = [
   { label: '$0 — $50', min: 0, max: 50 },
@@ -150,9 +163,7 @@ function addToCart(p: Product) {
         :class="{ 'is-active': selectedSpecies === s }"
         @click="toggleSpecies(s)"
       >
-        <div class="species-icon placeholder-img">
-          <PhPawPrint :size="28" />
-        </div>
+        <div class="species-icon" :style="{ backgroundImage: `url(${speciesImages[s]})` }"></div>
         <p class="species-label">{{ s }}</p>
       </button>
     </div>
@@ -335,15 +346,13 @@ function addToCart(p: Product) {
 
 .species-icon {
   width: 100%;
-  aspect-ratio: 16 / 11;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(0, 0, 0, 0.35);
-  border: 1px solid transparent;
+  aspect-ratio: 4 / 3;
+  background-size: 100%;
+  background-position: center;
 }
 
 .species-card.is-active .species-icon {
+  border: 1px solid transparent;
   border-color: var(--color-accent);
 }
 

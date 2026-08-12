@@ -292,6 +292,7 @@ function addToWishlist() {
   color: var(--color-accent);
   font-size: 0.75rem;
   letter-spacing: 0.1em;
+  margin-top: 0.5rem;
   margin-bottom: 0.5rem;
 }
 
