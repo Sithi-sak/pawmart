@@ -46,3 +46,13 @@ def require_admin(
     if customer.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return customer
+
+
+def require_admin_or_store_owner(
+    customer: CurrentCustomer = Depends(get_current_customer),  # noqa: B008
+) -> CurrentCustomer:
+    if customer.role not in ("admin", "store_owner"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin or store owner access required"
+        )
+    return customer

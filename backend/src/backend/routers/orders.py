@@ -5,7 +5,11 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-from ..core.deps import CurrentCustomer, get_current_customer, require_admin
+from ..core.deps import (
+    CurrentCustomer,
+    get_current_customer,
+    require_admin_or_store_owner,
+)
 from ..core.supabase import get_supabase
 from .loyalty import award_points_for_order
 
@@ -50,6 +54,18 @@ def _generate_order_number() -> str:
     return "PM-" + "".join(random.choices(string.digits, k=6))
 
 
+def _owned_store_id(supabase, owner_id: str) -> int | None:
+    store = (
+        supabase.table("stores")
+        .select("id")
+        .eq("owner_id", owner_id)
+        .maybe_single()
+        .execute()
+        .data
+    )
+    return store["id"] if store else None
+
+
 def _load_order(supabase, order_id: int) -> dict:
     order = (
         supabase.table("orders").select("*").eq("id", order_id).maybe_single().execute().data
@@ -81,7 +97,7 @@ def create_order(
     product_ids = [item.product_id for item in payload.items]
     products = (
         supabase.table("products")
-        .select("id, name, price, stock")
+        .select("id, name, price, stock, store_id")
         .in_("id", product_ids)
         .execute()
         .data
@@ -93,6 +109,14 @@ def create_order(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unknown product(s): {missing}"
         )
+
+    store_ids = {p["store_id"] for p in products_by_id.values()}
+    if len(store_ids) > 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cart items must all be from the same store",
+        )
+    store_id = store_ids.pop()
 
     line_items = []
     subtotal = 0.0
@@ -131,6 +155,7 @@ def create_order(
     order_row = {
         "order_number": _generate_order_number(),
         "customer_id": customer.id,
+        "store_id": store_id,
         "shipping_full_name": payload.shipping.full_name,
         "shipping_phone": payload.shipping.phone,
         "shipping_street": payload.shipping.street,
@@ -174,9 +199,13 @@ def list_orders(
 ) -> list[dict]:
     supabase = get_supabase()
     is_admin_caller = customer.role == "admin"
+    is_store_owner_caller = customer.role == "store_owner"
 
     query = supabase.table("orders").select("*").order("created_at", desc=True)
-    if not is_admin_caller:
+    if is_store_owner_caller:
+        store_id = _owned_store_id(supabase, customer.id)
+        query = query.eq("store_id", store_id if store_id is not None else -1)
+    elif not is_admin_caller:
         query = query.eq("customer_id", customer.id)
     orders = query.execute().data
 
@@ -190,8 +219,9 @@ def list_orders(
     for item in items:
         item_counts[item["order_id"]] = item_counts.get(item["order_id"], 0) + item["quantity"]
 
+    show_customer_info = is_admin_caller or is_store_owner_caller
     customers_by_id: dict[str, dict] = {}
-    if is_admin_caller and orders:
+    if show_customer_info and orders:
         customer_ids = list({o["customer_id"] for o in orders})
         customer_rows = (
             supabase.table("customers")
@@ -206,7 +236,7 @@ def list_orders(
         {
             **o,
             "item_count": item_counts.get(o["id"], 0),
-            **({"customer": customers_by_id.get(o["customer_id"])} if is_admin_caller else {}),
+            **({"customer": customers_by_id.get(o["customer_id"])} if show_customer_info else {}),
         }
         for o in orders
     ]
@@ -219,19 +249,26 @@ def get_order(
 ) -> dict:
     supabase = get_supabase()
     order = _load_order(supabase, order_id)
-    if order["customer_id"] != customer.id and customer.role != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your order")
-    return order
+    if order["customer_id"] == customer.id or customer.role == "admin":
+        return order
+    if customer.role == "store_owner" and order["store_id"] == _owned_store_id(
+        supabase, customer.id
+    ):
+        return order
+    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your order")
 
 
 @router.patch("/{order_id}/status")
 def update_order_status(
     order_id: int,
     payload: OrderStatusUpdateIn,
-    admin: CurrentCustomer = Depends(require_admin),  # noqa: B008
+    staff: CurrentCustomer = Depends(require_admin_or_store_owner),  # noqa: B008
 ) -> dict:
     supabase = get_supabase()
     order = _load_order(supabase, order_id)
+
+    if staff.role == "store_owner" and order["store_id"] != _owned_store_id(supabase, staff.id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your store's order")
 
     current_index = ORDER_STATUSES.index(order["status"])
     new_index = ORDER_STATUSES.index(payload.status)

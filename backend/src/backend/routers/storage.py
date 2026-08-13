@@ -2,7 +2,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 
-from ..core.deps import require_admin
+from ..core.deps import require_admin_or_store_owner
 from ..core.supabase import get_supabase
 
 router = APIRouter(prefix="/api/storage", tags=["storage"])
@@ -14,7 +14,7 @@ ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 @router.post("/product-images", status_code=status.HTTP_201_CREATED)
 async def upload_product_image(
     file: UploadFile,
-    _admin=Depends(require_admin),  # noqa: B008
+    _staff=Depends(require_admin_or_store_owner),  # noqa: B008
 ) -> dict[str, str]:
     if file.content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(
@@ -35,6 +35,6 @@ async def upload_product_image(
 
 
 @router.delete("/product-images/{path}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_product_image(path: str, _admin=Depends(require_admin)) -> None:  # noqa: B008
+def delete_product_image(path: str, _staff=Depends(require_admin_or_store_owner)) -> None:  # noqa: B008
     supabase = get_supabase()
     supabase.storage.from_(BUCKET).remove([path])
