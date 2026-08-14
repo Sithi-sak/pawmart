@@ -6,9 +6,16 @@ export interface Category {
   slug: string
 }
 
+export interface ProductStore {
+  id: number
+  name: string
+  slug: string
+}
+
 export interface Product {
   id: number
   category_id: number | null
+  store_id: number | null
   slug: string
   name: string
   brand: string | null
@@ -20,9 +27,10 @@ export interface Product {
   is_new: boolean
   created_at: string
   categories: Category | null
+  stores: ProductStore | null
 }
 
-const PRODUCT_COLUMNS = '*, categories(id, name, slug)'
+const PRODUCT_COLUMNS = '*, categories(id, name, slug), stores(id, name, slug)'
 
 // No per-product reorder threshold in the schema — a single shop-wide
 // threshold is enough for the low-stock widget (task 3.7).
@@ -40,6 +48,10 @@ export interface ProductInput {
   price: number
   stock: number
   images: string[]
+  // Required for a store owner's own CRUD (products.store_id is NOT NULL
+  // and the "store owners manage own products" RLS check requires it to be
+  // their own store); left unset for the admin's shop-wide product form.
+  store_id?: number
 }
 
 function slugify(name: string): string {
@@ -67,12 +79,13 @@ async function uniqueSlug(name: string): Promise<string> {
   }
 }
 
-export async function fetchProducts(): Promise<Product[]> {
-  const { data, error } = await supabase
-    .from('products')
-    .select(PRODUCT_COLUMNS)
-    .order('created_at', { ascending: false })
+export async function fetchProducts(storeId?: number): Promise<Product[]> {
+  let query = supabase.from('products').select(PRODUCT_COLUMNS).order('created_at', { ascending: false })
+  if (storeId !== undefined) {
+    query = query.eq('store_id', storeId)
+  }
 
+  const { data, error } = await query
   if (error) throw error
   return data as unknown as Product[]
 }

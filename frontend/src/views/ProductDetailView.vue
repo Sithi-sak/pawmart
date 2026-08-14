@@ -2,7 +2,7 @@
 import { onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { PhCaretDown, PhTruck, PhShieldCheck } from '@phosphor-icons/vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { fetchProductBySlug, fetchRelatedProducts, type Product } from '@/lib/products'
 import { fetchRecommendedProducts } from '@/lib/recommendations'
 import { useAuthStore } from '@/stores/auth'
@@ -95,8 +95,22 @@ function decrementQuantity() {
   if (quantity.value > 1) quantity.value--
 }
 
-function addToCart() {
+async function addToCart() {
   if (!product.value) return
+
+  if (cart.conflictsWithCart(product.value)) {
+    try {
+      await ElMessageBox.confirm(
+        `Your cart has items from ${cart.activeStoreName ?? 'another store'}. Clear it to add items from a different store?`,
+        'Different Store',
+        { confirmButtonText: 'Clear Cart & Add', cancelButtonText: 'Cancel', type: 'warning' },
+      )
+    } catch {
+      return
+    }
+    cart.clear()
+  }
+
   cart.addItem(product.value, quantity.value)
   ElMessage.success(`Added ${quantity.value} × "${product.value.name}" to cart`)
 }
@@ -132,6 +146,9 @@ function addToWishlist() {
           <p class="eyebrow">{{ (product.categories?.name ?? product.species ?? '').toUpperCase() }}</p>
           <h1 class="product-name">{{ product.name }}</h1>
           <p class="price">{{ formatPrice(product.price) }}</p>
+          <RouterLink v-if="product.stores" :to="`/store/${product.stores.slug}`" class="sold-by-link">
+            Sold by {{ product.stores.name }}
+          </RouterLink>
 
           <div class="divider"></div>
 
@@ -344,6 +361,14 @@ function addToWishlist() {
 .price {
   font-size: 1.1rem;
   color: var(--color-heading);
+  margin-bottom: 0.5rem;
+}
+
+.sold-by-link {
+  display: inline-block;
+  font-size: 0.8rem;
+  color: var(--color-accent);
+  text-decoration: underline;
   margin-bottom: 1.25rem;
 }
 

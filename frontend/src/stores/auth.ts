@@ -9,7 +9,7 @@ export interface Customer {
   email: string | null
   phone: string | null
   location: string | null
-  role: 'customer' | 'admin'
+  role: 'customer' | 'store_owner' | 'admin'
   loyalty_points_balance: number
 }
 
@@ -28,6 +28,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => !!user.value)
   const isAdmin = computed(() => customer.value?.role === 'admin')
+  const isStoreOwner = computed(() => customer.value?.role === 'store_owner')
 
   let initPromise: Promise<void> | null = null
 
@@ -125,9 +126,11 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // Separate from signInWithPassword: sets state directly instead of waiting
-  // on the async onAuthStateChange listener, so the admin-only check below
-  // is guaranteed to run before the caller navigates anywhere.
-  async function signInAdmin(email: string, password: string) {
+  // on the async onAuthStateChange listener, so the staff-role check below
+  // is guaranteed to run before the caller navigates anywhere. Covers both
+  // platform admins and store owners (generalized from the old admin-only
+  // signInAdmin) since both sign in through the same staff login form.
+  async function signInStaff(email: string, password: string) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
     if (!data.user) throw new Error('Unable to sign in.')
@@ -138,9 +141,9 @@ export const useAuthStore = defineStore('auth', () => {
       .eq('id', data.user.id)
       .maybeSingle()
 
-    if (customerRow?.role !== 'admin') {
+    if (customerRow?.role !== 'admin' && customerRow?.role !== 'store_owner') {
       await supabase.auth.signOut()
-      throw new Error('This account does not have admin access.')
+      throw new Error('This account does not have staff access.')
     }
 
     session.value = data.session
@@ -192,9 +195,10 @@ export const useAuthStore = defineStore('auth', () => {
     initialized,
     isAuthenticated,
     isAdmin,
+    isStoreOwner,
     init,
     signInWithPassword,
-    signInAdmin,
+    signInStaff,
     signUpWithPassword,
     signInWithGoogle,
     signOut,

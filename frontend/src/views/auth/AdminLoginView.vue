@@ -21,8 +21,9 @@ async function handleSubmit() {
   errorMessage.value = ''
   submitting.value = true
   try {
-    await auth.signInAdmin(form.email, form.password)
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/admin'
+    await auth.signInStaff(form.email, form.password)
+    const fallback = auth.isStoreOwner ? '/store/manage' : '/admin'
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : fallback
     router.push(redirect)
   } catch (err) {
     errorMessage.value = err instanceof Error ? err.message : 'Unable to sign in.'
@@ -34,8 +35,8 @@ async function handleSubmit() {
 
 <template>
   <div class="auth-form">
-    <h1 class="auth-title">Admin Sign In</h1>
-    <p class="auth-subtitle">Store administration access only.</p>
+    <h1 class="auth-title">Staff Sign In</h1>
+    <p class="auth-subtitle">Admin and store owner access only.</p>
 
     <form class="form" @submit.prevent="handleSubmit">
       <div class="form-field">

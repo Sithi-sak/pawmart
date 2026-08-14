@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import { PhArrowLeft, PhArrowRight, PhMagnifyingGlass, PhShoppingCart } from '@phosphor-icons/vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { fetchCategories, fetchProducts, type Product } from '@/lib/products'
 import { useCartStore } from '@/stores/cart'
 import dogImg from '@/assets/images/dog.jpg'
@@ -12,6 +12,7 @@ import fishImg from '@/assets/images/fish.jpg'
 import smallPetImg from '@/assets/images/small_pets.png'
 
 const cart = useCartStore()
+const router = useRouter()
 
 const species = ['Dog', 'Cat', 'Bird', 'Fish', 'Small Pet']
 
@@ -141,9 +142,26 @@ function pad(n: number) {
   return String(n).padStart(2, '0')
 }
 
-function addToCart(p: Product) {
+async function addToCart(p: Product) {
+  if (cart.conflictsWithCart(p)) {
+    try {
+      await ElMessageBox.confirm(
+        `Your cart has items from ${cart.activeStoreName ?? 'another store'}. Clear it to add items from a different store?`,
+        'Different Store',
+        { confirmButtonText: 'Clear Cart & Add', cancelButtonText: 'Cancel', type: 'warning' },
+      )
+    } catch {
+      return
+    }
+    cart.clear()
+  }
+
   cart.addItem(p)
   ElMessage.success(`Added "${p.name}" to cart`)
+}
+
+function goToStore(p: Product) {
+  if (p.stores) router.push(`/store/${p.stores.slug}`)
 }
 </script>
 
@@ -248,6 +266,14 @@ function addToCart(p: Product) {
             <div class="product-info">
               <h3 class="product-name">{{ p.name }}</h3>
               <p class="product-category">{{ (p.categories?.name ?? '').toUpperCase() }}</p>
+              <button
+                v-if="p.stores"
+                type="button"
+                class="sold-by-link"
+                @click.stop.prevent="goToStore(p)"
+              >
+                Sold by {{ p.stores.name }}
+              </button>
               <div class="product-footer">
                 <p class="product-price">${{ Number(p.price).toFixed(2) }}</p>
                 <button type="button" class="cart-btn" @click.prevent="addToCart(p)">
@@ -468,7 +494,20 @@ function addToCart(p: Product) {
   font-size: 0.75rem;
   letter-spacing: 0.05em;
   opacity: 0.6;
+  margin-bottom: 0.35rem;
+}
+
+.sold-by-link {
+  display: block;
+  background: none;
+  border: none;
+  padding: 0;
   margin-bottom: 0.75rem;
+  font-family: inherit;
+  font-size: 0.75rem;
+  color: var(--color-accent);
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .product-footer {

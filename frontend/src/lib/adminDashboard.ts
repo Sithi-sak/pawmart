@@ -22,24 +22,26 @@ function daysAgo(days: number): Date {
   return date
 }
 
-// Sales overview for the admin dashboard (task 3.7). Reads orders/customers
-// directly via RLS (admins can see all rows) rather than a backend
-// endpoint — same pattern as the rest of the admin reads in this app.
-export async function fetchDashboardStats(): Promise<DashboardStats> {
+// Sales overview for the admin dashboard (task 3.7), reused for a single
+// store's dashboard (task 3.10.4) by passing storeId. Reads orders/customers
+// directly via RLS (admins see all rows, store owners only their own store's
+// orders per the 3.10.1 policies) rather than a backend endpoint — same
+// pattern as the rest of the admin reads in this app.
+export async function fetchDashboardStats(storeId?: number): Promise<DashboardStats> {
   const monthStart = startOfMonth()
   const lastMonthStart = startOfMonth(-1)
   const weekStart = daysAgo(7)
 
-  const [ordersResult, customersResult] = await Promise.all([
-    supabase
-      .from('orders')
-      .select('total, payment_status, created_at')
-      .gte('created_at', lastMonthStart.toISOString()),
-    supabase.from('customers').select('created_at').gte('created_at', lastMonthStart.toISOString()),
-  ])
+  let ordersQuery = supabase
+    .from('orders')
+    .select('total, payment_status, created_at')
+    .gte('created_at', lastMonthStart.toISOString())
+  if (storeId !== undefined) {
+    ordersQuery = ordersQuery.eq('store_id', storeId)
+  }
 
+  const ordersResult = await ordersQuery
   if (ordersResult.error) throw ordersResult.error
-  if (customersResult.error) throw customersResult.error
 
   const paidOrders = (ordersResult.data ?? []).filter((o) => o.payment_status === 'paid')
   const thisMonthOrders = paidOrders.filter((o) => new Date(o.created_at) >= monthStart)
@@ -50,9 +52,20 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
   const revenueThisMonth = thisMonthOrders.reduce((sum, o) => sum + Number(o.total), 0)
   const revenueLastMonth = lastMonthOrders.reduce((sum, o) => sum + Number(o.total), 0)
 
-  const customers = customersResult.data ?? []
-  const newCustomersThisMonth = customers.filter((c) => new Date(c.created_at) >= monthStart).length
-  const newCustomersThisWeek = customers.filter((c) => new Date(c.created_at) >= weekStart).length
+  // Customers aren't scoped to a store, so "new customers" is only a
+  // meaningful stat on the platform-wide admin dashboard.
+  let newCustomersThisMonth = 0
+  let newCustomersThisWeek = 0
+  if (storeId === undefined) {
+    const customersResult = await supabase
+      .from('customers')
+      .select('created_at')
+      .gte('created_at', lastMonthStart.toISOString())
+    if (customersResult.error) throw customersResult.error
+    const customers = customersResult.data ?? []
+    newCustomersThisMonth = customers.filter((c) => new Date(c.created_at) >= monthStart).length
+    newCustomersThisWeek = customers.filter((c) => new Date(c.created_at) >= weekStart).length
+  }
 
   return {
     revenueThisMonth,

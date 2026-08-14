@@ -12,6 +12,8 @@ export interface CartItem {
   image: string | null
   price: number
   quantity: number
+  storeId: number | null
+  storeName: string | null
 }
 
 interface CartItemRow {
@@ -23,6 +25,8 @@ interface CartItemRow {
     brand: string | null
     price: number
     images: string[]
+    store_id: number | null
+    stores: { id: number; name: string } | null
   }
 }
 
@@ -35,6 +39,8 @@ function toCartItem(row: CartItemRow): CartItem {
     image: row.products.images[0] ?? null,
     price: row.products.price,
     quantity: row.quantity,
+    storeId: row.products.store_id,
+    storeName: row.products.stores?.name ?? null,
   }
 }
 
@@ -66,7 +72,7 @@ export const useCartStore = defineStore('cart', () => {
   async function load(customerId: string) {
     const { data, error } = await supabase
       .from('cart_items')
-      .select('quantity, products(id, slug, name, brand, price, images)')
+      .select('quantity, products(id, slug, name, brand, price, images, store_id, stores(id, name))')
       .eq('customer_id', customerId)
 
     if (error) throw error
@@ -150,6 +156,16 @@ export const useCartStore = defineStore('cart', () => {
       .eq('product_id', productId)
   }
 
+  // Cart currently holds items from at most one store — mirrors the
+  // backend's `create_order` rejection of mixed-store carts (3.10.3), but
+  // catches it before checkout so the customer isn't surprised there.
+  const activeStoreId = computed(() => items.value[0]?.storeId ?? null)
+  const activeStoreName = computed(() => items.value[0]?.storeName ?? null)
+
+  function conflictsWithCart(product: Product): boolean {
+    return items.value.length > 0 && activeStoreId.value !== product.store_id
+  }
+
   function addItem(product: Product, quantity = 1) {
     const existing = items.value.find((item) => item.productId === product.id)
     const newQuantity = (existing?.quantity ?? 0) + quantity
@@ -165,6 +181,8 @@ export const useCartStore = defineStore('cart', () => {
         image: product.images[0] ?? null,
         price: product.price,
         quantity,
+        storeId: product.store_id,
+        storeName: product.stores?.name ?? null,
       })
     }
 
@@ -219,6 +237,8 @@ export const useCartStore = defineStore('cart', () => {
     subtotal,
     discount,
     total,
+    activeStoreName,
+    conflictsWithCart,
     addItem,
     applyVoucher,
     removeVoucher,

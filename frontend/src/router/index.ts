@@ -3,12 +3,14 @@ import DefaultLayout from '../layouts/DefaultLayout.vue'
 import AdminLayout from '../layouts/AdminLayout.vue'
 import AuthLayout from '../layouts/AuthLayout.vue'
 import AdminAuthLayout from '../layouts/AdminAuthLayout.vue'
+import StoreOwnerLayout from '../layouts/StoreOwnerLayout.vue'
 import { useAuthStore } from '../stores/auth'
 
 declare module 'vue-router' {
   interface RouteMeta {
     requiresAuth?: boolean
     requiresAdmin?: boolean
+    requiresStoreOwner?: boolean
   }
 }
 
@@ -77,6 +79,12 @@ const router = createRouter({
           name: 'order-history',
           component: () => import('../views/OrderHistoryView.vue'),
           meta: { requiresAuth: true },
+        },
+        {
+          path: 'store/:slug',
+          name: 'store-detail',
+          component: () => import('../views/StoreDetailView.vue'),
+          props: true,
         },
         { path: 'about', name: 'about', component: () => import('../views/AboutView.vue') },
         {
@@ -156,11 +164,33 @@ const router = createRouter({
         },
       ],
     },
+    {
+      path: '/store/manage',
+      component: StoreOwnerLayout,
+      meta: { requiresStoreOwner: true },
+      children: [
+        {
+          path: '',
+          name: 'store-manage-dashboard',
+          component: () => import('../views/store/StoreOwnerDashboardView.vue'),
+        },
+        {
+          path: 'products',
+          name: 'store-manage-products',
+          component: () => import('../views/store/StoreOwnerProductsView.vue'),
+        },
+        {
+          path: 'orders',
+          name: 'store-manage-orders',
+          component: () => import('../views/store/StoreOwnerOrdersView.vue'),
+        },
+      ],
+    },
   ],
 })
 
 router.beforeEach(async (to) => {
-  if (!to.meta.requiresAuth && !to.meta.requiresAdmin) return true
+  if (!to.meta.requiresAuth && !to.meta.requiresAdmin && !to.meta.requiresStoreOwner) return true
 
   const auth = useAuthStore()
   await auth.init()
@@ -172,13 +202,24 @@ router.beforeEach(async (to) => {
     return true
   }
 
+  if (to.meta.requiresStoreOwner) {
+    if (!auth.isAuthenticated || !auth.isStoreOwner) {
+      return { name: 'admin-login', query: { redirect: to.fullPath } }
+    }
+    return true
+  }
+
   if (!auth.isAuthenticated) {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
-  // Admin credentials are a separate identity from any customer account —
-  // don't let an admin session render customer-facing account pages.
+  // Staff credentials are a separate identity from any customer account —
+  // don't let an admin or store-owner session render customer-facing
+  // account pages.
   if (auth.isAdmin) {
     return { name: 'admin-dashboard' }
+  }
+  if (auth.isStoreOwner) {
+    return { name: 'store-manage-dashboard' }
   }
   return true
 })
