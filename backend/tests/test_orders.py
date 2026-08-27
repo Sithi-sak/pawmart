@@ -3,7 +3,14 @@ from conftest import FakeSupabase
 from fastapi import HTTPException
 
 from backend.core.deps import CurrentCustomer
-from backend.routers.orders import OrderItemIn, _price_cart, get_order, list_orders
+from backend.routers.orders import (
+    OrderItemIn,
+    OrderStatusUpdateIn,
+    _price_cart,
+    get_order,
+    list_orders,
+    update_order_status,
+)
 
 
 def _items(*pairs: tuple[int, int]) -> list[OrderItemIn]:
@@ -192,3 +199,61 @@ class TestListOrdersScoping:
     def test_admin_has_no_blanket_view_of_all_orders(self, order_supabase):
         customer = CurrentCustomer(id="admin-1", email="admin@x.com", role="admin")
         assert [o["id"] for o in list_orders(customer=customer)] == [3]
+
+
+# Order 1 (store 10, owner-1) starts "confirmed" -- every test below advances
+# it at most once, since a second successful advance would insert a second
+# order_status_history row with no created_at, and FakeQuery.order() can't
+# sort two equal (None) sort keys (see checkpoint 5.7 notes).
+class TestUpdateOrderStatus:
+    def _owner1(self) -> CurrentCustomer:
+        return CurrentCustomer(id="owner-1", email="o@x.com", role="store_owner")
+
+    def test_store_owner_can_advance_their_own_order(self, order_supabase):
+        result = update_order_status(1, OrderStatusUpdateIn(status="processing"), staff=self._owner1())
+        assert result["status"] == "processing"
+
+    def test_advancing_records_a_status_history_entry(self, order_supabase):
+        update_order_status(1, OrderStatusUpdateIn(status="processing"), staff=self._owner1())
+        history = order_supabase.table("order_status_history").select("*").execute().data
+        assert [h["status"] for h in history] == ["processing"]
+
+    def test_same_status_is_rejected(self, order_supabase):
+        with pytest.raises(HTTPException) as exc_info:
+            update_order_status(1, OrderStatusUpdateIn(status="confirmed"), staff=self._owner1())
+        assert exc_info.value.status_code == 400
+
+    def test_backward_status_is_rejected(self, order_supabase):
+        # Order 1 is seeded at "confirmed" -- "processing" (index 0) is
+        # already forward of nothing, so seed straight at a later status to
+        # exercise an actual backward move without a second history insert.
+        order_supabase.seed(
+            "orders",
+            [
+                {"id": 1, "customer_id": "cust-1", "store_id": 10, "status": "shipping",
+                 "created_at": "2026-01-01T00:00:00Z"},
+            ],
+        )
+        with pytest.raises(HTTPException) as exc_info:
+            update_order_status(1, OrderStatusUpdateIn(status="processing"), staff=self._owner1())
+        assert exc_info.value.status_code == 400
+
+    def test_skipping_intermediate_statuses_in_one_hop_is_allowed_by_design(self, order_supabase):
+        # The checkpoint's 5.7 wording ("can't skip/go backward") reads as if
+        # skipping were also blocked, but update_order_status only rejects
+        # new_index <= current_index -- any later status is a valid one-hop
+        # move. This matches StoreOwnerOrdersView's dropdown, which offers
+        # every remaining status (not just the immediate next one). Testing
+        # the actual behavior here rather than the checklist's wording.
+        result = update_order_status(1, OrderStatusUpdateIn(status="delivered"), staff=self._owner1())
+        assert result["status"] == "delivered"
+
+    def test_store_owner_cannot_update_another_stores_order(self, order_supabase):
+        with pytest.raises(HTTPException) as exc_info:
+            update_order_status(2, OrderStatusUpdateIn(status="processing"), staff=self._owner1())
+        assert exc_info.value.status_code == 403
+
+    def test_nonexistent_order_raises_404(self, order_supabase):
+        with pytest.raises(HTTPException) as exc_info:
+            update_order_status(999, OrderStatusUpdateIn(status="processing"), staff=self._owner1())
+        assert exc_info.value.status_code == 404
