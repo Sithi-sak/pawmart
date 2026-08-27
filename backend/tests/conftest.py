@@ -31,6 +31,10 @@ class FakeQuery:
         self._rows = [r for r in self._rows if r.get(key) in values]
         return self
 
+    def order(self, key, desc=False):
+        self._rows = sorted(self._rows, key=lambda r: r.get(key), reverse=desc)
+        return self
+
     def maybe_single(self):
         self._single = True
         return self

@@ -1,8 +1,9 @@
 import pytest
+from conftest import FakeSupabase
 from fastapi import HTTPException
 
-from backend.routers.orders import OrderItemIn, _price_cart
-from conftest import FakeSupabase
+from backend.core.deps import CurrentCustomer
+from backend.routers.orders import OrderItemIn, _price_cart, get_order, list_orders
 
 
 def _items(*pairs: tuple[int, int]) -> list[OrderItemIn]:
@@ -107,3 +108,87 @@ class TestTotals:
         pricing = _price_cart(supabase, _items((1, 1)), "PAWMART10", "standard")
         expected_tax = round((20.0 - 2.0) * 0.0875, 2)
         assert pricing["tax"] == expected_tax
+
+
+# get_order/list_orders call get_supabase() internally (unlike _price_cart,
+# which takes it as an explicit argument) so, same as test_deps.py, the fake
+# has to be patched in at the router module's own import binding.
+@pytest.fixture
+def order_supabase(monkeypatch):
+    fake = FakeSupabase()
+    monkeypatch.setattr("backend.routers.orders.get_supabase", lambda: fake)
+    fake.seed(
+        "stores",
+        [
+            {"id": 10, "owner_id": "owner-1", "status": "active"},
+            {"id": 20, "owner_id": "owner-2", "status": "active"},
+        ],
+    )
+    fake.seed(
+        "orders",
+        [
+            {"id": 1, "customer_id": "cust-1", "store_id": 10, "status": "confirmed",
+             "created_at": "2026-01-01T00:00:00Z"},
+            {"id": 2, "customer_id": "cust-2", "store_id": 20, "status": "confirmed",
+             "created_at": "2026-01-02T00:00:00Z"},
+            {"id": 3, "customer_id": "admin-1", "store_id": 10, "status": "confirmed",
+             "created_at": "2026-01-03T00:00:00Z"},
+        ],
+    )
+    fake.seed("order_items", [])
+    fake.seed("order_status_history", [])
+    return fake
+
+
+class TestGetOrderAccessControl:
+    def test_customer_can_view_their_own_order(self, order_supabase):
+        customer = CurrentCustomer(id="cust-1", email="a@gmail.com", role="customer")
+        assert get_order(1, customer=customer)["id"] == 1
+
+    def test_customer_cannot_view_another_customers_order_by_guessing_its_id(self, order_supabase):
+        customer = CurrentCustomer(id="cust-1", email="a@gmail.com", role="customer")
+        with pytest.raises(HTTPException) as exc_info:
+            get_order(2, customer=customer)
+        assert exc_info.value.status_code == 403
+
+    def test_nonexistent_order_id_raises_404(self, order_supabase):
+        customer = CurrentCustomer(id="cust-1", email="a@gmail.com", role="customer")
+        with pytest.raises(HTTPException) as exc_info:
+            get_order(999, customer=customer)
+        assert exc_info.value.status_code == 404
+
+    def test_store_owner_can_view_their_own_stores_order(self, order_supabase):
+        customer = CurrentCustomer(id="owner-1", email="o@x.com", role="store_owner")
+        assert get_order(1, customer=customer)["id"] == 1
+
+    def test_store_owner_cannot_view_another_stores_order(self, order_supabase):
+        customer = CurrentCustomer(id="owner-1", email="o@x.com", role="store_owner")
+        with pytest.raises(HTTPException) as exc_info:
+            get_order(2, customer=customer)
+        assert exc_info.value.status_code == 403
+
+    def test_admin_has_no_blanket_bypass_for_another_customers_order(self, order_supabase):
+        # Checkpoint 3.10.9: admin lost its list_orders/get_order bypass, so
+        # it's scoped to its own orders same as a plain customer.
+        customer = CurrentCustomer(id="admin-1", email="admin@x.com", role="admin")
+        with pytest.raises(HTTPException) as exc_info:
+            get_order(1, customer=customer)
+        assert exc_info.value.status_code == 403
+
+    def test_admin_can_still_view_an_order_that_is_actually_theirs(self, order_supabase):
+        customer = CurrentCustomer(id="admin-1", email="admin@x.com", role="admin")
+        assert get_order(3, customer=customer)["id"] == 3
+
+
+class TestListOrdersScoping:
+    def test_customer_only_sees_their_own_orders(self, order_supabase):
+        customer = CurrentCustomer(id="cust-1", email="a@gmail.com", role="customer")
+        assert [o["id"] for o in list_orders(customer=customer)] == [1]
+
+    def test_store_owner_only_sees_their_stores_orders(self, order_supabase):
+        customer = CurrentCustomer(id="owner-2", email="o2@x.com", role="store_owner")
+        assert [o["id"] for o in list_orders(customer=customer)] == [2]
+
+    def test_admin_has_no_blanket_view_of_all_orders(self, order_supabase):
+        customer = CurrentCustomer(id="admin-1", email="admin@x.com", role="admin")
+        assert [o["id"] for o in list_orders(customer=customer)] == [3]
