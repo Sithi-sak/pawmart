@@ -49,12 +49,51 @@ class FakeQuery:
         return FakeResult(list(self._rows))
 
 
+class FakeInsertQuery:
+    """Stand-in for .insert(data).execute() — appends to the table's real
+    row list (not a copy) so later selects on the same fixture see it."""
+
+    def __init__(self, table_rows: list[dict], data: dict | list[dict]):
+        self._table_rows = table_rows
+        self._inserted = [data] if isinstance(data, dict) else list(data)
+
+    def execute(self):
+        self._table_rows.extend(self._inserted)
+        return FakeResult(list(self._inserted))
+
+
+class FakeUpdateQuery:
+    """Stand-in for .update(data).eq(...).execute() — mutates matching rows
+    in place on the table's real row list."""
+
+    def __init__(self, table_rows: list[dict], data: dict):
+        self._table_rows = table_rows
+        self._data = data
+        self._filters: list[tuple[str, object]] = []
+
+    def eq(self, key, value):
+        self._filters.append((key, value))
+        return self
+
+    def execute(self):
+        matched = [r for r in self._table_rows if all(r.get(k) == v for k, v in self._filters)]
+        for row in matched:
+            row.update(self._data)
+        return FakeResult(matched)
+
+
 class FakeTable:
     def __init__(self, rows: list[dict]):
         self._rows = rows
 
     def select(self, *_args, **_kwargs):
         return FakeQuery(list(self._rows))
+
+    def insert(self, data):
+        return FakeInsertQuery(self._rows, data)
+
+    def update(self, data):
+        return FakeUpdateQuery(self._rows, data)
 
 
 class FakeAuth:
