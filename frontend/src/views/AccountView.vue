@@ -15,6 +15,7 @@ import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { fetchPets, createPet, type Pet } from '@/lib/pets'
 import { fetchRewards, redeemReward, type Reward } from '@/lib/loyalty'
+import { fetchOrders, type OrderSummary, type OrderStatus } from '@/lib/orders'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -80,19 +81,38 @@ onMounted(async () => {
   }
 })
 
-interface RecentOrder {
-  id: number
-  name: string
-  status: string
-  date: string
-  price: number
+const STATUS_LABELS: Record<OrderStatus, string> = {
+  confirmed: 'Confirmed',
+  processing: 'Processing',
+  shipping: 'Shipping',
+  out_for_delivery: 'Out for Delivery',
+  delivered: 'Delivered',
 }
 
-const recentOrders: RecentOrder[] = [
-  { id: 1, name: 'The Signature Collar', status: 'Delivered', date: 'Oct 12', price: 245 },
-  { id: 2, name: 'Matte Ceramic Bowl', status: 'Shipped', date: 'Oct 08', price: 85 },
-  { id: 3, name: 'Cashmere Pet Throw', status: 'Delivered', date: 'Sep 24', price: 420 },
-]
+const recentOrders = reactive<OrderSummary[]>([])
+const ordersLoading = ref(true)
+const ordersError = ref(false)
+
+onMounted(async () => {
+  if (!auth.session) {
+    ordersLoading.value = false
+    ordersError.value = true
+    return
+  }
+
+  try {
+    const orders = await fetchOrders(auth.session.access_token)
+    recentOrders.push(...orders.slice(0, 3))
+  } catch {
+    ordersError.value = true
+  } finally {
+    ordersLoading.value = false
+  }
+})
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
 
 const rewards = reactive<Reward[]>([])
 const rewardsLoading = ref(true)
@@ -320,16 +340,23 @@ async function saveCompanion() {
         </div>
         <div class="card-divider"></div>
 
-        <div class="order-list">
+        <p v-if="ordersLoading" class="pets-loading">Loading your orders…</p>
+        <p v-else-if="ordersError" class="pets-loading">We couldn't load your orders.</p>
+        <p v-else-if="recentOrders.length === 0" class="pets-loading">
+          You haven't placed any orders yet.
+        </p>
+
+        <div v-else class="order-list">
           <div v-for="order in recentOrders" :key="order.id" class="order-row">
             <div class="order-thumb placeholder-img"></div>
             <div class="order-info">
-              <p class="order-name">{{ order.name }}</p>
+              <p class="order-name">Order #{{ order.order_number }}</p>
               <p class="order-status">
-                {{ order.status.toUpperCase() }} &bull; {{ order.date.toUpperCase() }}
+                {{ STATUS_LABELS[order.status].toUpperCase() }} &bull;
+                {{ formatDate(order.created_at).toUpperCase() }}
               </p>
             </div>
-            <p class="order-price">{{ formatPrice(order.price) }}</p>
+            <p class="order-price">{{ formatPrice(order.total) }}</p>
           </div>
         </div>
 

@@ -2,13 +2,15 @@ import random
 import string
 from typing import Literal
 
+import stripe
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
+from ..core.config import get_settings
 from ..core.deps import (
     CurrentCustomer,
     get_current_customer,
-    require_admin_or_store_owner,
+    require_store_owner,
 )
 from ..core.supabase import get_supabase
 from .loyalty import award_points_for_order
@@ -44,6 +46,16 @@ class OrderCreateIn(BaseModel):
     shipping: ShippingIn
     payment_method: Literal["visa", "aba_payway", "khqr"]
     voucher_code: str | None = None
+    # Only present (and required) for payment_method == "visa" — the
+    # PaymentIntent created by POST /payment-intent, confirmed client-side
+    # with Stripe Elements before "Place Order" ever calls this endpoint.
+    payment_intent_id: str | None = None
+
+
+class PaymentIntentIn(BaseModel):
+    items: list[OrderItemIn]
+    shipping_method: Literal["standard", "express"]
+    voucher_code: str | None = None
 
 
 class OrderStatusUpdateIn(BaseModel):
@@ -59,6 +71,7 @@ def _owned_store_id(supabase, owner_id: str) -> int | None:
         supabase.table("stores")
         .select("id")
         .eq("owner_id", owner_id)
+        .eq("status", "active")
         .maybe_single()
         .execute()
         .data
@@ -66,35 +79,11 @@ def _owned_store_id(supabase, owner_id: str) -> int | None:
     return store["id"] if store else None
 
 
-def _load_order(supabase, order_id: int) -> dict:
-    order = (
-        supabase.table("orders").select("*").eq("id", order_id).maybe_single().execute().data
-    )
-    if order is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
-    items = supabase.table("order_items").select("*").eq("order_id", order_id).execute().data
-    history = (
-        supabase.table("order_status_history")
-        .select("*")
-        .eq("order_id", order_id)
-        .order("created_at")
-        .execute()
-        .data
-    )
-    return {**order, "items": items, "status_history": history}
-
-
-@router.post("", status_code=status.HTTP_201_CREATED)
-def create_order(
-    payload: OrderCreateIn,
-    customer: CurrentCustomer = Depends(get_current_customer),  # noqa: B008
-) -> dict:
-    if not payload.items:
+def _price_cart(supabase, items: list[OrderItemIn], voucher_code: str | None, shipping_method: str) -> dict:
+    if not items:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cart is empty")
 
-    supabase = get_supabase()
-
-    product_ids = [item.product_id for item in payload.items]
+    product_ids = [item.product_id for item in items]
     products = (
         supabase.table("products")
         .select("id, name, price, stock, store_id")
@@ -118,9 +107,21 @@ def create_order(
         )
     store_id = store_ids.pop()
 
+    # Hiding a banned store from the catalog only stops customers from
+    # discovering its products -- an item added to the cart before the ban
+    # can still reach checkout, so re-check status here (this call uses the
+    # service-role key and bypasses the RLS gate that owns_store() enforces
+    # everywhere else, see 3.10.10 notes).
+    store = supabase.table("stores").select("status").eq("id", store_id).maybe_single().execute().data
+    if store is None or store["status"] != "active":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This store is no longer accepting orders",
+        )
+
     line_items = []
     subtotal = 0.0
-    for item in payload.items:
+    for item in items:
         product = products_by_id[item.product_id]
         if item.quantity > product["stock"]:
             raise HTTPException(
@@ -139,41 +140,135 @@ def create_order(
         )
 
     discount = 0.0
-    if payload.voucher_code:
-        rate = VOUCHER_RATES.get(payload.voucher_code.strip().upper())
+    if voucher_code:
+        rate = VOUCHER_RATES.get(voucher_code.strip().upper())
         if rate is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid voucher code"
             )
         discount = subtotal * rate
 
-    shipping_cost = SHIPPING_COSTS[payload.shipping.method]
+    shipping_cost = SHIPPING_COSTS[shipping_method]
     tax = round((subtotal - discount + shipping_cost) * TAX_RATE, 2)
     total = round(subtotal - discount + shipping_cost + tax, 2)
-    payment_status = "pending_confirmation" if payload.payment_method == "khqr" else "paid"
+
+    return {
+        "store_id": store_id,
+        "products_by_id": products_by_id,
+        "line_items": line_items,
+        "subtotal": round(subtotal, 2),
+        "discount": round(discount, 2),
+        "shipping_cost": shipping_cost,
+        "tax": tax,
+        "total": total,
+    }
+
+
+def _load_order(supabase, order_id: int) -> dict:
+    order = (
+        supabase.table("orders").select("*").eq("id", order_id).maybe_single().execute().data
+    )
+    if order is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
+    items = supabase.table("order_items").select("*").eq("order_id", order_id).execute().data
+    history = (
+        supabase.table("order_status_history")
+        .select("*")
+        .eq("order_id", order_id)
+        .order("created_at")
+        .execute()
+        .data
+    )
+    return {**order, "items": items, "status_history": history}
+
+
+@router.post("/payment-intent")
+def create_payment_intent(
+    payload: PaymentIntentIn,
+    customer: CurrentCustomer = Depends(get_current_customer),  # noqa: B008
+) -> dict:
+    supabase = get_supabase()
+    pricing = _price_cart(supabase, payload.items, payload.voucher_code, payload.shipping_method)
+
+    stripe.api_key = get_settings().stripe_secret_key
+    intent = stripe.PaymentIntent.create(
+        amount=round(pricing["total"] * 100),
+        currency="usd",
+        payment_method_types=["card"],
+        metadata={"customer_id": customer.id},
+    )
+    return {"client_secret": intent.client_secret, "payment_intent_id": intent.id}
+
+
+@router.post("", status_code=status.HTTP_201_CREATED)
+def create_order(
+    payload: OrderCreateIn,
+    customer: CurrentCustomer = Depends(get_current_customer),  # noqa: B008
+) -> dict:
+    supabase = get_supabase()
+    pricing = _price_cart(
+        supabase, payload.items, payload.voucher_code, payload.shipping.method
+    )
+
+    if payload.payment_method == "visa":
+        if not payload.payment_intent_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Missing payment_intent_id"
+            )
+        stripe.api_key = get_settings().stripe_secret_key
+        try:
+            intent = stripe.PaymentIntent.retrieve(payload.payment_intent_id)
+        except stripe.error.StripeError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid payment intent"
+            ) from exc
+
+        # StripeObject (stripe-python 15+) has no .get() -- only __getitem__/__contains__.
+        intent_customer_id = intent.metadata["customer_id"] if "customer_id" in intent.metadata else None  # noqa: SIM401
+        if intent_customer_id != customer.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your payment")
+        if intent.status != "succeeded":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Payment has not succeeded"
+            )
+        if intent.amount != round(pricing["total"] * 100):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Payment amount does not match order total"
+            )
+        payment_status = "paid"
+    else:
+        payment_status = "pending_confirmation" if payload.payment_method == "khqr" else "paid"
 
     order_row = {
         "order_number": _generate_order_number(),
         "customer_id": customer.id,
-        "store_id": store_id,
+        "store_id": pricing["store_id"],
         "shipping_full_name": payload.shipping.full_name,
         "shipping_phone": payload.shipping.phone,
         "shipping_street": payload.shipping.street,
         "shipping_city": payload.shipping.city,
         "shipping_postal_code": payload.shipping.postal_code,
         "shipping_method": payload.shipping.method,
-        "shipping_cost": shipping_cost,
+        "shipping_cost": pricing["shipping_cost"],
         "payment_method": payload.payment_method,
         "payment_status": payment_status,
-        "subtotal": round(subtotal, 2),
-        "discount": round(discount, 2),
-        "tax": tax,
-        "total": total,
+        "stripe_payment_intent_id": payload.payment_intent_id,
+        "subtotal": pricing["subtotal"],
+        "discount": pricing["discount"],
+        "tax": pricing["tax"],
+        "total": pricing["total"],
     }
 
-    order = supabase.table("orders").insert(order_row).execute().data[0]
+    try:
+        order = supabase.table("orders").insert(order_row).execute().data[0]
+    except Exception as exc:
+        # Unique constraint on stripe_payment_intent_id -- this PaymentIntent
+        # already paid for a different order (double-submit / replay).
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="This payment has already been used"
+        ) from exc
 
-    order_items_rows = [{**li, "order_id": order["id"]} for li in line_items]
+    order_items_rows = [{**li, "order_id": order["id"]} for li in pricing["line_items"]]
     inserted_items = supabase.table("order_items").insert(order_items_rows).execute().data
     history = (
         supabase.table("order_status_history")
@@ -183,7 +278,7 @@ def create_order(
     )
 
     for item in payload.items:
-        product = products_by_id[item.product_id]
+        product = pricing["products_by_id"][item.product_id]
         supabase.table("products").update({"stock": product["stock"] - item.quantity}).eq(
             "id", item.product_id
         ).execute()
@@ -198,14 +293,15 @@ def list_orders(
     customer: CurrentCustomer = Depends(get_current_customer),  # noqa: B008
 ) -> list[dict]:
     supabase = get_supabase()
-    is_admin_caller = customer.role == "admin"
     is_store_owner_caller = customer.role == "store_owner"
 
     query = supabase.table("orders").select("*").order("created_at", desc=True)
     if is_store_owner_caller:
         store_id = _owned_store_id(supabase, customer.id)
         query = query.eq("store_id", store_id if store_id is not None else -1)
-    elif not is_admin_caller:
+    else:
+        # Admin has no blanket order visibility here (checkpoint 3.10.9) --
+        # scoped to their own orders same as a plain customer.
         query = query.eq("customer_id", customer.id)
     orders = query.execute().data
 
@@ -219,7 +315,7 @@ def list_orders(
     for item in items:
         item_counts[item["order_id"]] = item_counts.get(item["order_id"], 0) + item["quantity"]
 
-    show_customer_info = is_admin_caller or is_store_owner_caller
+    show_customer_info = is_store_owner_caller
     customers_by_id: dict[str, dict] = {}
     if show_customer_info and orders:
         customer_ids = list({o["customer_id"] for o in orders})
@@ -249,7 +345,7 @@ def get_order(
 ) -> dict:
     supabase = get_supabase()
     order = _load_order(supabase, order_id)
-    if order["customer_id"] == customer.id or customer.role == "admin":
+    if order["customer_id"] == customer.id:
         return order
     if customer.role == "store_owner" and order["store_id"] == _owned_store_id(
         supabase, customer.id
@@ -262,12 +358,12 @@ def get_order(
 def update_order_status(
     order_id: int,
     payload: OrderStatusUpdateIn,
-    staff: CurrentCustomer = Depends(require_admin_or_store_owner),  # noqa: B008
+    staff: CurrentCustomer = Depends(require_store_owner),  # noqa: B008
 ) -> dict:
     supabase = get_supabase()
     order = _load_order(supabase, order_id)
 
-    if staff.role == "store_owner" and order["store_id"] != _owned_store_id(supabase, staff.id):
+    if order["store_id"] != _owned_store_id(supabase, staff.id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your store's order")
 
     current_index = ORDER_STATUSES.index(order["status"])

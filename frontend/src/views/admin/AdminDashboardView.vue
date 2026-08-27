@@ -7,10 +7,8 @@ import {
   PhChartLineUp,
   PhTrendUp,
   PhTrendDown,
-  PhWarning,
 } from '@phosphor-icons/vue'
 import { fetchDashboardStats, type DashboardStats } from '@/lib/adminDashboard'
-import { LOW_STOCK_THRESHOLD, fetchProducts, isLowStock, type Product } from '@/lib/products'
 
 interface Stat {
   label: string
@@ -32,7 +30,6 @@ function formatDelta(current: number, previous: number): { text: string; trend: 
 }
 
 const dashboardStats = ref<DashboardStats | null>(null)
-const products = ref<Product[]>([])
 const loading = ref(true)
 const loadError = ref(false)
 
@@ -76,23 +73,11 @@ const stats = computed<Stat[]>(() => {
   ]
 })
 
-const lowStockProducts = computed(() =>
-  products.value.filter(isLowStock).sort((a, b) => a.stock - b.stock),
-)
-
-function stockStatus(product: Product) {
-  if (product.stock === 0) return 'Out of Stock'
-  if (product.stock <= LOW_STOCK_THRESHOLD / 3) return 'Critical'
-  return 'Low'
-}
-
 onMounted(async () => {
   loading.value = true
   loadError.value = false
   try {
-    const [statsResult, productRows] = await Promise.all([fetchDashboardStats(), fetchProducts()])
-    dashboardStats.value = statsResult
-    products.value = productRows
+    dashboardStats.value = await fetchDashboardStats()
   } catch {
     loadError.value = true
   } finally {
@@ -125,39 +110,6 @@ onMounted(async () => {
             {{ stat.delta }}
           </p>
         </div>
-      </div>
-
-      <div class="widget-card">
-        <div class="widget-header">
-          <div class="widget-heading">
-            <PhWarning :size="18" weight="bold" />
-            <h2>Low Stock Alerts</h2>
-          </div>
-          <span class="widget-count">{{ lowStockProducts.length }} items</span>
-        </div>
-
-        <el-table :data="lowStockProducts" style="width: 100%" empty-text="No low-stock products right now.">
-          <el-table-column prop="name" label="Product">
-            <template #default="{ row }">
-              <span class="cell-name">{{ row.name }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column label="Category">
-            <template #default="{ row }">
-              <span class="cell-muted">{{ row.categories?.name ?? '—' }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column label="Stock">
-            <template #default="{ row }">{{ row.stock }} / {{ LOW_STOCK_THRESHOLD }}</template>
-          </el-table-column>
-          <el-table-column label="Status">
-            <template #default="{ row }">
-              <span class="status-badge" :class="{ 'is-critical': stockStatus(row) !== 'Low' }">
-                {{ stockStatus(row) }}
-              </span>
-            </template>
-          </el-table-column>
-        </el-table>
       </div>
     </template>
   </div>
@@ -247,79 +199,6 @@ onMounted(async () => {
 
 .stat-delta.is-down {
   color: #c0392b;
-}
-
-/* Widget */
-.widget-card {
-  background: var(--color-background);
-  border: 1px solid var(--color-border);
-  padding: 1.5rem;
-}
-
-.widget-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-bottom: 1rem;
-  margin-bottom: 1rem;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.widget-heading {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  color: var(--color-accent);
-}
-
-.widget-heading h2 {
-  font-size: 1.1rem;
-  color: var(--color-heading);
-}
-
-.widget-count {
-  font-size: 0.8rem;
-  color: var(--color-text);
-  opacity: 0.65;
-}
-
-.cell-name {
-  color: var(--color-heading);
-  font-weight: 600;
-}
-
-.cell-muted {
-  opacity: 0.65;
-}
-
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  height: 1.6rem;
-  padding: 0 0.65rem;
-  font-size: 0.7rem;
-  letter-spacing: 0.03em;
-  font-weight: 600;
-  text-transform: uppercase;
-  background: #fbf0e9;
-  color: var(--color-accent-dark);
-}
-
-.status-badge.is-critical {
-  background: #fceceb;
-  color: #c0392b;
-}
-
-@media (prefers-color-scheme: dark) {
-  .status-badge {
-    background: rgba(218, 109, 31, 0.18);
-    color: #edb68f;
-  }
-
-  .status-badge.is-critical {
-    background: rgba(192, 57, 43, 0.2);
-    color: #f0908a;
-  }
 }
 
 @media (max-width: 900px) {

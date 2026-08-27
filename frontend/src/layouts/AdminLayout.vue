@@ -17,8 +17,7 @@ async function handleSignOut() {
       <RouterLink to="/admin" class="brand">🐾 PawMart Admin</RouterLink>
       <nav class="admin-nav">
         <RouterLink to="/admin">Dashboard</RouterLink>
-        <RouterLink to="/admin/products">Products</RouterLink>
-        <RouterLink to="/admin/orders">Orders</RouterLink>
+        <RouterLink to="/admin/stores">Stores</RouterLink>
         <RouterLink to="/admin/store-requests">Seller Requests</RouterLink>
       </nav>
       <button type="button" class="back-link" @click="handleSignOut">Sign Out</button>

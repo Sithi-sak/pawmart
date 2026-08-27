@@ -148,14 +148,9 @@ const router = createRouter({
           component: () => import('../views/admin/AdminDashboardView.vue'),
         },
         {
-          path: 'products',
-          name: 'admin-products',
-          component: () => import('../views/admin/AdminProductsView.vue'),
-        },
-        {
-          path: 'orders',
-          name: 'admin-orders',
-          component: () => import('../views/admin/AdminOrdersView.vue'),
+          path: 'stores',
+          name: 'admin-stores',
+          component: () => import('../views/admin/AdminStoresView.vue'),
         },
         {
           path: 'store-requests',

@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_key: str = ""
     cors_origins: list[str] = ["http://localhost:5173"]
+    stripe_secret_key: str = ""
 
 
 @lru_cache

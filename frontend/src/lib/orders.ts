@@ -68,6 +68,14 @@ export interface CreateOrderPayload {
   }
   payment_method: 'visa' | 'aba_payway' | 'khqr'
   voucher_code?: string | null
+  // Required for payment_method: 'visa' — see createPaymentIntent below.
+  payment_intent_id?: string | null
+}
+
+export interface CreatePaymentIntentPayload {
+  items: { product_id: number; quantity: number }[]
+  shipping_method: 'standard' | 'express'
+  voucher_code?: string | null
 }
 
 async function request<T>(path: string, accessToken: string, init?: RequestInit): Promise<T> {
@@ -90,6 +98,16 @@ async function request<T>(path: string, accessToken: string, init?: RequestInit)
 
 export function createOrder(payload: CreateOrderPayload, accessToken: string): Promise<Order> {
   return request<Order>('/api/orders', accessToken, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function createPaymentIntent(
+  payload: CreatePaymentIntentPayload,
+  accessToken: string,
+): Promise<{ client_secret: string; payment_intent_id: string }> {
+  return request('/api/orders/payment-intent', accessToken, {
     method: 'POST',
     body: JSON.stringify(payload),
   })

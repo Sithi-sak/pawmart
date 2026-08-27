@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import type { Stripe, StripeCardElement, StripeElements } from '@stripe/stripe-js'
 import {
   PhLock,
   PhCreditCard,
@@ -14,8 +15,9 @@ import {
 } from '@phosphor-icons/vue'
 import { useCartStore } from '../stores/cart'
 import { useAuthStore } from '../stores/auth'
-import { createOrder, type Order } from '../lib/orders'
+import { createOrder, createPaymentIntent, type Order } from '../lib/orders'
 import { POINTS_PER_DOLLAR } from '../lib/loyalty'
+import { stripePromise } from '../lib/stripe'
 
 type Step = 'shipping' | 'payment' | 'review'
 
@@ -74,19 +76,58 @@ const paymentMethod = ref<PaymentMethod>('visa')
 
 interface PaymentForm {
   cardholderName: string
-  cardNumber: string
-  expiryDate: string
-  cvv: string
   billingSameAsShipping: boolean
 }
 
 const paymentForm = reactive<PaymentForm>({
   cardholderName: '',
-  cardNumber: '',
-  expiryDate: '',
-  cvv: '',
   billingSameAsShipping: true,
 })
+
+const cardElementRef = ref<HTMLDivElement | null>(null)
+const cardError = ref<string | null>(null)
+const cardComplete = ref(false)
+let stripe: Stripe | null = null
+let elements: StripeElements | null = null
+let cardElement: StripeCardElement | null = null
+
+async function mountCardElement() {
+  if (!stripe) {
+    stripe = await stripePromise
+  }
+  if (!stripe || !cardElementRef.value) return
+
+  if (!elements) {
+    elements = stripe.elements()
+  }
+  if (!cardElement) {
+    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    cardElement = elements.create('card', {
+      hidePostalCode: true,
+      style: {
+        base: {
+          color: isDark ? '#dcdcdc' : '#303133',
+          '::placeholder': { color: isDark ? '#707070' : '#a8abb2' },
+        },
+      },
+    })
+    cardElement.on('change', (event) => {
+      cardError.value = event.error?.message ?? null
+      cardComplete.value = event.complete
+    })
+  } else {
+    cardElement.unmount()
+  }
+  cardElement.mount(cardElementRef.value)
+}
+
+watch(
+  () => currentStep.value === 'payment' && paymentMethod.value === 'visa',
+  (shouldMount) => {
+    if (shouldMount) mountCardElement()
+  },
+  { immediate: true, flush: 'post' },
+)
 
 function formatPrice(value: number) {
   return `$${value.toFixed(2)}`
@@ -98,6 +139,10 @@ function goToPayment() {
 }
 
 function goToReview() {
+  if (paymentMethod.value === 'visa' && !cardComplete.value) {
+    cardError.value = cardError.value ?? 'Enter your card details to continue'
+    return
+  }
   currentStep.value = 'review'
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
@@ -111,11 +156,6 @@ const isProcessing = ref(false)
 const khqrModalVisible = ref(false)
 const placedOrder = ref<Order | null>(null)
 
-const maskedCardNumber = computed(() => {
-  const digits = paymentForm.cardNumber.replace(/\s/g, '')
-  return digits.length >= 4 ? digits.slice(-4) : '••••'
-})
-
 async function placeOrder() {
   if (!auth.session) {
     router.push({ name: 'login', query: { redirect: '/checkout' } })
@@ -124,12 +164,41 @@ async function placeOrder() {
 
   isProcessing.value = true
   try {
+    const cartItems = cart.items.map((item) => ({
+      product_id: item.productId,
+      quantity: item.quantity,
+    }))
+
+    let paymentIntentId: string | null = null
+
+    if (paymentMethod.value === 'visa') {
+      if (!stripe || !cardElement) {
+        throw new Error('Payment form is not ready yet — please try again')
+      }
+      const { client_secret: clientSecret } = await createPaymentIntent(
+        {
+          items: cartItems,
+          shipping_method: shippingForm.method,
+          voucher_code: cart.appliedVoucher?.code ?? null,
+        },
+        auth.session.access_token,
+      )
+      const { paymentIntent, error } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: cardElement,
+          billing_details: { name: paymentForm.cardholderName },
+        },
+      })
+      if (error || paymentIntent?.status !== 'succeeded') {
+        ElMessage.error(error?.message ?? 'Card was declined')
+        return
+      }
+      paymentIntentId = paymentIntent.id
+    }
+
     const order = await createOrder(
       {
-        items: cart.items.map((item) => ({
-          product_id: item.productId,
-          quantity: item.quantity,
-        })),
+        items: cartItems,
         shipping: {
           full_name: shippingForm.fullName,
           phone: shippingForm.phone,
@@ -140,15 +209,16 @@ async function placeOrder() {
         },
         payment_method: paymentMethod.value,
         voucher_code: cart.appliedVoucher?.code ?? null,
+        payment_intent_id: paymentIntentId,
       },
       auth.session.access_token,
     )
     placedOrder.value = order
+    cart.clear()
 
     if (paymentMethod.value === 'khqr') {
       khqrModalVisible.value = true
     } else {
-      cart.clear()
       router.push({ name: 'order-confirm', query: { orderId: String(order.id) } })
     }
   } catch (err) {
@@ -161,7 +231,6 @@ async function placeOrder() {
 function confirmKhqrPayment() {
   khqrModalVisible.value = false
   if (!placedOrder.value) return
-  cart.clear()
   router.push({ name: 'order-confirm', query: { orderId: String(placedOrder.value.id) } })
 }
 
@@ -191,7 +260,7 @@ const shippingMethodLabel = computed(() =>
 
     <div class="checkout-body">
       <div class="checkout-main">
-        <section v-if="currentStep === 'shipping'" class="shipping-step">
+        <section v-show="currentStep === 'shipping'" class="shipping-step">
           <h1 class="step-title">Shipping Information</h1>
           <p class="step-subtitle">Step 1 of 3: Please provide your delivery details.</p>
 
@@ -252,7 +321,7 @@ const shippingMethodLabel = computed(() =>
           </form>
         </section>
 
-        <section v-else-if="currentStep === 'payment'" class="payment-step">
+        <section v-show="currentStep === 'payment'" class="payment-step">
           <div class="secure-banner">
             <PhLock :size="18" />
             <span>Encrypted Secure Transaction</span>
@@ -307,45 +376,9 @@ const shippingMethodLabel = computed(() =>
               </div>
 
               <div class="form-field">
-                <label for="cardNumber">Card Number</label>
-                <div class="input-with-icon">
-                  <input
-                    id="cardNumber"
-                    v-model="paymentForm.cardNumber"
-                    type="text"
-                    inputmode="numeric"
-                    placeholder="0000 0000 0000 0000"
-                    maxlength="19"
-                    required
-                  />
-                  <PhCreditCard :size="20" class="input-icon" />
-                </div>
-              </div>
-
-              <div class="form-row">
-                <div class="form-field">
-                  <label for="expiryDate">Expiry Date</label>
-                  <input
-                    id="expiryDate"
-                    v-model="paymentForm.expiryDate"
-                    type="text"
-                    placeholder="MM / YY"
-                    maxlength="7"
-                    required
-                  />
-                </div>
-                <div class="form-field">
-                  <label for="cvv">CVV / CVC</label>
-                  <input
-                    id="cvv"
-                    v-model="paymentForm.cvv"
-                    type="text"
-                    inputmode="numeric"
-                    placeholder="***"
-                    maxlength="4"
-                    required
-                  />
-                </div>
+                <label for="cardElement">Card Details</label>
+                <div id="cardElement" ref="cardElementRef" class="card-element"></div>
+                <p v-if="cardError" class="card-error">{{ cardError }}</p>
               </div>
 
               <label class="billing-checkbox">
@@ -365,7 +398,7 @@ const shippingMethodLabel = computed(() =>
           </div>
         </section>
 
-        <section v-else class="review-step">
+        <section v-show="currentStep === 'review'" class="review-step">
           <h1 class="step-title">Review Your Order</h1>
           <p class="step-subtitle">Step 3 of 3: Confirm your details before placing the order.</p>
 
@@ -410,7 +443,7 @@ const shippingMethodLabel = computed(() =>
               <div>
                 <p class="payment-summary-method">{{ paymentMethodLabel }}</p>
                 <p class="payment-summary-detail">
-                  <template v-if="paymentMethod === 'visa'">Ending in {{ maskedCardNumber }}</template>
+                  <template v-if="paymentMethod === 'visa'">Card charged on order placement</template>
                   <template v-else-if="paymentMethod === 'aba_payway'">Redirect at checkout</template>
                   <template v-else>Scan to pay</template>
                 </p>
@@ -909,6 +942,19 @@ const shippingMethodLabel = computed(() =>
   color: var(--color-text);
   opacity: 0.5;
   pointer-events: none;
+}
+
+.card-element {
+  height: 2.75rem;
+  padding: 0.85rem 0.9rem;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.card-error {
+  font-size: 0.78rem;
+  color: #d64545;
 }
 
 .billing-checkbox {

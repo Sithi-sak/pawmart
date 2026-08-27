@@ -48,6 +48,31 @@ def require_admin(
     return customer
 
 
+def _require_active_store(customer_id: str) -> None:
+    supabase = get_supabase()
+    store = (
+        supabase.table("stores")
+        .select("status")
+        .eq("owner_id", customer_id)
+        .maybe_single()
+        .execute()
+        .data
+    )
+    if store is None or store["status"] != "active":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Store is banned")
+
+
+def require_store_owner(
+    customer: CurrentCustomer = Depends(get_current_customer),  # noqa: B008
+) -> CurrentCustomer:
+    if customer.role != "store_owner":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Store owner access required"
+        )
+    _require_active_store(customer.id)
+    return customer
+
+
 def require_admin_or_store_owner(
     customer: CurrentCustomer = Depends(get_current_customer),  # noqa: B008
 ) -> CurrentCustomer:
@@ -55,4 +80,6 @@ def require_admin_or_store_owner(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Admin or store owner access required"
         )
+    if customer.role == "store_owner":
+        _require_active_store(customer.id)
     return customer

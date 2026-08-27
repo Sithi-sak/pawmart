@@ -41,7 +41,7 @@ async function handleSubmit() {
       <h1 class="page-title">Become a Seller</h1>
       <p class="page-copy">
         Run a storefront on PawMart alongside our own catalogue. Tell us a bit about your
-        business below — Chea Bunthay reviews every request personally and will reach out once
+        business below. We will review every request personally and will reach out once
         it's been decided.
       </p>
     </section>

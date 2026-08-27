@@ -4,6 +4,7 @@ import { RouterLink, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { fetchOrder, type Order } from '../lib/orders'
 import { POINTS_PER_DOLLAR } from '../lib/loyalty'
+import thankYouCover from '../assets/images/thank_you_cover.jpg'
 
 const route = useRoute()
 const auth = useAuthStore()
@@ -75,7 +76,7 @@ onMounted(async () => {
       </div>
 
       <div class="confirmation-body">
-        <div class="confirmation-image placeholder-img"></div>
+        <div class="confirmation-image" :style="{ backgroundImage: `url(${thankYouCover})` }"></div>
 
         <div class="confirmation-details">
           <div class="order-summary">
@@ -136,16 +137,6 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.placeholder-img {
-  background: linear-gradient(180deg, #9a9a9a 0%, #d8d8d8 100%);
-}
-
-@media (prefers-color-scheme: dark) {
-  .placeholder-img {
-    background: linear-gradient(180deg, #4a4a4a 0%, #2c2c2c 100%);
-  }
-}
-
 .confirmation {
   padding: 2rem 0 5rem;
 }
@@ -201,6 +192,8 @@ onMounted(async () => {
 
 .confirmation-image {
   aspect-ratio: 4 / 3;
+  background-size: cover;
+  background-position: center;
 }
 
 .confirmation-details {

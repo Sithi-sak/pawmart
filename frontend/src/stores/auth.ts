@@ -146,6 +146,18 @@ export const useAuthStore = defineStore('auth', () => {
       throw new Error('This account does not have staff access.')
     }
 
+    if (customerRow.role === 'store_owner') {
+      const { data: storeRow } = await supabase
+        .from('stores')
+        .select('status')
+        .eq('owner_id', data.user.id)
+        .maybeSingle()
+      if (storeRow?.status === 'banned') {
+        await supabase.auth.signOut()
+        throw new Error('This store has been banned. Contact PawMart support for details.')
+      }
+    }
+
     session.value = data.session
     user.value = data.user
     customer.value = customerRow as Customer
