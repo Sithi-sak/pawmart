@@ -141,7 +141,7 @@ Not done: KHQR admin manual confirm (still needs a Confirm Payment action on Adm
 
 ## Phase 5 — Testing (after everything else is done)
 
-- [ ] **5.1 Auth & account** — signup/login/logout (email + Google), password reset, admin login (non-Gmail gate), session persistence across refresh, protected-route redirects for guest/customer/admin.
+- [x] **5.1 Auth & account** — signup/login/logout (email + Google), password reset, admin login (non-Gmail gate), session persistence across refresh, protected-route redirects for guest/customer/admin.
 - [ ] **5.2 Catalog & product detail** — filter/search/sort combinations, empty-result state, product detail for in-stock/out-of-stock/no-image products, related products, recommended products (guest fallback vs personalized).
 - [ ] **5.3 Cart & checkout** — quantity edit/remove, voucher valid/invalid, stock-limit edge cases, full checkout wizard for all 3 payment methods (Stripe/Visa success + declined card, ABA informational, KHQR "I Have Paid"), order confirmation reads the real created order.
 - [ ] **5.4 Order tracking & history** — status timeline renders correctly at each stage, order history list/empty state, access-control check (customer can't view another customer's order by guessing an id).
@@ -150,6 +150,20 @@ Not done: KHQR admin manual confirm (still needs a Confirm Payment action on Adm
 - [ ] **5.7 Admin** — product CRUD (incl. image upload/remove), low-stock alerts, sales overview numbers match real orders, order status transitions (can't skip/go backward), KHQR manual payment confirmation.
 - [ ] **5.8 Security / RLS spot-checks** — non-admin can't reach `/admin/*` API or UI, customers only ever see their own pets/orders/loyalty transactions via direct Supabase queries, admin-only writes rejected for a plain customer token.
 - [ ] **5.9 Cross-cutting** — mobile/responsive pass on key pages, loading/error states on slow or failing network, full stack boots clean via Docker Compose (3.9) with a fresh database.
+
+## Auth & account testing notes (task 5.1)
+
+Testing infra didn't exist yet on either side — added it as part of this task rather than as prep work: `backend/tests/` (pytest, already a dev dependency but unused) and `frontend/vitest.config.ts` + `vitest`/`@vue/test-utils`/`happy-dom` (new dev deps, `bun run test` / `bunx vitest run`).
+
+Login/signup/logout/password-reset/session-persistence have no backend routes at all — `stores/auth.ts` calls `supabase-js` directly from the frontend (Supabase Auth), so that's all frontend-only, covered by `frontend/src/stores/__tests__/auth.spec.ts` against a mocked `@/lib/supabase` client (chainable fake mimicking the thenable Postgrest builder). Covers: email sign-in/sign-up/sign-out + error paths, Google OAuth (only that `signInWithOAuth` fires with `provider: 'google'` — the actual redirect/consent flow isn't something a unit test can exercise), password reset request + update, the Gmail-only gate (`isAllowedCustomerEmail`, a pure function), `signInStaff`'s non-Gmail admin/store-owner path and its banned-store rejection, and session persistence (`init()`'s `getSession` + the `INITIAL_SESSION` re-announcement dedupe that guards against a duplicate `ensureCustomerRow` call).
+
+Protected-route redirects covered end-to-end in `frontend/src/router/__tests__/guard.spec.ts` by driving the *real* `router.beforeEach` guard through `router.push()` against the real route table, not a reimplementation of the guard's logic — guest/customer/admin/store_owner × requiresAuth/requiresAdmin/requiresStoreOwner, plus admin/store_owner being bounced off customer-facing account pages to their own dashboard. Hit one real vue-router gotcha: pushing to the exact same resolved location as the current one is a silent no-op that skips guards entirely, which surfaced as a false pass/fail between two consecutive tests targeting the same route — fixed by parking on an unmatched dummy path in `beforeEach` before every test's actual push, not by changing test order (order shouldn't matter for independent test cases).
+
+Backend-side "admin login" role/access gating (`core/deps.py`'s `require_admin`/`require_store_owner`/`require_admin_or_store_owner`, including the store-ban check threaded through 3.10.10) is covered by `backend/tests/test_deps.py` against a fake in-memory Supabase client (`backend/tests/conftest.py`) — this is what actually enforces admin vs store-owner vs customer access on every backend route, RLS being defense-in-depth only for direct-from-frontend Supabase calls (see 3.10.3/3.10.9 notes).
+
+Not covered here, deliberately out of scope for 5.1: real Google OAuth consent flow, Supabase email delivery (password reset/email confirmation actually landing), and RLS-level enforcement (own `customers`/`pet_profiles`/`orders` visibility) — the latter is task 5.8.
+
+Found and left alone (pre-existing, unrelated to auth): `bun run type-check` fails on `AdminStoreRequestsView.vue:180` (`TS7053`, implicit `any` indexing a `Record<StoreApplicationStatus, string>`) — confirmed via `git stash` that this predates this task's changes, not introduced by it.
 
 ---
 
