@@ -145,7 +145,7 @@ Not done: KHQR admin manual confirm (still needs a Confirm Payment action on Adm
 - [x] **5.2 Catalog & product detail** — filter/search/sort combinations, empty-result state, product detail for in-stock/out-of-stock/no-image products, related products, recommended products (guest fallback vs personalized).
 - [x] **5.3 Cart & checkout** — quantity edit/remove, voucher valid/invalid, stock-limit edge cases, full checkout wizard for all 3 payment methods (Stripe/Visa success + declined card, ABA informational, KHQR "I Have Paid"), order confirmation reads the real created order.
 - [x] **5.4 Order tracking & history** — status timeline renders correctly at each stage, order history list/empty state, access-control check (customer can't view another customer's order by guessing an id).
-- [ ] **5.5 Pet profiles & recommendations** — create/edit/delete pets, recommendations update when a pet's species changes or after a new order, guest vs signed-in behavior.
+- [x] **5.5 Pet profiles & recommendations** — create/edit/delete pets, recommendations update when a pet's species changes or after a new order, guest vs signed-in behavior.
 - [ ] **5.6 Loyalty & rewards** — points accrue on order, redemption flow, balance never goes negative.
 - [ ] **5.7 Admin** — product CRUD (incl. image upload/remove), low-stock alerts, sales overview numbers match real orders, order status transitions (can't skip/go backward), KHQR manual payment confirmation.
 - [ ] **5.8 Security / RLS spot-checks** — non-admin can't reach `/admin/*` API or UI, customers only ever see their own pets/orders/loyalty transactions via direct Supabase queries, admin-only writes rejected for a plain customer token.
@@ -164,6 +164,18 @@ Frontend adds two new specs. `frontend/src/stores/__tests__/cart.spec.ts` unit-t
 `frontend/src/views/__tests__/OrderConfirmationView.spec.ts` mocks `@/lib/orders`' `fetchOrder` and confirms the page renders the actual resolved order (order number, item names, total) rather than anything computed client-side, plus its three not-found branches (no `orderId` in the query, no session, `fetchOrder` rejecting) and the pending-confirmation-vs-points-earned branch already keyed off `payment_status`.
 
 All 89 frontend tests (up from 66 after 5.2) and 27 backend tests (up from 14 after 5.1) pass; `bun run lint` and `bun run type-check` show no new issues (the pre-existing `AdminStoreRequestsView.vue` TS7053 from 5.1 is still there, still unrelated).
+
+## Pet profiles & recommendations testing notes (task 5.5)
+
+Entirely frontend, like 5.1-5.4's non-order-status pieces: `backend/src/backend/routers/pet_profiles.py` is an empty unused stub (never built past its router prefix, same gap noted nowhere until now) — `lib/pets.ts` and `lib/recommendations.ts` both talk to Supabase directly, so there's no backend endpoint to test here.
+
+`frontend/src/views/__tests__/PetProfilesView.spec.ts` is new (`PetProfilesView.vue` had no coverage at all before this task) — first component-mount test to combine el-select stubbing (same minimal modelValue-forwarding stand-in as `ProductCatalogView.spec.ts`) with a mocked `ElMessageBox.confirm` for the delete-confirmation flow (mocking `element-plus` wholesale, same as `CheckoutView.spec.ts`'s `ElMessage` mock, extended here to cover both named exports the view actually imports). Covers: list/empty/error states, create (success, blank-name and missing-age validation both no-op without calling `createPet`, and the create-request-rejects path leaving the form open with an error toast), edit (including a species change, which is the input recommendations' species-match scoring reacts to), and delete (confirm removes the pet, cancel leaves it, and a rejected delete request shows an error while leaving the pet in the list).
+
+`fetchRecommendedProducts` itself (`lib/recommendations.ts`) already had solid coverage from task 5.2's `recommendations.spec.ts`, including a species-match-outranks-newer-non-match case and a category-affinity-from-past-purchase case — which is what "recommendations update after a new order" actually reduces to, since category affinity is scored straight from `order_items`. The one gap: no test asserted the ranking actually *changes* when the input species differs, only that a given species produced a given ranking — added `re-ranks the top pick when the pet species backing the score changes`, calling `fetchRecommendedProducts` twice against the same product pool with a different pet species each time and asserting the top pick flips accordingly. Guest-vs-signed-in behavior for recommendations was already covered end-to-end in `ProductDetailView.spec.ts` (task 5.2: guest fallback, personalized signed-in, and signed-in-with-no-signal all hide/show the "Recommended For You" section correctly) — nothing new needed there.
+
+Guest access to `/account/pets` itself is covered by the same generic `requiresAuth` guard mechanism already proven once in `guard.spec.ts` (task 5.1) against `/account` — `account/pets` carries the identical `meta: { requiresAuth: true }`, so a second route-specific redirect test would just be retesting the same guard logic, not new behavior.
+
+121 frontend tests (up from 108), backend test count unchanged at 37 (no backend code exists for this feature); `bun run lint` and `bun run type-check` show no new issues (the pre-existing `AdminStoreRequestsView.vue` TS7053 is still there, still unrelated).
 
 ## Order tracking & history testing notes (task 5.4)
 

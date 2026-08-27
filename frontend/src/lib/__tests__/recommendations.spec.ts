@@ -101,6 +101,20 @@ describe('signed-in customer with a scoring signal', () => {
     expect(result.products[0].id).toBe(dogFood.id)
   })
 
+  it('re-ranks the top pick when the pet species backing the score changes', async () => {
+    const dogFood = makeProduct({ species: 'Dog', created_at: '2026-01-01T00:00:00Z' })
+    const catFood = makeProduct({ species: 'Cat', created_at: '2026-01-05T00:00:00Z' })
+    fetchProductsMock.mockResolvedValue([catFood, dogFood])
+
+    fromMock.mockReturnValueOnce(queryResult([{ species: 'Dog' }])).mockReturnValueOnce(queryResult([]))
+    const withDog = await fetchRecommendedProducts('cust-1')
+    expect(withDog.products[0].id).toBe(dogFood.id)
+
+    fromMock.mockReturnValueOnce(queryResult([{ species: 'Cat' }])).mockReturnValueOnce(queryResult([]))
+    const withCat = await fetchRecommendedProducts('cust-1')
+    expect(withCat.products[0].id).toBe(catFood.id)
+  })
+
   it('scores category affinity from past purchases', async () => {
     const sameCategory = makeProduct({ category_id: 7 })
     const otherCategory = makeProduct({ category_id: 9 })
