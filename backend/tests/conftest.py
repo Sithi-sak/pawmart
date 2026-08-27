@@ -26,6 +26,11 @@ class FakeQuery:
         self._rows = [r for r in self._rows if r.get(key) == value]
         return self
 
+    def in_(self, key, values):
+        values = set(values)
+        self._rows = [r for r in self._rows if r.get(key) in values]
+        return self
+
     def maybe_single(self):
         self._single = True
         return self
