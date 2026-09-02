@@ -10,6 +10,21 @@ export interface ProductStore {
   id: number
   name: string
   slug: string
+  description: string | null
+  logo_url: string | null
+}
+
+export interface ProductOptionValue {
+  id: number
+  value: string
+  sort_order: number
+}
+
+export interface ProductOptionGroup {
+  id: number
+  name: string
+  sort_order: number
+  product_option_values: ProductOptionValue[]
 }
 
 export interface Product {
@@ -28,9 +43,12 @@ export interface Product {
   created_at: string
   categories: Category | null
   stores: ProductStore | null
+  product_option_groups?: ProductOptionGroup[]
 }
 
-const PRODUCT_COLUMNS = '*, categories(id, name, slug), stores(id, name, slug)'
+const PRODUCT_COLUMNS =
+  '*, categories(id, name, slug), stores(id, name, slug, description, logo_url), ' +
+  'product_option_groups(id, name, sort_order, product_option_values(id, value, sort_order))'
 
 // No per-product reorder threshold in the schema — a single shop-wide
 // threshold is enough for the low-stock widget (task 3.7).

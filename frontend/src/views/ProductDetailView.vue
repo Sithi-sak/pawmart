@@ -1,10 +1,16 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
-import { PhCaretDown, PhTruck, PhShieldCheck } from '@phosphor-icons/vue'
+import { PhCaretDown, PhTruck, PhShieldCheck, PhStorefront, PhStar, PhStarHalf } from '@phosphor-icons/vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { fetchProductBySlug, fetchRelatedProducts, type Product } from '@/lib/products'
 import { fetchRecommendedProducts } from '@/lib/recommendations'
+import {
+  fetchProductReviews,
+  createProductReview,
+  ratingSummary,
+  type ProductReview,
+} from '@/lib/reviews'
 import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
 
@@ -21,6 +27,34 @@ const loading = ref(true)
 const loadError = ref(false)
 const quantity = ref(1)
 
+const selectedOptions = ref<Record<number, number>>({})
+
+function selectOption(groupId: number, valueId: number) {
+  selectedOptions.value[groupId] = valueId
+}
+
+function selectedOptionsSummary(): string[] {
+  if (!product.value?.product_option_groups) return []
+  return product.value.product_option_groups
+    .map((group) => {
+      const valueId = selectedOptions.value[group.id]
+      const value = group.product_option_values.find((v) => v.id === valueId)
+      return value ? `${group.name}: ${value.value}` : null
+    })
+    .filter((label): label is string => !!label)
+}
+
+const reviews = ref<ProductReview[]>([])
+const reviewSummary = computed(() => ratingSummary(reviews.value))
+const reviewRating = ref(0)
+const reviewHoverRating = ref(0)
+const reviewComment = ref('')
+const submittingReview = ref(false)
+
+const myReview = computed(() =>
+  auth.customer ? reviews.value.find((r) => r.customer_id === auth.customer!.id) : undefined,
+)
+
 async function loadProduct(slug: string | undefined) {
   loading.value = true
   loadError.value = false
@@ -28,7 +62,11 @@ async function loadProduct(slug: string | undefined) {
   relatedProducts.value = []
   recommendedProducts.value = []
   personalized.value = false
+  reviews.value = []
+  reviewRating.value = 0
+  reviewComment.value = ''
   quantity.value = 1
+  selectedOptions.value = {}
 
   if (!slug) {
     loading.value = false
@@ -41,18 +79,49 @@ async function loadProduct(slug: string | undefined) {
     product.value = found
     if (found) {
       await auth.init()
-      const [related, recommended] = await Promise.all([
+      const [related, recommended, productReviews] = await Promise.all([
         fetchRelatedProducts(found.category_id, found.id),
         fetchRecommendedProducts(auth.customer?.id ?? null, { excludeProductId: found.id, limit: 4 }),
+        fetchProductReviews(found.id),
       ])
       relatedProducts.value = related
       recommendedProducts.value = recommended.products
       personalized.value = recommended.personalized
+      reviews.value = productReviews
+      for (const group of found.product_option_groups ?? []) {
+        const first = group.product_option_values[0]
+        if (first) {
+          selectedOptions.value[group.id] = first.id
+        }
+      }
     }
   } catch {
     loadError.value = true
   } finally {
     loading.value = false
+  }
+}
+
+async function submitReview() {
+  if (!product.value || !auth.customer || reviewRating.value < 1) return
+
+  submittingReview.value = true
+  try {
+    const created = await createProductReview({
+      product_id: product.value.id,
+      customer_id: auth.customer.id,
+      reviewer_name: auth.customer.full_name || 'PawMart Customer',
+      rating: reviewRating.value,
+      comment: reviewComment.value.trim() || null,
+    })
+    reviews.value.unshift(created)
+    reviewRating.value = 0
+    reviewComment.value = ''
+    ElMessage.success('Thanks for your review!')
+  } catch (err) {
+    ElMessage.error(err instanceof Error ? err.message : 'Could not submit your review.')
+  } finally {
+    submittingReview.value = false
   }
 }
 
@@ -112,7 +181,10 @@ async function addToCart() {
   }
 
   cart.addItem(product.value, quantity.value)
-  ElMessage.success(`Added ${quantity.value} × "${product.value.name}" to cart`)
+  const optionsLabel = selectedOptionsSummary().join(', ')
+  ElMessage.success(
+    `Added ${quantity.value} × "${product.value.name}"${optionsLabel ? ` (${optionsLabel})` : ''} to cart`,
+  )
 }
 
 function addToWishlist() {
@@ -168,16 +240,58 @@ function addToWishlist() {
         <div class="info">
           <p class="eyebrow">{{ (product.categories?.name ?? product.species ?? '').toUpperCase() }}</p>
           <h1 class="product-name">{{ product.name }}</h1>
+
+          <a href="#reviews" class="rating-row">
+            <span class="stars" aria-hidden="true">
+              <template v-for="n in 5" :key="n">
+                <PhStar v-if="reviewSummary.average >= n" weight="fill" :size="15" />
+                <PhStarHalf v-else-if="reviewSummary.average >= n - 0.5" weight="fill" :size="15" />
+                <PhStar v-else weight="regular" :size="15" />
+              </template>
+            </span>
+            <span class="rating-count">
+              {{
+                reviewSummary.count
+                  ? `${reviewSummary.average.toFixed(1)} (${reviewSummary.count} review${reviewSummary.count === 1 ? '' : 's'})`
+                  : 'No reviews yet'
+              }}
+            </span>
+          </a>
+
           <p class="price">{{ formatPrice(product.price) }}</p>
-          <RouterLink v-if="product.stores" :to="`/store/${product.stores.slug}`" class="sold-by-link">
-            Sold by {{ product.stores.name }}
-          </RouterLink>
+          <div v-if="product.stores" class="sold-by-row">
+            <div
+              class="sold-by-avatar placeholder-img"
+              :style="product.stores.logo_url ? { backgroundImage: `url(${product.stores.logo_url})` } : undefined"
+            >
+              <PhStorefront v-if="!product.stores.logo_url" :size="11" />
+            </div>
+            <RouterLink :to="`/store/${product.stores.slug}`" class="sold-by-link">
+              Sold by {{ product.stores.name }}
+            </RouterLink>
+          </div>
 
           <div class="divider"></div>
 
           <p class="stock-status" :class="{ 'is-out': product.stock <= 0 }">
             {{ product.stock > 0 ? `${product.stock} in stock` : 'Out of stock' }}
           </p>
+
+          <div v-for="group in product.product_option_groups" :key="group.id" class="option-group">
+            <p class="option-label">{{ group.name.toUpperCase() }}</p>
+            <div class="option-values">
+              <button
+                v-for="value in group.product_option_values"
+                :key="value.id"
+                type="button"
+                class="option-value-btn"
+                :class="{ 'is-selected': selectedOptions[group.id] === value.id }"
+                @click="selectOption(group.id, value.id)"
+              >
+                {{ value.value }}
+              </button>
+            </div>
+          </div>
 
           <div class="option-group">
             <p class="option-label">QUANTITY</p>
@@ -249,6 +363,78 @@ function addToWishlist() {
         </div>
 
         <div class="details-image placeholder-img"></div>
+      </section>
+
+      <section id="reviews" class="reviews-section">
+        <div class="reviews-header">
+          <h2 class="section-title">Reviews</h2>
+          <div v-if="reviewSummary.count" class="reviews-summary">
+            <span class="stars" aria-hidden="true">
+              <template v-for="n in 5" :key="n">
+                <PhStar v-if="reviewSummary.average >= n" weight="fill" :size="16" />
+                <PhStarHalf v-else-if="reviewSummary.average >= n - 0.5" weight="fill" :size="16" />
+                <PhStar v-else weight="regular" :size="16" />
+              </template>
+            </span>
+            <span>
+              {{ reviewSummary.average.toFixed(1) }} out of 5 · {{ reviewSummary.count }} review{{
+                reviewSummary.count === 1 ? '' : 's'
+              }}
+            </span>
+          </div>
+        </div>
+
+        <div class="review-form-card">
+          <p v-if="!auth.customer" class="review-signin-prompt">
+            <RouterLink to="/login" class="view-all-link">Sign in</RouterLink> to write a review.
+          </p>
+          <p v-else-if="myReview" class="review-signin-prompt">You've already reviewed this product. Thanks!</p>
+          <template v-else>
+            <p class="option-label">YOUR RATING</p>
+            <div class="star-picker">
+              <button
+                v-for="n in 5"
+                :key="n"
+                type="button"
+                class="star-picker-btn"
+                @click="reviewRating = n"
+                @mouseenter="reviewHoverRating = n"
+                @mouseleave="reviewHoverRating = 0"
+              >
+                <PhStar :weight="(reviewHoverRating || reviewRating) >= n ? 'fill' : 'regular'" :size="22" />
+              </button>
+            </div>
+            <el-input
+              v-model="reviewComment"
+              type="textarea"
+              :rows="3"
+              placeholder="Share your thoughts about this product (optional)"
+              class="review-textarea"
+            />
+            <button
+              type="button"
+              class="add-to-cart-btn review-submit-btn"
+              :disabled="reviewRating < 1 || submittingReview"
+              @click="submitReview"
+            >
+              {{ submittingReview ? 'SUBMITTING…' : 'SUBMIT REVIEW' }}
+            </button>
+          </template>
+        </div>
+
+        <div v-if="reviews.length" class="review-list">
+          <div v-for="r in reviews" :key="r.id" class="review-item">
+            <div class="review-item-header">
+              <span class="stars" aria-hidden="true">
+                <PhStar v-for="n in 5" :key="n" :weight="r.rating >= n ? 'fill' : 'regular'" :size="14" />
+              </span>
+              <span class="review-author">{{ r.reviewer_name }}</span>
+              <span class="review-date">{{ new Date(r.created_at).toLocaleDateString() }}</span>
+            </div>
+            <p v-if="r.comment" class="review-comment">{{ r.comment }}</p>
+          </div>
+        </div>
+        <p v-else class="review-empty">No reviews yet — be the first to review this product.</p>
       </section>
 
       <section v-if="relatedProducts.length" class="related">
@@ -426,12 +612,54 @@ function addToWishlist() {
   margin-bottom: 0.5rem;
 }
 
+.rating-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  margin-bottom: 0.6rem;
+  width: fit-content;
+}
+
+.stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+  color: var(--color-accent);
+}
+
+.rating-count {
+  font-size: 0.78rem;
+  color: var(--color-text);
+  opacity: 0.7;
+  text-decoration: underline;
+}
+
+.sold-by-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 1.25rem;
+}
+
+.sold-by-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-size: cover;
+  background-position: center;
+  color: rgba(0, 0, 0, 0.35);
+}
+
 .sold-by-link {
   display: inline-block;
   font-size: 0.8rem;
   color: var(--color-accent);
   text-decoration: underline;
-  margin-bottom: 1.25rem;
 }
 
 .divider {
@@ -456,6 +684,33 @@ function addToWishlist() {
   font-weight: 600;
   color: var(--color-heading);
   margin-bottom: 0.75rem;
+}
+
+.option-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.option-value-btn {
+  min-width: 2.75rem;
+  height: 2.5rem;
+  padding: 0 0.9rem;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.option-value-btn:hover {
+  border-color: var(--color-accent);
+}
+
+.option-value-btn.is-selected {
+  border-color: var(--color-heading);
+  background: var(--color-heading);
+  color: var(--color-background);
 }
 
 .stock-status {
@@ -616,6 +871,109 @@ function addToWishlist() {
 
 .details-image {
   aspect-ratio: 4 / 3;
+}
+
+/* Reviews */
+.reviews-section {
+  max-width: 720px;
+  margin-bottom: 4rem;
+}
+
+.reviews-header {
+  display: flex;
+  align-items: baseline;
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.reviews-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--color-text);
+  opacity: 0.8;
+}
+
+.review-form-card {
+  border: 1px solid var(--color-border);
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.review-signin-prompt {
+  font-size: 0.85rem;
+  color: var(--color-text);
+  opacity: 0.8;
+}
+
+.star-picker {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+  width: fit-content;
+}
+
+.star-picker-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-accent);
+  line-height: 0;
+}
+
+.review-textarea {
+  margin-bottom: 1rem;
+}
+
+.review-submit-btn {
+  width: auto;
+  min-width: 180px;
+  padding: 0 1.5rem;
+  margin-bottom: 0;
+}
+
+.review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.review-item {
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.review-item-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.review-author {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-heading);
+}
+
+.review-date {
+  font-size: 0.75rem;
+  color: var(--color-text);
+  opacity: 0.55;
+}
+
+.review-comment {
+  font-size: 0.9rem;
+  color: var(--color-text);
+  opacity: 0.85;
+}
+
+.review-empty {
+  font-size: 0.85rem;
+  color: var(--color-text);
+  opacity: 0.6;
 }
 
 /* Related */

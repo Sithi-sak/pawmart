@@ -16,6 +16,20 @@ vi.mock('@/lib/recommendations', () => ({
   fetchRecommendedProducts: (...args: unknown[]) => fetchRecommendedProductsMock(...args),
 }))
 
+const fetchProductReviewsMock = vi.fn()
+const createProductReviewMock = vi.fn()
+vi.mock('@/lib/reviews', () => ({
+  fetchProductReviews: (...args: unknown[]) => fetchProductReviewsMock(...args),
+  createProductReview: (...args: unknown[]) => createProductReviewMock(...args),
+  ratingSummary: (reviews: { rating: number }[]) =>
+    reviews.length
+      ? {
+          average: reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length,
+          count: reviews.length,
+        }
+      : { average: 0, count: 0 },
+}))
+
 let mockCustomer: { id: string } | null = null
 vi.mock('@/stores/auth', () => ({
   useAuthStore: () => ({
@@ -64,6 +78,7 @@ beforeEach(() => {
   mockCustomer = null
   fetchRelatedProductsMock.mockResolvedValue([])
   fetchRecommendedProductsMock.mockResolvedValue({ products: [], personalized: false })
+  fetchProductReviewsMock.mockResolvedValue([])
 })
 
 async function mountDetail(slug = 'product-1') {
