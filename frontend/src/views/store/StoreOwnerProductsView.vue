@@ -19,7 +19,7 @@ import {
 
 const auth = useAuthStore()
 
-const speciesOptions = ['Dog', 'Cat', 'Bird', 'Fish', 'Small Pet'] as const
+const speciesOptions = ['Dog', 'Cat', 'Bird', 'Fish'] as const
 
 const storeId = ref<number | null>(null)
 const products = ref<Product[]>([])
@@ -234,7 +234,18 @@ async function deleteProduct(product: Product) {
       <span class="result-count">{{ filteredProducts.length }} Products</span>
     </div>
 
-    <div v-if="loading" class="state-message">Loading products…</div>
+    <div v-if="loading" class="table-card skeleton-card">
+      <el-skeleton v-for="n in 6" :key="n" animated class="skeleton-row">
+        <template #template>
+          <el-skeleton-item variant="image" class="sk-cell sk-cell--thumb" />
+          <el-skeleton-item variant="text" class="sk-cell sk-cell--name" />
+          <el-skeleton-item variant="text" class="sk-cell sk-cell--category" />
+          <el-skeleton-item variant="text" class="sk-cell sk-cell--price" />
+          <el-skeleton-item variant="text" class="sk-cell sk-cell--stock" />
+          <el-skeleton-item variant="button" class="sk-cell sk-cell--status" />
+        </template>
+      </el-skeleton>
+    </div>
     <div v-else-if="loadError" class="state-message">
       Couldn't load products right now. Please try again shortly.
     </div>
@@ -501,6 +512,54 @@ async function deleteProduct(product: Product) {
   background: var(--color-background);
   border: 1px solid var(--color-border);
   overflow-x: auto;
+}
+
+.skeleton-card {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1.1rem 1.25rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.skeleton-row:last-child {
+  border-bottom: none;
+}
+
+.sk-cell {
+  flex-shrink: 0;
+}
+
+.sk-cell--thumb {
+  width: 42px;
+  height: 42px;
+}
+
+.sk-cell--name {
+  width: 160px;
+}
+
+.sk-cell--category {
+  width: 100px;
+}
+
+.sk-cell--price {
+  width: 60px;
+}
+
+.sk-cell--stock {
+  width: 50px;
+}
+
+.sk-cell--status {
+  width: 90px;
+  margin-left: auto;
 }
 
 .pagination-bar {

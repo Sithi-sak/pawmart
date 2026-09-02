@@ -56,7 +56,46 @@ onMounted(async () => {
 
 <template>
   <div class="confirmation">
-    <div v-if="loading" class="state-message">Loading your order…</div>
+    <template v-if="loading">
+      <div class="confirmation-header">
+        <el-skeleton animated>
+          <template #template>
+            <el-skeleton-item variant="h1" class="sk-title" />
+            <el-skeleton-item variant="text" class="sk-order-number" />
+          </template>
+        </el-skeleton>
+      </div>
+
+      <div class="confirmation-body">
+        <el-skeleton-item variant="image" class="confirmation-image" />
+
+        <div class="confirmation-details">
+          <div class="order-summary">
+            <el-skeleton animated>
+              <template #template>
+                <el-skeleton-item variant="h3" class="sk-summary-title" />
+                <el-skeleton-item variant="text" class="sk-summary-row" />
+                <el-skeleton-item variant="text" class="sk-summary-row" />
+                <el-skeleton-item variant="text" class="sk-summary-row" />
+                <el-skeleton-item variant="text" class="sk-summary-row" />
+              </template>
+            </el-skeleton>
+          </div>
+
+          <div class="delivery-details">
+            <el-skeleton animated>
+              <template #template>
+                <el-skeleton-item variant="h3" class="sk-delivery-title" />
+                <el-skeleton-item variant="text" class="sk-summary-row" />
+              </template>
+            </el-skeleton>
+          </div>
+
+          <el-skeleton-item variant="button" class="sk-return-btn" />
+          <el-skeleton-item variant="button" class="sk-profile-btn" />
+        </div>
+      </div>
+    </template>
 
     <div v-else-if="loadError || !order" class="state-message">
       <p>We couldn't find that order.</p>
@@ -158,6 +197,34 @@ onMounted(async () => {
   color: var(--color-text);
 }
 
+.sk-title {
+  width: min(480px, 70%);
+  margin: 0 auto 0.75rem;
+}
+
+.sk-order-number {
+  width: 220px;
+  margin: 0 auto;
+}
+
+.sk-summary-title,
+.sk-delivery-title {
+  width: 55%;
+  margin-bottom: 1rem;
+}
+
+.sk-summary-row {
+  width: 90%;
+  margin-bottom: 0.75rem;
+}
+
+.sk-return-btn,
+.sk-profile-btn {
+  display: block;
+  width: 100%;
+  height: 3rem;
+}
+
 .confirmation-header {
   text-align: center;
   margin-bottom: 3rem;
@@ -192,6 +259,7 @@ onMounted(async () => {
 
 .confirmation-image {
   aspect-ratio: 4 / 3;
+  height: auto;
   background-size: cover;
   background-position: center;
 }

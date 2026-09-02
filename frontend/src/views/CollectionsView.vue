@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
-import { PhDog, PhCat, PhHorse, PhBird } from '@phosphor-icons/vue'
+import { PhDog, PhCat, PhBird, PhFish } from '@phosphor-icons/vue'
 import collectionCover from '@/assets/images/collection_cover.jpg'
 
 interface Species {
@@ -12,8 +12,8 @@ interface Species {
 const speciesList: Species[] = [
   { key: 'dog', label: 'Dogs', icon: PhDog },
   { key: 'cat', label: 'Cats', icon: PhCat },
-  { key: 'horse', label: 'Horses', icon: PhHorse },
   { key: 'bird', label: 'Birds', icon: PhBird },
+  { key: 'fish', label: 'Fish', icon: PhFish },
 ]
 
 interface Collection {

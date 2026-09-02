@@ -150,7 +150,18 @@ onMounted(loadApplications)
       </button>
     </div>
 
-    <div v-if="loading" class="state-message">Loading requests…</div>
+    <div v-if="loading" class="table-card skeleton-card">
+      <el-skeleton v-for="n in 6" :key="n" animated class="skeleton-row">
+        <template #template>
+          <el-skeleton-item variant="text" class="sk-cell sk-cell--applicant" />
+          <el-skeleton-item variant="text" class="sk-cell sk-cell--store" />
+          <el-skeleton-item variant="text" class="sk-cell sk-cell--message" />
+          <el-skeleton-item variant="text" class="sk-cell sk-cell--submitted" />
+          <el-skeleton-item variant="text" class="sk-cell sk-cell--status" />
+          <el-skeleton-item variant="button" class="sk-cell sk-cell--actions" />
+        </template>
+      </el-skeleton>
+    </div>
     <div v-else-if="loadError" class="state-message">
       Couldn't load seller requests right now. Please try again shortly.
     </div>
@@ -313,6 +324,53 @@ onMounted(loadApplications)
   background: var(--color-background);
   border: 1px solid var(--color-border);
   overflow-x: auto;
+}
+
+.skeleton-card {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1.1rem 1.25rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.skeleton-row:last-child {
+  border-bottom: none;
+}
+
+.sk-cell {
+  flex-shrink: 0;
+}
+
+.sk-cell--applicant {
+  width: 150px;
+}
+
+.sk-cell--store {
+  width: 130px;
+}
+
+.sk-cell--message {
+  width: 200px;
+}
+
+.sk-cell--submitted {
+  width: 90px;
+}
+
+.sk-cell--status {
+  width: 70px;
+}
+
+.sk-cell--actions {
+  width: 90px;
+  margin-left: auto;
 }
 
 .cell-name {

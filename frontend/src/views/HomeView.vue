@@ -107,7 +107,19 @@ function formatPrice(value: number) {
         </div>
         <RouterLink to="/products" class="view-all-link">View All Products</RouterLink>
       </div>
-      <div v-if="!loadingRecommendations" class="products-grid">
+      <div v-if="loadingRecommendations" class="products-grid">
+        <div v-for="n in 4" :key="n" class="product-card">
+          <el-skeleton animated>
+            <template #template>
+              <el-skeleton-item variant="image" class="product-image" />
+              <el-skeleton-item variant="text" class="sk-category" />
+              <el-skeleton-item variant="h3" class="sk-name" />
+              <el-skeleton-item variant="text" class="sk-price" />
+            </template>
+          </el-skeleton>
+        </div>
+      </div>
+      <div v-else class="products-grid">
         <RouterLink
           v-for="p in recommendedProducts"
           :key="p.id"
@@ -352,6 +364,7 @@ function formatPrice(value: number) {
 
 .product-image {
   aspect-ratio: 1 / 1;
+  height: auto;
   margin-bottom: 0.75rem;
 }
 
@@ -373,6 +386,20 @@ function formatPrice(value: number) {
 .product-price {
   color: var(--color-accent);
   font-weight: 600;
+}
+
+.sk-category {
+  width: 40%;
+  margin-bottom: 0.5rem;
+}
+
+.sk-name {
+  width: 75%;
+  margin-bottom: 0.5rem;
+}
+
+.sk-price {
+  width: 35%;
 }
 
 /* Philosophy */

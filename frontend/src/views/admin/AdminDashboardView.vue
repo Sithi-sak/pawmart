@@ -93,7 +93,17 @@ onMounted(async () => {
       <h1 class="page-title">Dashboard</h1>
     </div>
 
-    <div v-if="loading" class="state-message">Loading dashboard…</div>
+    <div v-if="loading" class="stats-grid">
+      <div v-for="n in 4" :key="n" class="stat-card">
+        <el-skeleton animated>
+          <template #template>
+            <el-skeleton-item variant="text" class="sk-stat-label" />
+            <el-skeleton-item variant="h1" class="sk-stat-value" />
+            <el-skeleton-item variant="text" class="sk-stat-delta" />
+          </template>
+        </el-skeleton>
+      </div>
+    </div>
     <div v-else-if="loadError" class="state-message">
       Couldn't load dashboard data right now. Please try again shortly.
     </div>
@@ -199,6 +209,20 @@ onMounted(async () => {
 
 .stat-delta.is-down {
   color: #c0392b;
+}
+
+.sk-stat-label {
+  width: 60%;
+  margin-bottom: 0.5rem;
+}
+
+.sk-stat-value {
+  width: 75%;
+  margin-bottom: 0.6rem;
+}
+
+.sk-stat-delta {
+  width: 55%;
 }
 
 @media (max-width: 900px) {

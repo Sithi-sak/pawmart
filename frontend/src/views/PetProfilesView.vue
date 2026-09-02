@@ -165,6 +165,22 @@ async function deletePet(pet: Pet) {
     <div class="header-divider"></div>
 
     <div class="pets-grid">
+      <template v-if="loading">
+        <div v-for="n in 3" :key="n" class="pet-card">
+          <el-skeleton animated>
+            <template #template>
+              <el-skeleton-item variant="image" class="pet-image" />
+              <div class="pet-details">
+                <el-skeleton-item variant="h3" class="sk-pet-name" />
+                <el-skeleton-item variant="text" class="sk-pet-meta" />
+                <el-skeleton-item variant="text" class="sk-pet-fact" />
+                <el-skeleton-item variant="text" class="sk-pet-fact" />
+              </div>
+            </template>
+          </el-skeleton>
+        </div>
+      </template>
+
       <div v-if="isAddingPet" class="pet-card is-editing">
         <h3 class="form-title">New Companion Entry</h3>
         <form class="pet-form" @submit.prevent="saveNewPet">
@@ -323,8 +339,7 @@ async function deletePet(pet: Pet) {
       </div>
     </div>
 
-    <div v-if="loading" class="state-message">Loading your companions…</div>
-    <div v-else-if="loadError" class="state-message">
+    <div v-if="loadError" class="state-message">
       We couldn't load your pets. Try again later.
     </div>
   </div>
@@ -432,6 +447,7 @@ async function deletePet(pet: Pet) {
 
 .pet-image {
   aspect-ratio: 1 / 0.9;
+  height: auto;
 }
 
 .pet-details {
@@ -469,6 +485,21 @@ async function deletePet(pet: Pet) {
 .pet-fact svg {
   flex-shrink: 0;
   color: var(--color-accent);
+}
+
+.sk-pet-name {
+  width: 60%;
+  margin-bottom: 0.4rem;
+}
+
+.sk-pet-meta {
+  width: 80%;
+  margin-bottom: 0.9rem;
+}
+
+.sk-pet-fact {
+  width: 70%;
+  margin-bottom: 0.45rem;
 }
 
 .pet-actions {

@@ -1,11 +1,26 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
-import { PhStorefront, PhShoppingCart } from '@phosphor-icons/vue'
+import { PhStorefront, PhShoppingCart, PhMagnifyingGlass } from '@phosphor-icons/vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { fetchProducts, type Product } from '@/lib/products'
+import { fetchCategories, fetchProducts, type Category, type Product } from '@/lib/products'
 import { fetchStoreBySlug, type Store } from '@/lib/stores'
 import { useCartStore } from '@/stores/cart'
+import petClothingImg from '@/assets/images/type/pet-clothing-accessories.png'
+import petFoodImg from '@/assets/images/type/pet-food.png'
+import petGroomingImg from '@/assets/images/type/pet-grooming-supplies.png'
+import petHealthcareImg from '@/assets/images/type/pet-healthcare.png'
+import petSuppliesImg from '@/assets/images/type/pet-supplies.png'
+import petTrainingImg from '@/assets/images/type/pet-training-aids.png'
+
+const typeImages: Record<string, string> = {
+  'pet-clothing-accessories': petClothingImg,
+  'pet-food': petFoodImg,
+  'pet-grooming-supplies': petGroomingImg,
+  'pet-healthcare': petHealthcareImg,
+  'pet-supplies': petSuppliesImg,
+  'pet-training-aids': petTrainingImg,
+}
 
 const cart = useCartStore()
 
@@ -13,9 +28,58 @@ const props = defineProps<{ slug?: string }>()
 
 const store = ref<Store | null>(null)
 const products = ref<Product[]>([])
+const categories = ref<Category[]>([])
 const loading = ref(true)
 const loadError = ref(false)
 const notFound = ref(false)
+
+const sortOptions = [
+  { value: 'newest', label: 'Newest Arrivals' },
+  { value: 'price-asc', label: 'Price: Low to High' },
+  { value: 'price-desc', label: 'Price: High to Low' },
+  { value: 'name', label: 'Name: A-Z' },
+]
+
+const searchQuery = ref('')
+const selectedCategory = ref('All Products')
+const sortBy = ref('newest')
+
+function typeImage(name: string): string | undefined {
+  return typeImages[categories.value.find((c) => c.name === name)?.slug ?? '']
+}
+
+function toggleCategory(name: string) {
+  selectedCategory.value = selectedCategory.value === name ? 'All Products' : name
+}
+
+const filteredProducts = computed(() => {
+  let result = products.value.slice()
+
+  if (selectedCategory.value !== 'All Products') {
+    result = result.filter((p) => p.categories?.name === selectedCategory.value)
+  }
+
+  const query = searchQuery.value.trim().toLowerCase()
+  if (query) {
+    result = result.filter((p) => p.name.toLowerCase().includes(query))
+  }
+
+  switch (sortBy.value) {
+    case 'price-asc':
+      result.sort((a, b) => a.price - b.price)
+      break
+    case 'price-desc':
+      result.sort((a, b) => b.price - a.price)
+      break
+    case 'name':
+      result.sort((a, b) => a.name.localeCompare(b.name))
+      break
+    default:
+      result.sort((a, b) => b.id - a.id)
+  }
+
+  return result
+})
 
 async function loadStore(slug: string | undefined) {
   loading.value = true
@@ -23,6 +87,9 @@ async function loadStore(slug: string | undefined) {
   notFound.value = false
   store.value = null
   products.value = []
+  searchQuery.value = ''
+  selectedCategory.value = 'All Products'
+  sortBy.value = 'newest'
 
   if (!slug) {
     loading.value = false
@@ -37,7 +104,12 @@ async function loadStore(slug: string | undefined) {
       return
     }
     store.value = found
-    products.value = await fetchProducts(found.id)
+    const [storeProducts, categoryRows] = await Promise.all([
+      fetchProducts(found.id),
+      fetchCategories(),
+    ])
+    products.value = storeProducts
+    categories.value = categoryRows
   } catch {
     loadError.value = true
   } finally {
@@ -69,7 +141,47 @@ async function addToCart(p: Product) {
 
 <template>
   <div class="store-detail">
-    <div v-if="loading" class="state-message">Loading store…</div>
+    <template v-if="loading">
+      <section class="store-header">
+        <el-skeleton animated>
+          <template #template>
+            <el-skeleton-item variant="image" class="store-logo" />
+          </template>
+        </el-skeleton>
+        <div class="store-info">
+          <el-skeleton animated style="width: 100%">
+            <template #template>
+              <el-skeleton-item variant="text" class="sk-eyebrow" />
+              <el-skeleton-item variant="h1" class="sk-store-name" />
+              <el-skeleton-item variant="text" class="sk-store-desc" />
+            </template>
+          </el-skeleton>
+        </div>
+      </section>
+
+      <section class="products-section">
+        <div class="section-header">
+          <h2 class="section-title">Products</h2>
+        </div>
+        <div class="product-grid">
+          <div v-for="n in 4" :key="n" class="product-card">
+            <el-skeleton animated>
+              <template #template>
+                <el-skeleton-item variant="image" class="product-image" />
+                <div class="product-info">
+                  <el-skeleton-item variant="h3" class="sk-name" />
+                  <el-skeleton-item variant="text" class="sk-category" />
+                  <div class="product-footer">
+                    <el-skeleton-item variant="text" class="sk-price" />
+                    <el-skeleton-item variant="circle" class="sk-cart-btn" />
+                  </div>
+                </div>
+              </template>
+            </el-skeleton>
+          </div>
+        </div>
+      </section>
+    </template>
 
     <div v-else-if="notFound || loadError || !store" class="state-message">
       <p>{{ loadError ? "Couldn't load this store right now. Please try again shortly." : "We couldn't find that store." }}</p>
@@ -91,12 +203,43 @@ async function addToCart(p: Product) {
       <section class="products-section">
         <div class="section-header">
           <h2 class="section-title">Products</h2>
-          <p class="results-count">{{ products.length }} item{{ products.length === 1 ? '' : 's' }}</p>
+          <p class="results-count">{{ filteredProducts.length }} item{{ filteredProducts.length === 1 ? '' : 's' }}</p>
         </div>
 
-        <div v-if="products.length" class="product-grid">
+        <template v-if="products.length">
+          <div class="type-row">
+            <button
+              v-for="c in categories"
+              :key="c.id"
+              type="button"
+              class="type-card"
+              :class="{ 'is-active': selectedCategory === c.name }"
+              @click="toggleCategory(c.name)"
+            >
+              <div class="type-image" :style="{ backgroundImage: `url(${typeImage(c.name)})` }"></div>
+              <span class="type-label">{{ c.name }}</span>
+            </button>
+          </div>
+
+          <div class="store-toolbar">
+            <el-input
+              v-model="searchQuery"
+              placeholder="Search this store's products"
+              class="store-search"
+            >
+              <template #prefix>
+                <PhMagnifyingGlass :size="16" />
+              </template>
+            </el-input>
+            <el-select v-model="sortBy" class="store-sort">
+              <el-option v-for="o in sortOptions" :key="o.value" :label="o.label" :value="o.value" />
+            </el-select>
+          </div>
+        </template>
+
+        <div v-if="filteredProducts.length" class="product-grid">
           <RouterLink
-            v-for="p in products"
+            v-for="p in filteredProducts"
             :key="p.id"
             :to="`/products/${p.slug}`"
             class="product-card"
@@ -119,6 +262,10 @@ async function addToCart(p: Product) {
               </div>
             </div>
           </RouterLink>
+        </div>
+
+        <div v-else-if="products.length" class="empty-state">
+          <p>No products match your search or filter.</p>
         </div>
 
         <div v-else class="empty-state">
@@ -222,6 +369,79 @@ async function addToCart(p: Product) {
   opacity: 0.6;
 }
 
+.type-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+
+.type-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--color-text);
+}
+
+.type-image {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background-color: #fff;
+  background-size: 60%;
+  background-repeat: no-repeat;
+  background-position: center;
+  border: 1px solid transparent;
+  transition: border-color 0.15s ease;
+}
+
+.type-card:hover .type-image {
+  border-color: var(--color-accent);
+}
+
+.type-card.is-active .type-image {
+  border-color: var(--color-accent);
+}
+
+.type-label {
+  font-size: 0.75rem;
+  line-height: 1.3;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: center;
+  min-height: 2.6em;
+}
+
+.type-card:hover .type-label {
+  color: var(--color-accent);
+}
+
+.type-card.is-active .type-label {
+  color: var(--color-accent);
+}
+
+.store-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.75rem;
+}
+
+.store-search {
+  max-width: 280px;
+  width: 100%;
+}
+
+.store-sort {
+  width: 200px;
+}
+
 .product-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -239,6 +459,7 @@ async function addToCart(p: Product) {
 .product-image {
   position: relative;
   aspect-ratio: 3 / 2;
+  height: auto;
   background-size: cover;
   background-position: center;
 }
@@ -305,6 +526,39 @@ async function addToCart(p: Product) {
   opacity: 0.6;
 }
 
+.sk-eyebrow {
+  width: 60px;
+  margin-bottom: 0.35rem;
+}
+
+.sk-store-name {
+  width: 45%;
+  margin-bottom: 0.5rem;
+}
+
+.sk-store-desc {
+  width: 70%;
+}
+
+.sk-name {
+  width: 70%;
+  margin-bottom: 0.25rem;
+}
+
+.sk-category {
+  width: 40%;
+  margin-bottom: 0.75rem;
+}
+
+.sk-price {
+  width: 35%;
+}
+
+.sk-cart-btn {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
 @media (max-width: 900px) {
   .product-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -315,6 +569,19 @@ async function addToCart(p: Product) {
   .store-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .store-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .store-search {
+    max-width: none;
+  }
+
+  .store-sort {
+    width: 100%;
   }
 
   .product-grid {

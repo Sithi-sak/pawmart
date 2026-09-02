@@ -61,7 +61,21 @@ onMounted(async () => {
 
     <div class="header-divider"></div>
 
-    <div v-if="loading" class="state-message">Loading your orders…</div>
+    <div v-if="loading" class="order-list">
+      <div v-for="n in 4" :key="n" class="order-card">
+        <el-skeleton animated style="display: contents">
+          <template #template>
+            <el-skeleton-item variant="image" class="order-thumb" />
+            <div class="order-info">
+              <el-skeleton-item variant="text" class="sk-order-name" />
+              <el-skeleton-item variant="text" class="sk-order-meta" />
+            </div>
+            <el-skeleton-item variant="text" class="sk-order-price" />
+            <el-skeleton-item variant="button" class="sk-track-btn" />
+          </template>
+        </el-skeleton>
+      </div>
+    </div>
     <div v-else-if="loadError" class="state-message">We couldn't load your orders. Try again later.</div>
     <div v-else-if="orders.length === 0" class="state-message">
       <p>You haven't placed any orders yet.</p>
@@ -164,6 +178,25 @@ onMounted(async () => {
 
 .order-thumb {
   aspect-ratio: 1 / 1;
+  height: auto;
+}
+
+.sk-order-name {
+  width: 70%;
+  margin-bottom: 0.4rem;
+}
+
+.sk-order-meta {
+  width: 90%;
+}
+
+.sk-order-price {
+  width: 3.5rem;
+}
+
+.sk-track-btn {
+  width: 8rem;
+  height: 2.6rem;
 }
 
 .order-name {

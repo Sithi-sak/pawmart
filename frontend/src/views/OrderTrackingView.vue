@@ -98,7 +98,73 @@ onMounted(async () => {
 
 <template>
   <div class="tracking">
-    <div v-if="loading" class="state-message">Loading your order…</div>
+    <template v-if="loading">
+      <div class="tracking-header">
+        <div>
+          <el-skeleton animated>
+            <template #template>
+              <el-skeleton-item variant="text" class="sk-eyebrow" />
+              <el-skeleton-item variant="h1" class="sk-title" />
+            </template>
+          </el-skeleton>
+        </div>
+        <div class="order-number-card">
+          <el-skeleton animated>
+            <template #template>
+              <el-skeleton-item variant="text" class="sk-order-number" />
+            </template>
+          </el-skeleton>
+        </div>
+      </div>
+
+      <div class="header-divider"></div>
+
+      <div class="timeline">
+        <template v-for="n in 5" :key="n">
+          <div class="timeline-step">
+            <el-skeleton animated style="display: contents">
+              <template #template>
+                <el-skeleton-item variant="circle" class="sk-step-icon" />
+                <el-skeleton-item variant="text" class="sk-step-label" />
+              </template>
+            </el-skeleton>
+          </div>
+          <div v-if="n < 5" class="timeline-connector"></div>
+        </template>
+      </div>
+
+      <div class="tracking-body">
+        <div class="delivery-card">
+          <el-skeleton animated>
+            <template #template>
+              <el-skeleton-item variant="h3" class="sk-card-title" />
+              <el-skeleton-item variant="text" class="sk-field" />
+              <el-skeleton-item variant="text" class="sk-field" />
+              <el-skeleton-item variant="text" class="sk-field" />
+              <el-skeleton-item variant="button" class="sk-contact-btn" />
+            </template>
+          </el-skeleton>
+        </div>
+
+        <div class="items-card">
+          <el-skeleton animated>
+            <template #template>
+              <el-skeleton-item variant="h3" class="sk-card-title" />
+              <div class="order-items">
+                <div v-for="n in 2" :key="n" class="order-item">
+                  <el-skeleton-item variant="image" class="order-item-image" />
+                  <div class="order-item-details">
+                    <el-skeleton-item variant="text" class="sk-item-name" />
+                    <el-skeleton-item variant="text" class="sk-item-meta" />
+                  </div>
+                  <el-skeleton-item variant="text" class="sk-item-price" />
+                </div>
+              </div>
+            </template>
+          </el-skeleton>
+        </div>
+      </div>
+    </template>
 
     <div v-else-if="loadError || !order" class="state-message">
       <p>We couldn't find that order.</p>
@@ -248,6 +314,59 @@ onMounted(async () => {
   letter-spacing: 0.05em;
   text-decoration: underline;
   color: var(--color-text);
+}
+
+.sk-eyebrow {
+  width: 90px;
+  margin-bottom: 0.5rem;
+}
+
+.sk-title {
+  width: 220px;
+}
+
+.sk-order-number {
+  width: 110px;
+}
+
+.sk-step-icon {
+  width: 2.75rem;
+  height: 2.75rem;
+  margin-bottom: 0.6rem;
+}
+
+.sk-step-label {
+  width: 60px;
+}
+
+.sk-card-title {
+  width: 55%;
+  margin-bottom: 1.1rem;
+}
+
+.sk-field {
+  width: 80%;
+  margin-bottom: 1.1rem;
+}
+
+.sk-contact-btn {
+  display: block;
+  width: 100%;
+  height: 2.9rem;
+  margin-top: 0.4rem;
+}
+
+.sk-item-name {
+  width: 70%;
+  margin-bottom: 0.4rem;
+}
+
+.sk-item-meta {
+  width: 40%;
+}
+
+.sk-item-price {
+  width: 3.5rem;
 }
 
 .tracking-header {
@@ -483,6 +602,7 @@ onMounted(async () => {
 
 .order-item-image {
   aspect-ratio: 1 / 1;
+  height: auto;
 }
 
 .order-item-name {

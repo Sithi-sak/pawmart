@@ -137,7 +137,52 @@ onMounted(async () => {
       <h1 class="page-title">{{ store?.name ?? 'Dashboard' }}</h1>
     </div>
 
-    <div v-if="loading" class="state-message">Loading dashboard…</div>
+    <template v-if="loading">
+      <div class="stats-grid">
+        <div v-for="n in 3" :key="n" class="stat-card">
+          <el-skeleton animated>
+            <template #template>
+              <el-skeleton-item variant="text" class="sk-stat-label" />
+              <el-skeleton-item variant="h1" class="sk-stat-value" />
+              <el-skeleton-item variant="text" class="sk-stat-delta" />
+            </template>
+          </el-skeleton>
+        </div>
+      </div>
+
+      <div class="widget-card skeleton-card">
+        <div class="widget-header">
+          <div class="widget-heading">
+            <PhWarning :size="18" weight="bold" />
+            <h2>Low Stock Alerts</h2>
+          </div>
+        </div>
+        <el-skeleton v-for="n in 4" :key="n" animated class="skeleton-row">
+          <template #template>
+            <el-skeleton-item variant="text" class="sk-cell sk-cell--product" />
+            <el-skeleton-item variant="text" class="sk-cell sk-cell--category" />
+            <el-skeleton-item variant="text" class="sk-cell sk-cell--stock" />
+            <el-skeleton-item variant="button" class="sk-cell sk-cell--status" />
+          </template>
+        </el-skeleton>
+      </div>
+
+      <div class="widget-card">
+        <div class="widget-header">
+          <div class="widget-heading">
+            <h2>Store Profile</h2>
+          </div>
+        </div>
+        <el-skeleton animated class="profile-form">
+          <template #template>
+            <el-skeleton-item variant="text" class="sk-form-label" />
+            <el-skeleton-item variant="p" style="height: 4.5rem" />
+            <el-skeleton-item variant="text" class="sk-form-label" style="margin-top: 0.6rem" />
+            <el-skeleton-item variant="text" style="height: 2.6rem" />
+          </template>
+        </el-skeleton>
+      </div>
+    </template>
     <div v-else-if="loadError" class="state-message">
       Couldn't load dashboard data right now. Please try again shortly.
     </div>
@@ -292,6 +337,67 @@ onMounted(async () => {
 
 .stat-delta.is-down {
   color: #c0392b;
+}
+
+.sk-stat-label {
+  width: 60%;
+  margin-bottom: 0.5rem;
+}
+
+.sk-stat-value {
+  width: 75%;
+  margin-bottom: 0.6rem;
+}
+
+.sk-stat-delta {
+  width: 55%;
+}
+
+.skeleton-card {
+  padding: 0;
+}
+
+.skeleton-card .widget-header {
+  padding: 1.5rem 1.5rem 1rem;
+  margin-bottom: 0;
+}
+
+.skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.skeleton-row:last-child {
+  border-bottom: none;
+}
+
+.sk-cell {
+  flex-shrink: 0;
+}
+
+.sk-cell--product {
+  width: 160px;
+}
+
+.sk-cell--category {
+  width: 100px;
+}
+
+.sk-cell--stock {
+  width: 70px;
+}
+
+.sk-cell--status {
+  width: 80px;
+  margin-left: auto;
+}
+
+.sk-form-label {
+  width: 100px;
+  margin-bottom: 0.5rem;
 }
 
 /* Widget */

@@ -3,25 +3,38 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { PhArrowLeft, PhArrowRight, PhMagnifyingGlass, PhShoppingCart } from '@phosphor-icons/vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { fetchCategories, fetchProducts, type Product } from '@/lib/products'
+import { fetchCategories, fetchProducts, type Category, type Product } from '@/lib/products'
 import { useCartStore } from '@/stores/cart'
 import dogImg from '@/assets/images/dog.jpg'
 import catImg from '@/assets/images/cat.jpg'
 import birdImg from '@/assets/images/bird.jpg'
 import fishImg from '@/assets/images/fish.jpg'
-import smallPetImg from '@/assets/images/small_pets.png'
+import petClothingImg from '@/assets/images/type/pet-clothing-accessories.png'
+import petFoodImg from '@/assets/images/type/pet-food.png'
+import petGroomingImg from '@/assets/images/type/pet-grooming-supplies.png'
+import petHealthcareImg from '@/assets/images/type/pet-healthcare.png'
+import petSuppliesImg from '@/assets/images/type/pet-supplies.png'
+import petTrainingImg from '@/assets/images/type/pet-training-aids.png'
 
 const cart = useCartStore()
 const router = useRouter()
 
-const species = ['Dog', 'Cat', 'Bird', 'Fish', 'Small Pet']
+const species = ['Dog', 'Cat', 'Bird', 'Fish']
 
 const speciesImages: Record<string, string> = {
   Dog: dogImg,
   Cat: catImg,
   Bird: birdImg,
   Fish: fishImg,
-  'Small Pet': smallPetImg,
+}
+
+const typeImages: Record<string, string> = {
+  'pet-clothing-accessories': petClothingImg,
+  'pet-food': petFoodImg,
+  'pet-grooming-supplies': petGroomingImg,
+  'pet-healthcare': petHealthcareImg,
+  'pet-supplies': petSuppliesImg,
+  'pet-training-aids': petTrainingImg,
 }
 
 const priceRanges = [
@@ -39,12 +52,19 @@ const sortOptions = [
 ]
 
 const products = ref<Product[]>([])
-const categoryNames = ref<string[]>([])
+const categories = ref<Category[]>([])
+const categoryNames = computed(() => categories.value.map((c) => c.name))
 const loading = ref(true)
 const loadError = ref(false)
 
-const brands = computed(() =>
-  Array.from(new Set(products.value.map((p) => p.brand).filter((b): b is string => !!b))).sort(),
+function typeImage(name: string): string | undefined {
+  return typeImages[categories.value.find((c) => c.name === name)?.slug ?? '']
+}
+
+const storeNames = computed(() =>
+  Array.from(
+    new Set(products.value.map((p) => p.stores?.name).filter((s): s is string => !!s)),
+  ).sort(),
 )
 
 const categoryOptions = computed(() => ['All Products', ...categoryNames.value])
@@ -55,7 +75,7 @@ async function loadCatalog() {
   try {
     const [productRows, categoryRows] = await Promise.all([fetchProducts(), fetchCategories()])
     products.value = productRows
-    categoryNames.value = categoryRows.map((c) => c.name)
+    categories.value = categoryRows
   } catch {
     loadError.value = true
   } finally {
@@ -69,13 +89,17 @@ const searchQuery = ref('')
 const selectedSpecies = ref<string | null>(null)
 const selectedCategory = ref('All Products')
 const selectedPriceRanges = ref<string[]>([])
-const selectedBrands = ref<string[]>([])
+const selectedStores = ref<string[]>([])
 const sortBy = ref('newest')
 const page = ref(1)
 const pageSize = 6
 
 function toggleSpecies(s: string) {
   selectedSpecies.value = selectedSpecies.value === s ? null : s
+}
+
+function toggleCategory(c: string) {
+  selectedCategory.value = selectedCategory.value === c ? 'All Products' : c
 }
 
 const filteredProducts = computed(() => {
@@ -89,8 +113,8 @@ const filteredProducts = computed(() => {
     result = result.filter((p) => p.categories?.name === selectedCategory.value)
   }
 
-  if (selectedBrands.value.length) {
-    result = result.filter((p) => p.brand && selectedBrands.value.includes(p.brand))
+  if (selectedStores.value.length) {
+    result = result.filter((p) => p.stores?.name && selectedStores.value.includes(p.stores.name))
   }
 
   if (selectedPriceRanges.value.length) {
@@ -106,7 +130,8 @@ const filteredProducts = computed(() => {
   if (query) {
     result = result.filter(
       (p) =>
-        p.name.toLowerCase().includes(query) || (p.brand?.toLowerCase().includes(query) ?? false),
+        p.name.toLowerCase().includes(query) ||
+        (p.stores?.name.toLowerCase().includes(query) ?? false),
     )
   }
 
@@ -134,7 +159,7 @@ const paginatedProducts = computed(() => {
   return filteredProducts.value.slice(start, start + pageSize)
 })
 
-watch([selectedSpecies, selectedCategory, selectedPriceRanges, selectedBrands, sortBy, searchQuery], () => {
+watch([selectedSpecies, selectedCategory, selectedPriceRanges, selectedStores, sortBy, searchQuery], () => {
   page.value = 1
 })
 
@@ -172,6 +197,20 @@ function goToStore(p: Product) {
       <p class="results-count">Showing {{ filteredProducts.length }} Results</p>
     </div>
 
+    <div class="type-row">
+      <button
+        v-for="c in categoryNames"
+        :key="c"
+        type="button"
+        class="type-card"
+        :class="{ 'is-active': selectedCategory === c }"
+        @click="toggleCategory(c)"
+      >
+        <div class="type-image" :style="{ backgroundImage: `url(${typeImage(c)})` }"></div>
+        <span class="type-label">{{ c }}</span>
+      </button>
+    </div>
+
     <div class="species-row">
       <button
         v-for="s in species"
@@ -191,7 +230,7 @@ function goToStore(p: Product) {
         <div class="filter-group">
           <el-input
             v-model="searchQuery"
-            placeholder="Search products or brands"
+            placeholder="Search products or stores"
             size="large"
           >
             <template #prefix>
@@ -224,10 +263,10 @@ function goToStore(p: Product) {
         </div>
 
         <div class="filter-group">
-          <h3 class="filter-title">Brand</h3>
-          <el-checkbox-group v-model="selectedBrands" class="filter-checkboxes">
-            <el-checkbox v-for="b in brands" :key="b" :label="b" :value="b">
-              {{ b }}
+          <h3 class="filter-title">Store</h3>
+          <el-checkbox-group v-model="selectedStores" class="filter-checkboxes">
+            <el-checkbox v-for="s in storeNames" :key="s" :label="s" :value="s">
+              {{ s }}
             </el-checkbox>
           </el-checkbox-group>
         </div>
@@ -241,8 +280,22 @@ function goToStore(p: Product) {
       </aside>
 
       <div class="results">
-        <div v-if="loading" class="empty-state">
-          <p>Loading products…</p>
+        <div v-if="loading" class="product-grid">
+          <div v-for="n in pageSize" :key="n" class="product-card">
+            <el-skeleton animated>
+              <template #template>
+                <el-skeleton-item variant="image" class="product-image" />
+                <div class="product-info">
+                  <el-skeleton-item variant="h3" class="sk-name" />
+                  <el-skeleton-item variant="text" class="sk-category" />
+                  <div class="product-footer">
+                    <el-skeleton-item variant="text" class="sk-price" />
+                    <el-skeleton-item variant="circle" class="sk-cart-btn" />
+                  </div>
+                </div>
+              </template>
+            </el-skeleton>
+          </div>
         </div>
 
         <div v-else-if="loadError" class="empty-state">
@@ -347,10 +400,67 @@ function goToStore(p: Product) {
   white-space: nowrap;
 }
 
+/* Product-type row */
+.type-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+
+.type-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--color-text);
+}
+
+.type-image {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background-color: #fff;
+  background-size: 60%;
+  background-repeat: no-repeat;
+  background-position: center;
+  border: 1px solid transparent;
+  transition: border-color 0.15s ease;
+}
+
+.type-card:hover .type-image {
+  border-color: var(--color-accent);
+}
+
+.type-card.is-active .type-image {
+  border-color: var(--color-accent);
+}
+
+.type-label {
+  font-size: 0.75rem;
+  line-height: 1.3;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: center;
+  min-height: 2.6em;
+}
+
+.type-card:hover .type-label {
+  color: var(--color-accent);
+}
+
+.type-card.is-active .type-label {
+  color: var(--color-accent);
+}
+
 /* Species row */
 .species-row {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 1rem;
   padding-bottom: 1.75rem;
   margin-bottom: 1.75rem;
@@ -372,7 +482,7 @@ function goToStore(p: Product) {
 
 .species-icon {
   width: 100%;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 4 / 2;
   background-size: 100%;
   background-position: center;
 }
@@ -465,6 +575,7 @@ function goToStore(p: Product) {
 .product-image {
   position: relative;
   aspect-ratio: 3 / 2;
+  height: auto;
   background-size: cover;
   background-position: center;
 }
@@ -542,6 +653,25 @@ function goToStore(p: Product) {
   padding: 3rem 0;
   text-align: center;
   opacity: 0.6;
+}
+
+.sk-name {
+  width: 70%;
+  margin-bottom: 0.5rem;
+}
+
+.sk-category {
+  width: 40%;
+  margin-bottom: 0.75rem;
+}
+
+.sk-price {
+  width: 35%;
+}
+
+.sk-cart-btn {
+  width: 2.25rem;
+  height: 2.25rem;
 }
 
 /* Pagination */

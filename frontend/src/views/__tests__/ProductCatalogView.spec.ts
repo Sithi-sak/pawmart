@@ -120,7 +120,7 @@ function makeProduct(overrides: Partial<Product> = {}): Product {
     is_new: false,
     created_at: '2026-01-01T00:00:00Z',
     categories: { id: 1, name: 'Food', slug: 'food' },
-    stores: null,
+    stores: { id: 1, name: 'Acme Store', slug: 'acme-store' },
     ...overrides,
   }
 }
@@ -213,9 +213,9 @@ describe('ProductCatalogView', () => {
       expect(productNames(wrapper)).toEqual(['Ball'])
     })
 
-    it('filters by search query across name and brand', async () => {
-      const a = makeProduct({ name: 'Salmon Treats', brand: 'Acme' })
-      const b = makeProduct({ name: 'Chew Toy', brand: 'PetCo' })
+    it('filters by search query across name and store', async () => {
+      const a = makeProduct({ name: 'Salmon Treats' })
+      const b = makeProduct({ name: 'Chew Toy' })
       const wrapper = await mountCatalog([a, b])
 
       await wrapper.find('.stub-search').setValue('salmon')
@@ -223,9 +223,15 @@ describe('ProductCatalogView', () => {
       expect(productNames(wrapper)).toEqual(['Salmon Treats'])
     })
 
-    it('matches search query against brand even when the name differs', async () => {
-      const a = makeProduct({ name: 'Chew Toy', brand: 'PetCo' })
-      const b = makeProduct({ name: 'Cat Tower', brand: 'Whiskers Inc' })
+    it('matches search query against store name even when the product name differs', async () => {
+      const a = makeProduct({
+        name: 'Chew Toy',
+        stores: { id: 1, name: 'PetCo Store', slug: 'petco-store' },
+      })
+      const b = makeProduct({
+        name: 'Cat Tower',
+        stores: { id: 2, name: 'Whiskers Inc', slug: 'whiskers-inc' },
+      })
       const wrapper = await mountCatalog([a, b])
 
       await wrapper.find('.stub-search').setValue('whiskers')
@@ -245,29 +251,47 @@ describe('ProductCatalogView', () => {
       expect(productNames(wrapper)).toEqual(['Cheap'])
     })
 
-    it('filters by brand', async () => {
-      const acme = makeProduct({ name: 'Acme Bowl', brand: 'Acme' })
-      const petco = makeProduct({ name: 'PetCo Bowl', brand: 'PetCo' })
+    it('filters by store', async () => {
+      const acme = makeProduct({
+        name: 'Acme Bowl',
+        stores: { id: 1, name: 'Acme Store', slug: 'acme-store' },
+      })
+      const petco = makeProduct({
+        name: 'PetCo Bowl',
+        stores: { id: 2, name: 'PetCo Store', slug: 'petco-store' },
+      })
       const wrapper = await mountCatalog([acme, petco])
 
-      const brandGroup = wrapper.findAll('.stub-checkbox-group')[1]
-      const acmeLabel = brandGroup.findAll('.stub-checkbox').find((l) => l.text() === 'Acme')!
+      const storeGroup = wrapper.findAll('.stub-checkbox-group')[1]
+      const acmeLabel = storeGroup.findAll('.stub-checkbox').find((l) => l.text() === 'Acme Store')!
       await acmeLabel.find('input').setValue(true)
 
       expect(productNames(wrapper)).toEqual(['Acme Bowl'])
     })
 
     it('combines multiple active filters', async () => {
-      const match = makeProduct({ name: 'Dog Kibble', species: 'Dog', brand: 'Acme', price: 20 })
-      const wrongSpecies = makeProduct({ name: 'Cat Kibble', species: 'Cat', brand: 'Acme', price: 20 })
-      const wrongBrand = makeProduct({ name: 'Dog Kibble 2', species: 'Dog', brand: 'PetCo', price: 20 })
-      const wrapper = await mountCatalog([match, wrongSpecies, wrongBrand])
+      const acmeStore = { id: 1, name: 'Acme Store', slug: 'acme-store' }
+      const petcoStore = { id: 2, name: 'PetCo Store', slug: 'petco-store' }
+      const match = makeProduct({ name: 'Dog Kibble', species: 'Dog', stores: acmeStore, price: 20 })
+      const wrongSpecies = makeProduct({
+        name: 'Cat Kibble',
+        species: 'Cat',
+        stores: acmeStore,
+        price: 20,
+      })
+      const wrongStore = makeProduct({
+        name: 'Dog Kibble 2',
+        species: 'Dog',
+        stores: petcoStore,
+        price: 20,
+      })
+      const wrapper = await mountCatalog([match, wrongSpecies, wrongStore])
 
       const dogButton = wrapper.findAll('.species-card').find((b) => b.text() === 'Dog')!
       await dogButton.trigger('click')
 
-      const brandGroup = wrapper.findAll('.stub-checkbox-group')[1]
-      const acmeLabel = brandGroup.findAll('.stub-checkbox').find((l) => l.text() === 'Acme')!
+      const storeGroup = wrapper.findAll('.stub-checkbox-group')[1]
+      const acmeLabel = storeGroup.findAll('.stub-checkbox').find((l) => l.text() === 'Acme Store')!
       await acmeLabel.find('input').setValue(true)
 
       expect(productNames(wrapper)).toEqual(['Dog Kibble'])

@@ -59,7 +59,7 @@ button {
 
 html {
   scrollbar-gutter: stable;
-  scrollbar-width: none;
+  scrollbar-width: thin;
   scrollbar-color: var(--color-border) transparent;
 }
 

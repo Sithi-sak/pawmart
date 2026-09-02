@@ -61,8 +61,34 @@ function proceedToCheckout() {
     </div>
     <div class="header-divider"></div>
 
-    <div v-if="cart.loading" class="empty-cart">
-      <p>Loading your cart&hellip;</p>
+    <div v-if="cart.loading" class="cart-body">
+      <div class="line-items">
+        <div v-for="n in 3" :key="n" class="line-item">
+          <el-skeleton animated style="display: contents">
+            <template #template>
+              <el-skeleton-item variant="image" class="item-image" />
+              <div class="item-details">
+                <el-skeleton-item variant="text" class="sk-item-name" />
+                <el-skeleton-item variant="text" class="sk-item-variant" />
+                <el-skeleton-item variant="button" class="sk-qty-stepper" />
+              </div>
+              <el-skeleton-item variant="text" class="sk-item-price" />
+            </template>
+          </el-skeleton>
+        </div>
+      </div>
+
+      <aside class="order-summary">
+        <el-skeleton animated>
+          <template #template>
+            <el-skeleton-item variant="h3" class="sk-summary-title" />
+            <el-skeleton-item variant="text" class="sk-summary-row" />
+            <el-skeleton-item variant="text" class="sk-summary-row" />
+            <el-skeleton-item variant="text" class="sk-summary-row" />
+            <el-skeleton-item variant="button" class="sk-checkout-btn" />
+          </template>
+        </el-skeleton>
+      </aside>
     </div>
 
     <div v-else-if="cart.items.length" class="cart-body">
@@ -266,6 +292,7 @@ function proceedToCheckout() {
 .item-image {
   display: block;
   aspect-ratio: 1 / 1;
+  height: auto;
   background-size: cover;
   background-position: center;
 }
@@ -501,6 +528,43 @@ function proceedToCheckout() {
   font-size: 0.78rem;
   color: var(--color-text);
   opacity: 0.8;
+}
+
+.sk-item-name {
+  width: 75%;
+  margin-bottom: 0.4rem;
+}
+
+.sk-item-variant {
+  width: 40%;
+  margin-bottom: 0.9rem;
+}
+
+.sk-qty-stepper {
+  width: 6rem;
+  height: 2.25rem;
+}
+
+.sk-item-price {
+  width: 3rem;
+  justify-self: end;
+}
+
+.sk-summary-title {
+  width: 60%;
+  margin-bottom: 1rem;
+}
+
+.sk-summary-row {
+  width: 85%;
+  margin-bottom: 0.85rem;
+}
+
+.sk-checkout-btn {
+  display: block;
+  width: 100%;
+  height: 3rem;
+  margin-top: 0.5rem;
 }
 
 /* Empty state */

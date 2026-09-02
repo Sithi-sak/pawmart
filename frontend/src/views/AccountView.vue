@@ -247,7 +247,19 @@ async function saveCompanion() {
           </RouterLink>
         </div>
 
-        <p v-if="petsLoading" class="pets-loading">Loading your pets…</p>
+        <div v-if="petsLoading" class="pets-grid">
+          <div v-for="n in 2" :key="n" class="pet-card">
+            <el-skeleton animated>
+              <template #template>
+                <el-skeleton-item variant="image" class="pet-image" />
+                <div class="pet-details">
+                  <el-skeleton-item variant="h3" class="sk-pet-name" />
+                  <el-skeleton-item variant="text" class="sk-pet-meta" />
+                </div>
+              </template>
+            </el-skeleton>
+          </div>
+        </div>
 
         <div v-else class="pets-grid">
           <RouterLink v-for="pet in pets" :key="pet.id" to="/account/pets" class="pet-card">
@@ -340,7 +352,20 @@ async function saveCompanion() {
         </div>
         <div class="card-divider"></div>
 
-        <p v-if="ordersLoading" class="pets-loading">Loading your orders…</p>
+        <div v-if="ordersLoading" class="order-list">
+          <div v-for="n in 3" :key="n" class="order-row">
+            <el-skeleton animated style="display: contents">
+              <template #template>
+                <el-skeleton-item variant="image" class="order-thumb" />
+                <div class="order-info">
+                  <el-skeleton-item variant="text" class="sk-order-name" />
+                  <el-skeleton-item variant="text" class="sk-order-status" />
+                </div>
+                <el-skeleton-item variant="text" class="sk-order-price" />
+              </template>
+            </el-skeleton>
+          </div>
+        </div>
         <p v-else-if="ordersError" class="pets-loading">We couldn't load your orders.</p>
         <p v-else-if="recentOrders.length === 0" class="pets-loading">
           You haven't placed any orders yet.
@@ -399,7 +424,18 @@ async function saveCompanion() {
 
         <div class="rewards-section">
           <p class="rewards-label">Available Rewards</p>
-          <p v-if="rewardsLoading" class="pets-loading">Loading rewards…</p>
+          <div v-if="rewardsLoading" class="rewards-grid">
+            <div v-for="n in 3" :key="n" class="reward-card">
+              <el-skeleton animated>
+                <template #template>
+                  <el-skeleton-item variant="h3" class="sk-reward-title" />
+                  <el-skeleton-item variant="text" class="sk-reward-desc" />
+                  <el-skeleton-item variant="text" class="sk-reward-cost" />
+                  <el-skeleton-item variant="button" class="sk-redeem-btn" />
+                </template>
+              </el-skeleton>
+            </div>
+          </div>
           <div v-else class="rewards-grid">
             <div v-for="reward in rewards" :key="reward.id" class="reward-card">
               <h3 class="reward-title">{{ reward.title }}</h3>
@@ -646,6 +682,7 @@ async function saveCompanion() {
 .pet-image {
   position: relative;
   aspect-ratio: 4 / 3;
+  height: auto;
 }
 
 .status-badge {
@@ -675,6 +712,15 @@ async function saveCompanion() {
   letter-spacing: 0.03em;
   color: var(--color-text);
   opacity: 0.6;
+}
+
+.sk-pet-name {
+  width: 65%;
+  margin-bottom: 0.35rem;
+}
+
+.sk-pet-meta {
+  width: 85%;
 }
 
 .add-companion-box {
@@ -777,6 +823,7 @@ async function saveCompanion() {
 
 .order-thumb {
   aspect-ratio: 1 / 1;
+  height: auto;
 }
 
 .order-name {
@@ -798,6 +845,20 @@ async function saveCompanion() {
   font-weight: 600;
   color: var(--color-heading);
   white-space: nowrap;
+}
+
+.sk-order-name {
+  width: 75%;
+  margin-bottom: 0.3rem;
+}
+
+.sk-order-status {
+  width: 90%;
+}
+
+.sk-order-price {
+  width: 2.5rem;
+  justify-self: end;
 }
 
 .history-btn {
@@ -992,6 +1053,28 @@ async function saveCompanion() {
 .redeem-btn:disabled:hover {
   border-color: var(--color-border);
   color: var(--color-heading);
+}
+
+.sk-reward-title {
+  width: 65%;
+  margin-bottom: 0.4rem;
+}
+
+.sk-reward-desc {
+  width: 90%;
+  margin-bottom: 0.75rem;
+}
+
+.sk-reward-cost {
+  width: 45%;
+  margin-bottom: 1.25rem;
+}
+
+.sk-redeem-btn {
+  display: block;
+  width: 100%;
+  height: 2.5rem;
+  margin-top: auto;
 }
 
 .earn-heading {

@@ -123,7 +123,30 @@ function addToWishlist() {
 
 <template>
   <div class="product-detail">
-    <div v-if="loading" class="state-message">Loading product…</div>
+    <div v-if="loading" class="detail-top">
+      <div class="gallery">
+        <el-skeleton v-for="n in 4" :key="n" animated>
+          <template #template>
+            <el-skeleton-item variant="image" class="gallery-image" />
+          </template>
+        </el-skeleton>
+      </div>
+
+      <div class="info">
+        <el-skeleton animated>
+          <template #template>
+            <el-skeleton-item variant="text" class="sk-eyebrow" />
+            <el-skeleton-item variant="h1" class="sk-product-name" />
+            <el-skeleton-item variant="text" class="sk-price" />
+            <el-skeleton-item variant="text" class="sk-sold-by" />
+            <div class="divider"></div>
+            <el-skeleton-item variant="text" class="sk-stock" />
+            <el-skeleton-item variant="button" class="sk-add-btn" />
+            <el-skeleton-item variant="button" class="sk-wishlist-btn" />
+          </template>
+        </el-skeleton>
+      </div>
+    </div>
 
     <div v-else-if="loadError || !product" class="state-message">
       <p>We couldn't find that product.</p>
@@ -334,6 +357,7 @@ function addToWishlist() {
 
 .gallery-image {
   aspect-ratio: 1 / 1;
+  height: auto;
   background-size: cover;
   background-position: center;
 }
@@ -346,6 +370,44 @@ function addToWishlist() {
   flex-direction: column;
   align-items: center;
   gap: 0.75rem;
+}
+
+.sk-eyebrow {
+  width: 90px;
+  margin-bottom: 0.75rem;
+}
+
+.sk-product-name {
+  width: 80%;
+  margin-bottom: 0.75rem;
+}
+
+.sk-price {
+  width: 30%;
+  margin-bottom: 0.5rem;
+}
+
+.sk-sold-by {
+  width: 40%;
+  margin-bottom: 1.25rem;
+}
+
+.sk-stock {
+  width: 35%;
+  margin-bottom: 1.25rem;
+}
+
+.sk-add-btn {
+  display: block;
+  width: 100%;
+  height: 3rem;
+  margin-bottom: 0.75rem;
+}
+
+.sk-wishlist-btn {
+  display: block;
+  width: 100%;
+  height: 3rem;
 }
 
 .info {
