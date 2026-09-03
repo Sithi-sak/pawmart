@@ -201,37 +201,6 @@ describe('CheckoutView', () => {
     })
   })
 
-  describe('ABA PayWay', () => {
-    it('places the order directly with no Stripe interaction', async () => {
-      createOrderMock.mockResolvedValue({ id: 43, total: 21.75 })
-
-      const wrapper = mountCheckout()
-      await fillShippingAndContinue(wrapper)
-      await selectPaymentMethod(wrapper, 'ABA PayWay')
-      await goToReview(wrapper)
-
-      await wrapper.find('.place-order-btn').trigger('click')
-      await flushPromises()
-
-      expect(createPaymentIntentMock).not.toHaveBeenCalled()
-      expect(confirmCardPaymentMock).not.toHaveBeenCalled()
-      expect(createOrderMock).toHaveBeenCalledWith(
-        expect.objectContaining({ payment_method: 'aba_payway', payment_intent_id: null }),
-        'tok-1',
-      )
-      expect(routerPushMock).toHaveBeenCalledWith({ name: 'order-confirm', query: { orderId: '43' } })
-    })
-
-    it('shows the redirect-informational panel instead of card fields', async () => {
-      const wrapper = mountCheckout()
-      await fillShippingAndContinue(wrapper)
-      await selectPaymentMethod(wrapper, 'ABA PayWay')
-
-      expect(wrapper.find('.redirect-note').text()).toContain('ABA PayWay')
-      expect(wrapper.find('#cardElement').exists()).toBe(false)
-    })
-  })
-
   describe('KHQR', () => {
     it('creates the order, then shows the scan-to-pay modal before navigating on "I Have Paid"', async () => {
       createOrderMock.mockResolvedValue({ id: 44, total: 21.75 })
@@ -263,7 +232,7 @@ describe('CheckoutView', () => {
 
       const wrapper = mountCheckout()
       await fillShippingAndContinue(wrapper)
-      await selectPaymentMethod(wrapper, 'ABA PayWay')
+      await selectPaymentMethod(wrapper, 'KHQR')
       await goToReview(wrapper)
 
       await wrapper.find('.place-order-btn').trigger('click')

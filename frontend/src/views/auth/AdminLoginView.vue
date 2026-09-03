@@ -22,9 +22,14 @@ async function handleSubmit() {
   submitting.value = true
   try {
     await auth.signInStaff(form.email, form.password)
-    const fallback = auth.isStoreOwner ? '/store/manage' : '/admin'
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : fallback
-    router.push(redirect)
+    // A `redirect` query param can point at an area the signed-in role
+    // doesn't have access to (e.g. a store owner landing here via a bounce
+    // off /admin) -- honor it only when it matches the account's own area,
+    // otherwise the post-login push just bounces straight back here.
+    const home = auth.isStoreOwner ? '/store/manage' : '/admin'
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : home
+    const ownArea = redirect === home || redirect.startsWith(`${home}/`)
+    router.push(ownArea ? redirect : home)
   } catch (err) {
     errorMessage.value = err instanceof Error ? err.message : 'Unable to sign in.'
   } finally {

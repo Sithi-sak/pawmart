@@ -20,13 +20,40 @@ interface Collection {
   label?: string
   featured?: boolean
   image: string
+  to: { path: string; query: Record<string, string> }
 }
 
 const collections: Collection[] = [
-  { key: 'featured', title: 'Comfort Beds', subtitle: 'Shop Premium Bedding', label: 'FEATURED', featured: true, image: bedImg },
-  { key: 'essentials', title: 'Essentials', subtitle: 'Bowls, Leashes & More', image: essentialsImg },
-  { key: 'nutrition', title: 'Nutrition', subtitle: 'Food & Supplements', image: nutritionImg },
-  { key: 'lifestyle', title: 'Lifestyle', subtitle: 'Toys & Enrichment', image: lifestyleImg },
+  {
+    key: 'featured',
+    title: 'Comfort Beds',
+    subtitle: 'Shop Premium Bedding',
+    label: 'FEATURED',
+    featured: true,
+    image: bedImg,
+    to: { path: '/products', query: { q: 'bed' } },
+  },
+  {
+    key: 'essentials',
+    title: 'Essentials',
+    subtitle: 'Bowls, Leashes & More',
+    image: essentialsImg,
+    to: { path: '/products', query: { category: 'Pet Supplies' } },
+  },
+  {
+    key: 'nutrition',
+    title: 'Nutrition',
+    subtitle: 'Food & Supplements',
+    image: nutritionImg,
+    to: { path: '/products', query: { category: 'Pet Food' } },
+  },
+  {
+    key: 'lifestyle',
+    title: 'Lifestyle',
+    subtitle: 'Toys & Enrichment',
+    image: lifestyleImg,
+    to: { path: '/products', query: { category: 'Pet Training Aids' } },
+  },
 ]
 
 const recommendedProducts = ref<Product[]>([])
@@ -80,7 +107,7 @@ function formatPrice(value: number) {
         <RouterLink
           v-for="c in collections"
           :key="c.key"
-          to="/products"
+          :to="c.to"
           class="collection-card"
           :class="[`collection-card--${c.key}`, { 'is-featured': c.featured }]"
           :style="{

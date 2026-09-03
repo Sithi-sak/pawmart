@@ -40,6 +40,10 @@ export interface Product {
   images: string[]
   description: string | null
   is_new: boolean
+  is_promotional: boolean
+  promotion_note: string | null
+  is_discounted: boolean
+  discount_percent: number | null
   created_at: string
   categories: Category | null
   stores: ProductStore | null
@@ -58,6 +62,18 @@ export function isLowStock(product: Pick<Product, 'stock'>): boolean {
   return product.stock <= LOW_STOCK_THRESHOLD
 }
 
+// Display-only sale price -- cart/checkout still charge the full listed
+// price (see StoreOwnerProductsView notes); a store owner's discount tag
+// isn't wired into order pricing yet.
+export function effectivePrice(
+  product: Pick<Product, 'price' | 'is_discounted' | 'discount_percent'>,
+): number {
+  if (product.is_discounted && product.discount_percent) {
+    return Math.round(product.price * (1 - product.discount_percent / 100) * 100) / 100
+  }
+  return product.price
+}
+
 export interface ProductInput {
   category_id: number | null
   name: string
@@ -66,6 +82,10 @@ export interface ProductInput {
   price: number
   stock: number
   images: string[]
+  is_promotional: boolean
+  promotion_note: string | null
+  is_discounted: boolean
+  discount_percent: number | null
   // Required for a store owner's own CRUD (products.store_id is NOT NULL
   // and the "store owners manage own products" RLS check requires it to be
   // their own store); left unset for the admin's shop-wide product form.

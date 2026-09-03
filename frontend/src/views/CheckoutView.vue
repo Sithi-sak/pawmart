@@ -68,7 +68,6 @@ type PaymentMethod = 'visa' | 'aba_payway' | 'khqr'
 
 const paymentMethods: { key: PaymentMethod; label: string }[] = [
   { key: 'visa', label: 'Visa' },
-  { key: 'aba_payway', label: 'ABA PayWay' },
   { key: 'khqr', label: 'KHQR' },
 ]
 
@@ -848,7 +847,7 @@ const shippingMethodLabel = computed(() =>
 
 .payment-method-select {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 0.75rem;
   margin-bottom: 2rem;
 }
@@ -864,6 +863,7 @@ const shippingMethodLabel = computed(() =>
   font-weight: 600;
   text-transform: uppercase;
   cursor: pointer;
+  line-height: 0;
 }
 
 .payment-method-btn:hover {

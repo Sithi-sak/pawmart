@@ -1,9 +1,17 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
-import { PhCaretDown, PhTruck, PhShieldCheck, PhStorefront, PhStar, PhStarHalf } from '@phosphor-icons/vue'
+import {
+  PhCaretDown,
+  PhTruck,
+  PhShieldCheck,
+  PhStorefront,
+  PhStar,
+  PhStarHalf,
+  PhMegaphone,
+} from '@phosphor-icons/vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { fetchProductBySlug, fetchRelatedProducts, type Product } from '@/lib/products'
+import { effectivePrice, fetchProductBySlug, fetchRelatedProducts, type Product } from '@/lib/products'
 import { fetchRecommendedProducts } from '@/lib/recommendations'
 import {
   fetchProductReviews,
@@ -258,7 +266,19 @@ function addToWishlist() {
             </span>
           </a>
 
-          <p class="price">{{ formatPrice(product.price) }}</p>
+          <div class="price-row">
+            <p class="price">{{ formatPrice(effectivePrice(product)) }}</p>
+            <template v-if="product.is_discounted && product.discount_percent">
+              <p class="price-original">{{ formatPrice(product.price) }}</p>
+              <span class="discount-pill">-{{ Math.round(product.discount_percent) }}%</span>
+            </template>
+          </div>
+
+          <div v-if="product.is_promotional" class="promo-banner">
+            <PhMegaphone :size="18" weight="fill" />
+            <span>{{ product.promotion_note || 'This item is part of a special promotion.' }}</span>
+          </div>
+
           <div v-if="product.stores" class="sold-by-row">
             <div
               class="sold-by-avatar placeholder-img"
@@ -606,10 +626,59 @@ function addToWishlist() {
   margin-bottom: 0.75rem;
 }
 
+.price-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
 .price {
   font-size: 1.1rem;
   color: var(--color-heading);
-  margin-bottom: 0.5rem;
+}
+
+.price-original {
+  font-size: 0.9rem;
+  color: var(--color-text);
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+.discount-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 1.5rem;
+  padding: 0 0.55rem;
+  background: #c0392b;
+  color: #fff;
+  font-size: 0.7rem;
+  letter-spacing: 0.03em;
+  font-weight: 600;
+  line-height: 0;
+}
+
+.promo-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.7rem 0.9rem;
+  margin-bottom: 1.25rem;
+  background: #eaf1fb;
+  color: #2b6cb0;
+  font-size: 0.82rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .discount-pill {
+    background: rgba(192, 57, 43, 0.85);
+  }
+
+  .promo-banner {
+    background: rgba(43, 108, 176, 0.2);
+    color: #8fb7e3;
+  }
 }
 
 .rating-row {
@@ -761,13 +830,13 @@ function addToWishlist() {
 .add-to-cart-btn {
   display: block;
   width: 100%;
-  height: 3rem;
+  height: 2.5rem;
   background: var(--color-accent);
   border: none;
   color: #fff;
   font-size: 0.85rem;
   letter-spacing: 0.08em;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   margin-bottom: 0.75rem;
 }
@@ -784,15 +853,15 @@ function addToWishlist() {
 .wishlist-btn {
   display: block;
   width: 100%;
-  height: 3rem;
+  height: 2.5rem;
   background: var(--color-background);
   border: 1px solid var(--color-heading);
   color: var(--color-heading);
   font-size: 0.85rem;
   letter-spacing: 0.08em;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
-  margin-bottom: 1.75rem;
+  margin-bottom: 1.125rem;
 }
 
 .wishlist-btn:hover {

@@ -39,6 +39,7 @@ def provision_store_owner(
         if match is None:
             raise
         user_id = match.id
+        supabase.auth.admin.update_user_by_id(user_id, {"password": password})
 
     supabase.table("customers").upsert(
         {"id": user_id, "email": email, "full_name": full_name, "role": "store_owner"}

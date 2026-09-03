@@ -3,7 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { PhStorefront, PhShoppingCart, PhMagnifyingGlass } from '@phosphor-icons/vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { fetchCategories, fetchProducts, type Category, type Product } from '@/lib/products'
+import { effectivePrice, fetchCategories, fetchProducts, type Category, type Product } from '@/lib/products'
 import { fetchStoreBySlug, type Store } from '@/lib/stores'
 import { useCartStore } from '@/stores/cart'
 import petClothingImg from '@/assets/images/type/pet-clothing-accessories.png'
@@ -249,13 +249,24 @@ async function addToCart(p: Product) {
               :class="{ 'placeholder-img': !p.images.length }"
               :style="p.images.length ? { backgroundImage: `url(${p.images[0]})` } : undefined"
             >
-              <span v-if="p.is_new" class="new-badge">NEW</span>
+              <div class="badge-stack">
+                <span v-if="p.is_new" class="new-badge">NEW</span>
+                <span v-if="p.is_promotional" class="tag-badge tag-badge--promo">Promo</span>
+                <span v-if="p.is_discounted && p.discount_percent" class="tag-badge tag-badge--discount">
+                  -{{ Math.round(p.discount_percent) }}%
+                </span>
+              </div>
             </div>
             <div class="product-info">
               <h3 class="product-name">{{ p.name }}</h3>
               <p class="product-category">{{ (p.categories?.name ?? '').toUpperCase() }}</p>
               <div class="product-footer">
-                <p class="product-price">${{ Number(p.price).toFixed(2) }}</p>
+                <div class="price-group">
+                  <p class="product-price">${{ effectivePrice(p).toFixed(2) }}</p>
+                  <p v-if="p.is_discounted && p.discount_percent" class="product-price-original">
+                    ${{ Number(p.price).toFixed(2) }}
+                  </p>
+                </div>
                 <button type="button" class="cart-btn" @click.prevent="addToCart(p)">
                   <PhShoppingCart :size="16" />
                 </button>
@@ -445,7 +456,7 @@ async function addToCart(p: Product) {
 .product-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 1.75rem;
+  gap: 1rem;
 }
 
 .product-card {
@@ -464,15 +475,30 @@ async function addToCart(p: Product) {
   background-position: center;
 }
 
-.new-badge {
+.badge-stack {
   position: absolute;
   top: 0;
   left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.new-badge,
+.tag-badge {
   background: var(--color-ink);
   color: #fff;
   font-size: 0.7rem;
   letter-spacing: 0.05em;
   padding: 0.3rem 0.6rem;
+}
+
+.tag-badge--promo {
+  background: #2b6cb0;
+}
+
+.tag-badge--discount {
+  background: #c0392b;
 }
 
 .product-info {
@@ -498,10 +524,24 @@ async function addToCart(p: Product) {
   justify-content: space-between;
 }
 
+.price-group {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
 .product-price {
   font-size: 1rem;
   font-weight: 600;
   color: var(--color-heading);
+}
+
+.product-price-original {
+  font-size: 0.8rem;
+  color: var(--color-text);
+  opacity: 0.5;
+  text-decoration: line-through;
 }
 
 .cart-btn {

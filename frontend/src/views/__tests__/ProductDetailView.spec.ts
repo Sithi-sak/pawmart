@@ -9,6 +9,10 @@ const fetchRelatedProductsMock = vi.fn()
 vi.mock('@/lib/products', () => ({
   fetchProductBySlug: (...args: unknown[]) => fetchProductBySlugMock(...args),
   fetchRelatedProducts: (...args: unknown[]) => fetchRelatedProductsMock(...args),
+  effectivePrice: (p: { price: number; is_discounted: boolean; discount_percent: number | null }) =>
+    p.is_discounted && p.discount_percent
+      ? Math.round(p.price * (1 - p.discount_percent / 100) * 100) / 100
+      : p.price,
 }))
 
 const fetchRecommendedProductsMock = vi.fn()
@@ -65,6 +69,10 @@ function makeProduct(overrides: Partial<Product> = {}): Product {
     images: [],
     description: 'A great product.',
     is_new: false,
+    is_promotional: false,
+    promotion_note: null,
+    is_discounted: false,
+    discount_percent: null,
     created_at: '2026-01-01T00:00:00Z',
     categories: { id: 1, name: 'Food', slug: 'food' },
     stores: null,

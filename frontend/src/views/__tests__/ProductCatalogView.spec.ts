@@ -9,6 +9,10 @@ const fetchCategoriesMock = vi.fn()
 vi.mock('@/lib/products', () => ({
   fetchProducts: (...args: unknown[]) => fetchProductsMock(...args),
   fetchCategories: (...args: unknown[]) => fetchCategoriesMock(...args),
+  effectivePrice: (p: { price: number; is_discounted: boolean; discount_percent: number | null }) =>
+    p.is_discounted && p.discount_percent
+      ? Math.round(p.price * (1 - p.discount_percent / 100) * 100) / 100
+      : p.price,
 }))
 
 vi.mock('vue-router', () => ({
@@ -18,6 +22,7 @@ vi.mock('vue-router', () => ({
       return () => h('a', slots.default?.())
     },
   }),
+  useRoute: () => ({ query: {} }),
   useRouter: () => ({ push: vi.fn() }),
 }))
 
@@ -118,6 +123,10 @@ function makeProduct(overrides: Partial<Product> = {}): Product {
     images: [],
     description: null,
     is_new: false,
+    is_promotional: false,
+    promotion_note: null,
+    is_discounted: false,
+    discount_percent: null,
     created_at: '2026-01-01T00:00:00Z',
     categories: { id: 1, name: 'Food', slug: 'food' },
     stores: { id: 1, name: 'Acme Store', slug: 'acme-store' },
@@ -262,7 +271,7 @@ describe('ProductCatalogView', () => {
       })
       const wrapper = await mountCatalog([acme, petco])
 
-      const storeGroup = wrapper.findAll('.stub-checkbox-group')[1]
+      const storeGroup = wrapper.findAll('.stub-checkbox-group')[2]
       const acmeLabel = storeGroup.findAll('.stub-checkbox').find((l) => l.text() === 'Acme Store')!
       await acmeLabel.find('input').setValue(true)
 
@@ -290,7 +299,7 @@ describe('ProductCatalogView', () => {
       const dogButton = wrapper.findAll('.species-card').find((b) => b.text() === 'Dog')!
       await dogButton.trigger('click')
 
-      const storeGroup = wrapper.findAll('.stub-checkbox-group')[1]
+      const storeGroup = wrapper.findAll('.stub-checkbox-group')[2]
       const acmeLabel = storeGroup.findAll('.stub-checkbox').find((l) => l.text() === 'Acme Store')!
       await acmeLabel.find('input').setValue(true)
 
@@ -348,7 +357,7 @@ describe('ProductCatalogView', () => {
 
   describe('pagination', () => {
     it('resets to page 1 when a filter changes on a later page', async () => {
-      const products = Array.from({ length: 8 }, () => makeProduct())
+      const products = Array.from({ length: 10 }, () => makeProduct())
       const wrapper = await mountCatalog(products)
 
       const nextBtn = wrapper.findAll('.page-btn')[1]

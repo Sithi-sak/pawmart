@@ -95,6 +95,10 @@ function emptyForm() {
     price: null as number | null,
     stock: null as number | null,
     images: [] as UploadUserFile[],
+    is_promotional: false,
+    promotion_note: '',
+    is_discounted: false,
+    discount_percent: null as number | null,
   }
 }
 
@@ -122,6 +126,10 @@ function openEditDialog(product: Product) {
     price: product.price,
     stock: product.stock,
     images: product.images.map((url, i) => ({ name: `image-${i}`, url }) as UploadUserFile),
+    is_promotional: product.is_promotional,
+    promotion_note: product.promotion_note ?? '',
+    is_discounted: product.is_discounted,
+    discount_percent: product.discount_percent,
   })
   dialogVisible.value = true
 }
@@ -134,6 +142,11 @@ async function saveProduct() {
 
   if (!form.images.length) {
     ElMessage.warning('Please upload at least one product image.')
+    return
+  }
+
+  if (form.is_discounted && (!form.discount_percent || form.discount_percent <= 0)) {
+    ElMessage.warning('Please enter a discount percentage.')
     return
   }
 
@@ -163,6 +176,10 @@ async function saveProduct() {
       price: form.price,
       stock: form.stock,
       images,
+      is_promotional: form.is_promotional,
+      promotion_note: form.is_promotional ? form.promotion_note.trim() || null : null,
+      is_discounted: form.is_discounted,
+      discount_percent: form.is_discounted ? form.discount_percent : null,
       store_id: storeId.value,
     }
 
@@ -298,6 +315,17 @@ async function deleteProduct(product: Product) {
               </span>
             </template>
           </el-table-column>
+          <el-table-column label="Tags">
+            <template #default="{ row }">
+              <div class="cell-tags">
+                <span v-if="row.is_promotional" class="tag-badge tag-promo">Promo</span>
+                <span v-if="row.is_discounted && row.discount_percent" class="tag-badge tag-discount">
+                  -{{ Math.round(row.discount_percent) }}%
+                </span>
+                <span v-if="!row.is_promotional && !row.is_discounted" class="cell-muted">—</span>
+              </div>
+            </template>
+          </el-table-column>
           <el-table-column label="" width="100" align="right">
             <template #default="{ row }">
               <div class="cell-actions">
@@ -398,6 +426,38 @@ async function deleteProduct(product: Product) {
             <label for="p-stock">Stock</label>
             <input id="p-stock" v-model.number="form.stock" type="number" min="0" required />
           </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field form-field--switch">
+            <label for="p-promotional">Promotional</label>
+            <el-switch id="p-promotional" v-model="form.is_promotional" />
+          </div>
+          <div class="form-field form-field--switch">
+            <label for="p-discounted">Discount</label>
+            <el-switch id="p-discounted" v-model="form.is_discounted" />
+          </div>
+        </div>
+        <div v-if="form.is_promotional" class="form-field">
+          <label for="p-promotion-note">Promotion Details</label>
+          <input
+            id="p-promotion-note"
+            v-model="form.promotion_note"
+            type="text"
+            placeholder="e.g. Buy One Get One Free"
+          />
+        </div>
+        <div v-if="form.is_discounted" class="form-field">
+          <label for="p-discount-percent">Discount Percentage</label>
+          <input
+            id="p-discount-percent"
+            v-model.number="form.discount_percent"
+            type="number"
+            min="1"
+            max="90"
+            step="1"
+            placeholder="e.g. 30"
+            required
+          />
         </div>
 
         <div class="form-actions">
@@ -634,6 +694,46 @@ async function deleteProduct(product: Product) {
   }
 }
 
+.cell-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.tag-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 1.6rem;
+  padding: 0 0.6rem;
+  font-size: 0.65rem;
+  letter-spacing: 0.03em;
+  font-weight: 600;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tag-promo {
+  background: #eaf1fb;
+  color: #2b6cb0;
+}
+
+.tag-discount {
+  background: #fceceb;
+  color: #c0392b;
+}
+
+@media (prefers-color-scheme: dark) {
+  .tag-promo {
+    background: rgba(43, 108, 176, 0.2);
+    color: #8fb7e3;
+  }
+
+  .tag-discount {
+    background: rgba(192, 57, 43, 0.2);
+    color: #f0908a;
+  }
+}
+
 .cell-actions {
   display: flex;
   gap: 0.5rem;
@@ -679,6 +779,12 @@ async function deleteProduct(product: Product) {
   flex-direction: column;
   gap: 0.5rem;
   min-width: 0;
+}
+
+.form-field--switch {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .field-hint {
