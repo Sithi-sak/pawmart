@@ -188,7 +188,7 @@ onMounted(loadApplications)
         </el-table-column>
         <el-table-column label="Status" min-width="110">
           <template #default="{ row }">
-            <span class="status-badge" :class="`is-${row.status}`">{{ STATUS_LABELS[row.status] }}</span>
+            <span class="status-badge" :class="`is-${row.status}`">{{ STATUS_LABELS[row.status as StoreApplicationStatus] }}</span>
           </template>
         </el-table-column>
         <el-table-column label="" min-width="180">
