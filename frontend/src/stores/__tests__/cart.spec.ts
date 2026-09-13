@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import type { Product } from '@/lib/products'
+import type { AvailableRedemption } from '@/lib/loyalty'
 
 // Stand-in for supabase-js's PostgrestFilterBuilder -- cart.ts never calls
 // .single()/.maybeSingle(), it awaits the builder chain directly (see
@@ -63,6 +64,20 @@ function makeProduct(overrides: Partial<Product> = {}): Product {
     categories: { id: 1, name: 'Food', slug: 'food' },
     stores: { id: 10, name: 'Acme Shop', slug: 'acme-shop' },
     ...overrides,
+  }
+}
+
+function makeRedemption(
+  overrides: { discountAmount?: number | null; freeShipping?: boolean } = {},
+): AvailableRedemption {
+  return {
+    id: 1,
+    reward: {
+      id: 1,
+      title: '$10 Off Your Order',
+      discount_amount: 'discountAmount' in overrides ? overrides.discountAmount! : 10,
+      free_shipping: overrides.freeShipping ?? false,
+    },
   }
 }
 
@@ -147,55 +162,59 @@ describe('cart store', () => {
       expect(builder.eq).toHaveBeenCalledWith('product_id', 1)
     })
 
-    it('clear empties the cart and removes the applied voucher', async () => {
+    it('clear empties the cart and removes the applied redemption', async () => {
       const store = await makeStore()
       store.addItem(makeProduct())
-      store.applyVoucher('PAWMART10')
+      store.applyRedemption(makeRedemption())
 
       store.clear()
 
       expect(store.items).toHaveLength(0)
-      expect(store.appliedVoucher).toBeNull()
+      expect(store.appliedRedemption).toBeNull()
     })
   })
 
-  describe('voucher', () => {
-    it('applies a valid voucher case-insensitively and computes the discount', async () => {
+  describe('redemption', () => {
+    it('applies a redemption and computes the discount', async () => {
       const store = await makeStore()
       store.addItem(makeProduct({ price: 100 }), 2)
+      const redemption = makeRedemption({ discountAmount: 10 })
 
-      expect(store.applyVoucher('pawmart10')).toBe(true)
-      expect(store.appliedVoucher).toEqual({ code: 'PAWMART10', rate: 0.1 })
+      store.applyRedemption(redemption)
+
+      expect(store.appliedRedemption).toEqual(redemption)
+      expect(store.discount).toBe(10)
+      expect(store.total).toBe(190)
+    })
+
+    it('caps the discount at the cart subtotal', async () => {
+      const store = await makeStore()
+      store.addItem(makeProduct({ price: 20 }), 1)
+
+      store.applyRedemption(makeRedemption({ discountAmount: 25 }))
+
       expect(store.discount).toBe(20)
-      expect(store.total).toBe(180)
+      expect(store.total).toBe(0)
     })
 
-    it('applies the other valid voucher code at its own rate', async () => {
-      const store = await makeStore()
-      store.addItem(makeProduct({ price: 100 }), 1)
-
-      expect(store.applyVoucher('WELCOME15')).toBe(true)
-      expect(store.discount).toBe(15)
-    })
-
-    it('rejects an invalid voucher code and clears any previously applied one', async () => {
+    it('a free-shipping redemption contributes no cart discount', async () => {
       const store = await makeStore()
       store.addItem(makeProduct({ price: 100 }))
-      store.applyVoucher('PAWMART10')
 
-      expect(store.applyVoucher('BOGUS')).toBe(false)
-      expect(store.appliedVoucher).toBeNull()
+      store.applyRedemption(makeRedemption({ discountAmount: null, freeShipping: true }))
+
       expect(store.discount).toBe(0)
+      expect(store.appliedRedemption?.reward.free_shipping).toBe(true)
     })
 
-    it('removeVoucher clears the applied voucher', async () => {
+    it('removeRedemption clears the applied redemption', async () => {
       const store = await makeStore()
       store.addItem(makeProduct({ price: 100 }))
-      store.applyVoucher('PAWMART10')
+      store.applyRedemption(makeRedemption())
 
-      store.removeVoucher()
+      store.removeRedemption()
 
-      expect(store.appliedVoucher).toBeNull()
+      expect(store.appliedRedemption).toBeNull()
       expect(store.discount).toBe(0)
     })
   })

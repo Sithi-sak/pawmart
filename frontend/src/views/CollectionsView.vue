@@ -1,19 +1,22 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
-import { PhDog, PhCat, PhBird, PhFish } from '@phosphor-icons/vue'
 import collectionCover from '@/assets/images/collection_cover.jpg'
+import dogImg from '@/assets/images/dog.png'
+import catImg from '@/assets/images/cat.png'
+import birdImg from '@/assets/images/bird.png'
+import fishImg from '@/assets/images/fish.png'
 
 interface Species {
   key: string
   label: string
-  icon: typeof PhDog
+  image: string
 }
 
 const speciesList: Species[] = [
-  { key: 'dog', label: 'Dogs', icon: PhDog },
-  { key: 'cat', label: 'Cats', icon: PhCat },
-  { key: 'bird', label: 'Birds', icon: PhBird },
-  { key: 'fish', label: 'Fish', icon: PhFish },
+  { key: 'dog', label: 'Dogs', image: dogImg },
+  { key: 'cat', label: 'Cats', image: catImg },
+  { key: 'bird', label: 'Birds', image: birdImg },
+  { key: 'fish', label: 'Fish', image: fishImg },
 ]
 
 interface Collection {
@@ -79,8 +82,8 @@ const collections: Collection[] = [
 
       <div class="species-grid">
         <RouterLink v-for="s in speciesList" :key="s.key" to="/products" class="species-card">
-          <div class="species-image placeholder-img">
-            <component :is="s.icon" :size="32" />
+          <div class="species-image">
+            <img :src="s.image" :alt="s.label" />
           </div>
           <h3 class="species-title">{{ s.label }}</h3>
           <span class="species-link">Browse Collection</span>
@@ -230,10 +233,24 @@ const collections: Collection[] = [
 .species-image {
   aspect-ratio: 4 / 3;
   margin-bottom: 0.9rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  border: 1px solid transparent;
+  transition: border-color 0.15s ease;
+}
+
+.species-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.species-image:hover {
+  border-color: var(--color-accent);
+}
+
+.species-image:hover .species-title {
+  color: var(--color-accent);
 }
 
 .species-title {

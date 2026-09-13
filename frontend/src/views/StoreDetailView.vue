@@ -471,8 +471,10 @@ async function addToCart(p: Product) {
   position: relative;
   aspect-ratio: 3 / 2;
   height: auto;
-  background-size: cover;
+  background-size: contain;
   background-position: center;
+  background-repeat: no-repeat;
+  background-color: #fff;
 }
 
 .badge-stack {

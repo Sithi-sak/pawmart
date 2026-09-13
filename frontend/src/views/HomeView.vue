@@ -9,7 +9,7 @@ import bedImg from '@/assets/images/bed.jpg'
 import essentialsImg from '@/assets/images/essentials.png'
 import nutritionImg from '@/assets/images/nutrition.jpg'
 import lifestyleImg from '@/assets/images/lifestyle.png'
-import heroImg from '@/assets/images/hero.jpg'
+import heroVideo from '@/assets/hero_video.mp4'
 
 const auth = useAuthStore()
 
@@ -81,12 +81,9 @@ function formatPrice(value: number) {
 <template>
   <div class="home">
     <!-- Hero -->
-    <section
-      class="hero"
-      :style="{
-        backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45)), url(${heroImg})`,
-      }"
-    >
+    <section class="hero">
+      <video class="hero-video" :src="heroVideo" autoplay muted loop playsinline></video>
+      <div class="hero-overlay"></div>
       <div class="hero-content">
         <h1 class="hero-title">
           The Care Your Pet Deserves<br />
@@ -110,10 +107,9 @@ function formatPrice(value: number) {
           :to="c.to"
           class="collection-card"
           :class="[`collection-card--${c.key}`, { 'is-featured': c.featured }]"
-          :style="{
-            backgroundImage: `linear-gradient(transparent 40%, rgba(0, 0, 0, 0.65) 100%), url(${c.image})`,
-          }"
+          :style="{ '--collection-image': `url(${c.image})` }"
         >
+          <div class="collection-image"></div>
           <span v-if="c.label" class="collection-tag">{{ c.label }}</span>
           <div class="collection-info">
             <h3>{{ c.title }}</h3>
@@ -266,16 +262,32 @@ function formatPrice(value: number) {
 
 /* Hero */
 .hero {
+  position: relative;
   min-height: 560px;
   display: flex;
   align-items: center;
   margin: -1.5rem calc(-1 * 1.5rem) 0;
   padding: 3rem;
-  background-size: cover;
-  background-position: center;
+  overflow: hidden;
+}
+
+.hero-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
 }
 
 .hero-content {
+  position: relative;
+  z-index: 1;
   max-width: 480px;
 }
 
@@ -308,8 +320,20 @@ function formatPrice(value: number) {
   text-decoration: none;
   color: #fff;
   overflow: hidden;
+}
+
+.collection-image {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(transparent 40%, rgba(0, 0, 0, 0.65) 100%),
+    var(--collection-image);
   background-size: cover;
   background-position: center;
+  transition: transform 0.35s ease;
+}
+
+.collection-card:hover .collection-image {
+  transform: scale(1.08);
 }
 
 .collection-card--featured {
@@ -330,6 +354,7 @@ function formatPrice(value: number) {
 
 .collection-tag {
   position: absolute;
+  z-index: 1;
   top: 1rem;
   left: 1rem;
   background: var(--color-accent);
@@ -341,6 +366,7 @@ function formatPrice(value: number) {
 
 .collection-info {
   position: absolute;
+  z-index: 1;
   left: 1.25rem;
   bottom: 1.25rem;
 }
@@ -393,6 +419,10 @@ function formatPrice(value: number) {
   aspect-ratio: 1 / 1;
   height: auto;
   margin-bottom: 0.75rem;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: #fff;
 }
 
 .product-category {

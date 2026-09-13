@@ -1,2 +1,18 @@
 node_modules/
 .claude
+
+# env secrets
+.env
+.env.local
+
+# build output
+dist/
+frontend/dist/
+
+# python
+__pycache__/
+*.pyc
+.venv/
+
+# local image staging (not used by the app, not for git)
+/product_image/

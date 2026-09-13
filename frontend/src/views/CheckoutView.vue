@@ -13,11 +13,14 @@ import {
   PhQrCode,
   PhCircleNotch,
 } from '@phosphor-icons/vue'
+import QRCode from 'qrcode'
 import { useCartStore } from '../stores/cart'
 import { useAuthStore } from '../stores/auth'
 import { createOrder, createPaymentIntent, type Order } from '../lib/orders'
 import { POINTS_PER_DOLLAR } from '../lib/loyalty'
 import { stripePromise } from '../lib/stripe'
+import { cambodiaAddressOptions, describeVillage } from '../lib/cambodiaAddress'
+import KhqrCard from '../components/KhqrCard.vue'
 
 type Step = 'shipping' | 'payment' | 'review'
 
@@ -40,7 +43,7 @@ interface ShippingForm {
   phone: string
   street: string
   city: string
-  postalCode: string
+  villageCode: string
   method: 'standard' | 'express'
 }
 
@@ -49,11 +52,52 @@ const shippingForm = reactive<ShippingForm>({
   phone: '',
   street: '',
   city: '',
-  postalCode: '',
+  villageCode: '',
   method: 'standard',
 })
 
-const shippingCost = computed(() => (shippingForm.method === 'express' ? 25.0 : 0))
+const addressError = ref<string | null>(null)
+
+const selectedProvinceCode = ref('')
+const selectedDistrictCode = ref('')
+const selectedCommuneCode = ref('')
+
+const districtOptions = computed(
+  () => cambodiaAddressOptions.find((p) => p.value === selectedProvinceCode.value)?.children ?? [],
+)
+
+const communeOptions = computed(
+  () => districtOptions.value.find((d) => d.value === selectedDistrictCode.value)?.children ?? [],
+)
+
+const villageOptions = computed(
+  () => communeOptions.value.find((c) => c.value === selectedCommuneCode.value)?.children ?? [],
+)
+
+watch(selectedProvinceCode, () => {
+  selectedDistrictCode.value = ''
+})
+
+watch(selectedDistrictCode, () => {
+  selectedCommuneCode.value = ''
+})
+
+watch(selectedCommuneCode, () => {
+  shippingForm.villageCode = ''
+})
+
+watch(
+  () => shippingForm.villageCode,
+  (villageCode) => {
+    shippingForm.city = (villageCode && describeVillage(villageCode)) || ''
+    if (shippingForm.city) addressError.value = null
+  },
+)
+
+const shippingCost = computed(() => {
+  if (cart.appliedRedemption?.reward.free_shipping) return 0
+  return shippingForm.method === 'express' ? 25.0 : 0
+})
 
 const estimatedTax = computed(() => (cart.total + shippingCost.value) * 0.0875)
 
@@ -133,6 +177,10 @@ function formatPrice(value: number) {
 }
 
 function goToPayment() {
+  if (!shippingForm.villageCode) {
+    addressError.value = 'Select your province, district, commune and village'
+    return
+  }
   currentStep.value = 'payment'
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
@@ -154,6 +202,26 @@ function editStep(step: Step) {
 const isProcessing = ref(false)
 const khqrModalVisible = ref(false)
 const placedOrder = ref<Order | null>(null)
+const khqrStoreName = ref<string | null>(null)
+const khqrQrSvg = ref<string | null>(null)
+
+async function openKhqrModal(order: Order) {
+  khqrQrSvg.value = null
+  khqrModalVisible.value = true
+  const confirmUrl = router.resolve({
+    name: 'khqr-pay-confirm',
+    query: {
+      orderId: String(order.id),
+      amount: order.total.toFixed(2),
+      store: khqrStoreName.value ?? 'PawMart',
+    },
+  }).href
+  khqrQrSvg.value = await QRCode.toString(`${window.location.origin}${confirmUrl}`, {
+    type: 'svg',
+    margin: 0,
+    color: { dark: '#1a1a1a', light: '#ffffff' },
+  })
+}
 
 async function placeOrder() {
   if (!auth.session) {
@@ -178,7 +246,7 @@ async function placeOrder() {
         {
           items: cartItems,
           shipping_method: shippingForm.method,
-          voucher_code: cart.appliedVoucher?.code ?? null,
+          redemption_id: cart.appliedRedemption?.id ?? null,
         },
         auth.session.access_token,
       )
@@ -203,20 +271,21 @@ async function placeOrder() {
           phone: shippingForm.phone,
           street: shippingForm.street,
           city: shippingForm.city,
-          postal_code: shippingForm.postalCode,
+          postal_code: '',
           method: shippingForm.method,
         },
         payment_method: paymentMethod.value,
-        voucher_code: cart.appliedVoucher?.code ?? null,
+        redemption_id: cart.appliedRedemption?.id ?? null,
         payment_intent_id: paymentIntentId,
       },
       auth.session.access_token,
     )
     placedOrder.value = order
+    khqrStoreName.value = cart.activeStoreName ?? null
     cart.clear()
 
     if (paymentMethod.value === 'khqr') {
-      khqrModalVisible.value = true
+      await openKhqrModal(order)
     } else {
       router.push({ name: 'order-confirm', query: { orderId: String(order.id) } })
     }
@@ -239,8 +308,8 @@ const paymentMethodLabel = computed(
 
 const shippingMethodLabel = computed(() =>
   shippingForm.method === 'express'
-    ? 'Express Shipping — Overnight Delivery'
-    : 'Standard Delivery — 3-5 Business Days',
+    ? 'Grab Express — Same-Day Delivery'
+    : 'J&T Express / Virak Buntham — 2-4 Business Days',
 )
 </script>
 
@@ -275,20 +344,81 @@ const shippingMethodLabel = computed(() =>
               </div>
             </div>
 
-            <div class="form-field">
-              <label for="street">Street Address</label>
-              <input id="street" v-model="shippingForm.street" type="text" required />
+            <div class="form-row address-row">
+              <div class="form-field">
+                <label for="province">Province</label>
+                <el-select id="province" v-model="selectedProvinceCode" filterable placeholder="Select province">
+                  <el-option
+                    v-for="province in cambodiaAddressOptions"
+                    :key="province.value"
+                    :label="province.label"
+                    :value="province.value"
+                  />
+                </el-select>
+              </div>
+              <div class="form-field">
+                <label for="district">District / Khan</label>
+                <el-select
+                  id="district"
+                  v-model="selectedDistrictCode"
+                  filterable
+                  placeholder="Select district"
+                  :disabled="!selectedProvinceCode"
+                >
+                  <el-option
+                    v-for="district in districtOptions"
+                    :key="district.value"
+                    :label="district.label"
+                    :value="district.value"
+                  />
+                </el-select>
+              </div>
+              <div class="form-field">
+                <label for="commune">Commune / Sangkat</label>
+                <el-select
+                  id="commune"
+                  v-model="selectedCommuneCode"
+                  filterable
+                  placeholder="Select commune"
+                  :disabled="!selectedDistrictCode"
+                >
+                  <el-option
+                    v-for="commune in communeOptions"
+                    :key="commune.value"
+                    :label="commune.label"
+                    :value="commune.value"
+                  />
+                </el-select>
+              </div>
+              <div class="form-field">
+                <label for="village">Village / Phum</label>
+                <el-select
+                  id="village"
+                  v-model="shippingForm.villageCode"
+                  filterable
+                  placeholder="Select village"
+                  :disabled="!selectedCommuneCode"
+                >
+                  <el-option
+                    v-for="village in villageOptions"
+                    :key="village.value"
+                    :label="village.label"
+                    :value="village.value"
+                  />
+                </el-select>
+              </div>
             </div>
+            <p v-if="addressError" class="card-error">{{ addressError }}</p>
 
-            <div class="form-row">
-              <div class="form-field">
-                <label for="city">City</label>
-                <input id="city" v-model="shippingForm.city" type="text" required />
-              </div>
-              <div class="form-field">
-                <label for="postalCode">Postal Code</label>
-                <input id="postalCode" v-model="shippingForm.postalCode" type="text" required />
-              </div>
+            <div class="form-field">
+              <label for="street">Detailed Address</label>
+              <textarea
+                id="street"
+                v-model="shippingForm.street"
+                rows="3"
+                placeholder="House/street number and a nearby landmark"
+                required
+              ></textarea>
             </div>
 
             <div class="shipping-method">
@@ -299,8 +429,8 @@ const shippingMethodLabel = computed(() =>
                 <input v-model="shippingForm.method" type="radio" name="method" value="standard" />
                 <span class="method-radio"></span>
                 <span class="method-info">
-                  <span class="method-name">Standard Delivery</span>
-                  <span class="method-detail">3-5 Business Days</span>
+                  <span class="method-name">J&amp;T Express / Virak Buntham</span>
+                  <span class="method-detail">1-3 Business Days</span>
                 </span>
                 <span class="method-price complimentary">Complimentary</span>
               </label>
@@ -309,10 +439,10 @@ const shippingMethodLabel = computed(() =>
                 <input v-model="shippingForm.method" type="radio" name="method" value="express" />
                 <span class="method-radio"></span>
                 <span class="method-info">
-                  <span class="method-name">Express Shipping</span>
-                  <span class="method-detail">Overnight Delivery</span>
+                  <span class="method-name">Grab Express</span>
+                  <span class="method-detail">Same-Day Delivery (Phnom Penh area)</span>
                 </span>
-                <span class="method-price">$25.00</span>
+                <span class="method-price">$5.00</span>
               </label>
             </div>
 
@@ -415,9 +545,7 @@ const shippingMethodLabel = computed(() =>
               <div>
                 <p class="review-label">Address</p>
                 <p class="review-value">{{ shippingForm.street || '—' }}</p>
-                <p class="review-value">
-                  {{ [shippingForm.city, shippingForm.postalCode].filter(Boolean).join(', ') || '—' }}
-                </p>
+                <p class="review-value">{{ shippingForm.city || '—' }}</p>
               </div>
             </div>
           </div>
@@ -503,8 +631,8 @@ const shippingMethodLabel = computed(() =>
           <span>Subtotal</span>
           <span>{{ formatPrice(cart.subtotal) }}</span>
         </div>
-        <div v-if="cart.appliedVoucher" class="summary-row discount-row">
-          <span>Discount ({{ cart.appliedVoucher.code }})</span>
+        <div v-if="cart.appliedRedemption" class="summary-row discount-row">
+          <span>{{ cart.appliedRedemption.reward.title }}</span>
           <span>-{{ formatPrice(cart.discount) }}</span>
         </div>
         <div class="summary-row">
@@ -558,16 +686,19 @@ const shippingMethodLabel = computed(() =>
     <el-dialog
       v-model="khqrModalVisible"
       title="Scan to Pay"
-      width="380px"
+      width="90%"
       class="khqr-dialog"
       align-center
     >
       <div class="khqr-modal-content">
-        <div class="khqr-placeholder">KHQR CODE</div>
-        <p class="khqr-modal-amount">{{ formatPrice(placedOrder?.total ?? orderTotal) }}</p>
+        <KhqrCard
+          :company-name="khqrStoreName ?? 'PawMart'"
+          :amount="(placedOrder?.total ?? orderTotal).toFixed(2)"
+          :qr-svg="khqrQrSvg"
+        />
         <p class="khqr-modal-note">
-          Scan this code with any Bakong-linked banking app, then confirm once the transfer is
-          complete.
+          Scan this code with your phone's camera or any Bakong-linked banking app, then confirm
+          once the transfer is complete.
         </p>
         <button type="button" class="continue-btn" @click="confirmKhqrPayment">
           I Have Paid
@@ -687,6 +818,16 @@ const shippingMethodLabel = computed(() =>
   gap: 1.5rem;
 }
 
+.address-row {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+@media (min-width: 1200px) {
+  .address-row {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
 .form-field {
   display: flex;
   flex-direction: column;
@@ -701,7 +842,8 @@ const shippingMethodLabel = computed(() =>
   color: var(--color-heading);
 }
 
-.form-field input {
+.form-field input,
+.form-field select {
   height: 2.75rem;
   padding: 0 0.9rem;
   background: var(--color-background);
@@ -712,9 +854,36 @@ const shippingMethodLabel = computed(() =>
   font-size: 0.9rem;
 }
 
-.form-field input:focus {
+.form-field textarea {
+  padding: 0.75rem 0.9rem;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 0;
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 0.9rem;
+  resize: vertical;
+}
+
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus {
   outline: none;
   border-color: var(--color-accent);
+}
+
+.address-row :deep(.el-select) {
+  width: 100%;
+}
+
+.address-row :deep(.el-select__wrapper) {
+  min-height: 2.75rem;
+  border-radius: 0;
+  box-shadow: 0 0 0 1px var(--color-border) inset;
+}
+
+.address-row :deep(.el-select__wrapper.is-focused) {
+  box-shadow: 0 0 0 1px var(--color-accent) inset;
 }
 
 /* Shipping method */
@@ -886,21 +1055,6 @@ const shippingMethodLabel = computed(() =>
   gap: 1.5rem;
 }
 
-.khqr-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 180px;
-  height: 180px;
-  border: 1px dashed var(--color-border);
-  background: var(--color-background);
-  color: var(--color-text);
-  opacity: 0.5;
-  font-size: 0.8rem;
-  letter-spacing: 0.08em;
-  font-weight: 600;
-  margin-bottom: 1.25rem;
-}
 
 .redirect-panel {
   display: flex;
@@ -1124,8 +1278,10 @@ const shippingMethodLabel = computed(() =>
 .review-item-image {
   display: block;
   aspect-ratio: 1 / 1;
-  background-size: cover;
+  background-size: contain;
   background-position: center;
+  background-repeat: no-repeat;
+  background-color: #fff;
 }
 
 .review-item-name {
@@ -1192,8 +1348,10 @@ const shippingMethodLabel = computed(() =>
 .summary-item-image {
   display: block;
   aspect-ratio: 1 / 1;
-  background-size: cover;
+  background-size: contain;
   background-position: center;
+  background-repeat: no-repeat;
+  background-color: #fff;
 }
 
 .summary-item-details {
@@ -1330,11 +1488,8 @@ const shippingMethodLabel = computed(() =>
   text-align: center;
 }
 
-.khqr-modal-amount {
-  font-family: var(--font-serif);
-  font-size: 1.5rem;
-  color: var(--color-heading);
-  margin-bottom: 0.75rem;
+.khqr-modal-content :deep(.khqr-card) {
+  margin-bottom: 1.25rem;
 }
 
 .khqr-modal-note {
@@ -1342,6 +1497,10 @@ const shippingMethodLabel = computed(() =>
   color: var(--color-text);
   opacity: 0.7;
   margin-bottom: 1.5rem;
+}
+
+:deep(.khqr-dialog) {
+  max-width: 380px;
 }
 
 .khqr-dialog .continue-btn {

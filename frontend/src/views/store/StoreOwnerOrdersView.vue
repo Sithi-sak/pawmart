@@ -213,14 +213,7 @@ onMounted(async () => {
               <p class="payment-method">
                 {{ PAYMENT_METHOD_LABELS[row.payment_method as OrderSummary['payment_method']] }}
               </p>
-              <span
-                class="payment-badge"
-                :class="{ 'is-pending': row.payment_status === 'pending_confirmation' }"
-              >
-                {{
-                  row.payment_status === 'pending_confirmation' ? 'Pending Confirmation' : 'Paid'
-                }}
-              </span>
+              <span class="payment-badge">Paid</span>
             </template>
           </el-table-column>
           <el-table-column label="Status" min-width="190">
@@ -448,20 +441,10 @@ onMounted(async () => {
   color: #2f9e44;
 }
 
-.payment-badge.is-pending {
-  background: #fbf0e9;
-  color: var(--color-accent-dark);
-}
-
 @media (prefers-color-scheme: dark) {
   .payment-badge {
     background: rgba(47, 158, 68, 0.18);
     color: #82d996;
-  }
-
-  .payment-badge.is-pending {
-    background: rgba(218, 109, 31, 0.18);
-    color: #edb68f;
   }
 }
 

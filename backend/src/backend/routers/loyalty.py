@@ -12,8 +12,9 @@ POINTS_PER_DOLLAR = 5
 
 
 def award_points_for_order(supabase, customer_id: str, order: dict) -> None:
-    """Credit loyalty points for a paid order. No-op for KHQR orders still
-    pending admin confirmation — those get credited once 4.1 wires that up."""
+    """Credit loyalty points for a paid order. No-op if payment_status isn't
+    "paid" (defensive — every payment method reaches "paid" at placement
+    time today, see 4.1 checkpoint notes)."""
     if order["payment_status"] != "paid":
         return
 

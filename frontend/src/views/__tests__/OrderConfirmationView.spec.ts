@@ -111,13 +111,14 @@ describe('OrderConfirmationView', () => {
     expect(wrapper.text()).toContain("We couldn't find that order.")
   })
 
-  it('shows a pending-confirmation note for a KHQR order instead of points earned', async () => {
-    fetchOrderMock.mockResolvedValue(makeOrder({ payment_method: 'khqr', payment_status: 'pending_confirmation' }))
+  it('shows points earned for a KHQR order same as any other payment method', async () => {
+    fetchOrderMock.mockResolvedValue(
+      makeOrder({ payment_method: 'khqr', payment_status: 'paid', subtotal: 100, discount: 0 }),
+    )
 
     const wrapper = await mountConfirmation()
 
-    expect(wrapper.text()).toContain('Payment pending confirmation')
-    expect(wrapper.text()).not.toContain('Paws Rewards points')
+    expect(wrapper.text()).toContain('Paws Rewards points')
   })
 
   it('shows points earned for a paid order', async () => {

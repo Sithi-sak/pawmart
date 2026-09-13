@@ -19,8 +19,6 @@ router = APIRouter(prefix="/api/orders", tags=["orders"])
 
 SHIPPING_COSTS = {"standard": 0.0, "express": 25.0}
 TAX_RATE = 0.0875
-# Mirrors the mock codes the cart previously validated client-side (see 3.2 checkpoint notes).
-VOUCHER_RATES = {"PAWMART10": 0.1, "WELCOME15": 0.15}
 # Orders only ever move forward through these statuses (task 3.3): there is
 # no courier integration, so each step is a real physical event the shop
 # reports itself (packed it, handed it to the driver, driver delivered it).
@@ -45,7 +43,10 @@ class OrderCreateIn(BaseModel):
     items: list[OrderItemIn]
     shipping: ShippingIn
     payment_method: Literal["visa", "aba_payway", "khqr"]
-    voucher_code: str | None = None
+    # id of an unconsumed loyalty_transactions "redeem" row (see
+    # AccountView's reward redemption) the customer picked to discount this
+    # order with.
+    redemption_id: int | None = None
     # Only present (and required) for payment_method == "visa" — the
     # PaymentIntent created by POST /payment-intent, confirmed client-side
     # with Stripe Elements before "Place Order" ever calls this endpoint.
@@ -55,7 +56,7 @@ class OrderCreateIn(BaseModel):
 class PaymentIntentIn(BaseModel):
     items: list[OrderItemIn]
     shipping_method: Literal["standard", "express"]
-    voucher_code: str | None = None
+    redemption_id: int | None = None
 
 
 class OrderStatusUpdateIn(BaseModel):
@@ -79,7 +80,35 @@ def _owned_store_id(supabase, owner_id: str) -> int | None:
     return store["id"] if store else None
 
 
-def _price_cart(supabase, items: list[OrderItemIn], voucher_code: str | None, shipping_method: str) -> dict:
+def _load_unconsumed_redemption(supabase, redemption_id: int, customer_id: str) -> dict:
+    redemption = (
+        supabase.table("loyalty_transactions")
+        .select("id, customer_id, order_id, reward_id, loyalty_rewards(discount_amount, free_shipping)")
+        .eq("id", redemption_id)
+        .eq("type", "redeem")
+        .maybe_single()
+        .execute()
+        .data
+    )
+    if (
+        redemption is None
+        or redemption["customer_id"] != customer_id
+        or redemption["order_id"] is not None
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This reward has already been used or does not belong to you",
+        )
+    return redemption
+
+
+def _price_cart(
+    supabase,
+    items: list[OrderItemIn],
+    shipping_method: str,
+    customer_id: str,
+    redemption_id: int | None,
+) -> dict:
     if not items:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cart is empty")
 
@@ -140,15 +169,14 @@ def _price_cart(supabase, items: list[OrderItemIn], voucher_code: str | None, sh
         )
 
     discount = 0.0
-    if voucher_code:
-        rate = VOUCHER_RATES.get(voucher_code.strip().upper())
-        if rate is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid voucher code"
-            )
-        discount = subtotal * rate
+    free_shipping = False
+    if redemption_id is not None:
+        redemption = _load_unconsumed_redemption(supabase, redemption_id, customer_id)
+        reward = redemption["loyalty_rewards"]
+        discount = min(float(reward["discount_amount"] or 0), subtotal)
+        free_shipping = reward["free_shipping"]
 
-    shipping_cost = SHIPPING_COSTS[shipping_method]
+    shipping_cost = 0.0 if free_shipping else SHIPPING_COSTS[shipping_method]
     tax = round((subtotal - discount + shipping_cost) * TAX_RATE, 2)
     total = round(subtotal - discount + shipping_cost + tax, 2)
 
@@ -161,6 +189,7 @@ def _price_cart(supabase, items: list[OrderItemIn], voucher_code: str | None, sh
         "shipping_cost": shipping_cost,
         "tax": tax,
         "total": total,
+        "redemption_id": redemption_id,
     }
 
 
@@ -188,7 +217,9 @@ def create_payment_intent(
     customer: CurrentCustomer = Depends(get_current_customer),  # noqa: B008
 ) -> dict:
     supabase = get_supabase()
-    pricing = _price_cart(supabase, payload.items, payload.voucher_code, payload.shipping_method)
+    pricing = _price_cart(
+        supabase, payload.items, payload.shipping_method, customer.id, payload.redemption_id
+    )
 
     stripe.api_key = get_settings().stripe_secret_key
     intent = stripe.PaymentIntent.create(
@@ -207,7 +238,7 @@ def create_order(
 ) -> dict:
     supabase = get_supabase()
     pricing = _price_cart(
-        supabase, payload.items, payload.voucher_code, payload.shipping.method
+        supabase, payload.items, payload.shipping.method, customer.id, payload.redemption_id
     )
 
     if payload.payment_method == "visa":
@@ -237,7 +268,10 @@ def create_order(
             )
         payment_status = "paid"
     else:
-        payment_status = "pending_confirmation" if payload.payment_method == "khqr" else "paid"
+        # aba_payway and khqr have no real payment-gateway callback in this
+        # MVP, so the order is marked paid at placement time same as a
+        # verified Visa charge — see 4.1 checkpoint notes.
+        payment_status = "paid"
 
     order_row = {
         "order_number": _generate_order_number(),
@@ -281,6 +315,11 @@ def create_order(
         product = pricing["products_by_id"][item.product_id]
         supabase.table("products").update({"stock": product["stock"] - item.quantity}).eq(
             "id", item.product_id
+        ).execute()
+
+    if pricing["redemption_id"] is not None:
+        supabase.table("loyalty_transactions").update({"order_id": order["id"]}).eq(
+            "id", pricing["redemption_id"]
         ).execute()
 
     award_points_for_order(supabase, customer.id, order)

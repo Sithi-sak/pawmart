@@ -1,45 +1,73 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { PhTruck, PhLock, PhMinus, PhPlus } from '@phosphor-icons/vue'
 import { useCartStore } from '../stores/cart'
+import { useAuthStore } from '@/stores/auth'
+import { fetchProductBySlug, type Product } from '@/lib/products'
+import { fetchAvailableRedemptions, type AvailableRedemption } from '@/lib/loyalty'
 
 const cart = useCartStore()
+const auth = useAuthStore()
 
-interface RelatedProduct {
-  id: number
-  category: string
-  name: string
-  price: number
-}
-
-const relatedProducts: RelatedProduct[] = [
-  { id: 1, category: 'Bedding', name: 'Plush Nest Bed', price: 345.0 },
-  { id: 6, category: 'Food & Nutrition', name: 'Gourmet Chicken & Wild Salmon', price: 45.0 },
-  { id: 13, category: 'Grooming Kit', name: 'Nail Trimmer & File Set', price: 28.0 },
-  { id: 4, category: 'Toys', name: 'Sisal Scratch Post', price: 540.0 },
+const RELATED_SLUGS = [
+  'plush-nest-bed',
+  'gourmet-chicken-wild-salmon',
+  'nail-trimmer-file-set',
+  'sisal-scratch-post',
 ]
+
+const relatedProducts = ref<Product[]>([])
+
+onMounted(async () => {
+  try {
+    const products = await Promise.all(RELATED_SLUGS.map(fetchProductBySlug))
+    relatedProducts.value = products.filter((p): p is Product => p !== null)
+  } catch {
+    // Non-critical: the "You Might Also Like" section just stays empty.
+  }
+})
 
 const router = useRouter()
 
-const voucherInput = ref('')
-const voucherError = ref(false)
+const availableRedemptions = ref<AvailableRedemption[]>([])
+const redemptionsLoading = ref(false)
+const redemptionsError = ref(false)
+const selectedRedemptionId = ref<number | null>(null)
 
-function applyVoucher() {
-  const code = voucherInput.value.trim()
-  if (!code) return
-
-  if (cart.applyVoucher(code)) {
-    voucherError.value = false
-  } else {
-    voucherError.value = true
+async function loadAvailableRedemptions(customerId: string | undefined) {
+  if (!customerId) {
+    availableRedemptions.value = []
+    redemptionsError.value = false
+    return
+  }
+  redemptionsLoading.value = true
+  redemptionsError.value = false
+  try {
+    availableRedemptions.value = await fetchAvailableRedemptions()
+  } catch {
+    redemptionsError.value = true
+  } finally {
+    redemptionsLoading.value = false
   }
 }
 
-function removeVoucher() {
-  cart.removeVoucher()
-  voucherInput.value = ''
-  voucherError.value = false
+watch(() => auth.customer?.id, loadAvailableRedemptions, { immediate: true })
+
+function rewardLabel(reward: AvailableRedemption['reward']) {
+  if (reward.free_shipping) return reward.title
+  return `${reward.title} — $${reward.discount_amount?.toFixed(2)} off`
+}
+
+function applyRedemption(redemptionId: number | null) {
+  if (redemptionId == null) return
+  const redemption = availableRedemptions.value.find((r) => r.id === redemptionId)
+  if (redemption) cart.applyRedemption(redemption)
+}
+
+function removeRedemption() {
+  cart.removeRedemption()
+  selectedRedemptionId.value = null
 }
 
 function formatPrice(value: number) {
@@ -139,36 +167,63 @@ function proceedToCheckout() {
           <span>Shipping</span>
           <span class="complimentary">Complimentary</span>
         </div>
-        <div v-if="cart.appliedVoucher" class="summary-row discount-row">
-          <span>Discount ({{ cart.appliedVoucher.code }})</span>
+        <div v-if="cart.appliedRedemption" class="summary-row discount-row">
+          <span>{{ cart.appliedRedemption.reward.title }}</span>
           <span>-{{ formatPrice(cart.discount) }}</span>
         </div>
 
         <div class="summary-divider"></div>
 
-        <div class="voucher-group">
-          <div class="voucher-row">
-            <input
-              v-model="voucherInput"
-              type="text"
-              placeholder="Promo code"
-              class="voucher-input"
-              :disabled="!!cart.appliedVoucher"
-              @keyup.enter="applyVoucher"
-            />
-            <button
-              v-if="!cart.appliedVoucher"
-              type="button"
-              class="voucher-btn"
-              @click="applyVoucher"
+        <div class="reward-group">
+          <template v-if="cart.appliedRedemption">
+            <div class="reward-row reward-row-applied">
+              <span class="reward-message is-success">
+                "{{ cart.appliedRedemption.reward.title }}" applied
+              </span>
+              <button type="button" class="reward-btn" @click="removeRedemption">Remove</button>
+            </div>
+          </template>
+          <template v-else-if="auth.customer">
+            <div class="reward-row">
+              <el-select
+                v-model="selectedRedemptionId"
+                class="reward-select"
+                size="large"
+                :loading="redemptionsLoading"
+                :disabled="redemptionsLoading || !availableRedemptions.length"
+                :placeholder="
+                  redemptionsLoading
+                    ? 'Loading your Paws Rewards…'
+                    : availableRedemptions.length
+                      ? 'Use a Paws Reward'
+                      : 'No Paws Rewards available'
+                "
+                @change="applyRedemption"
+              >
+                <el-option
+                  v-for="r in availableRedemptions"
+                  :key="r.id"
+                  :label="rewardLabel(r.reward)"
+                  :value="r.id"
+                />
+              </el-select>
+            </div>
+            <p
+              v-if="!redemptionsLoading && !availableRedemptions.length && redemptionsError"
+              class="reward-message"
             >
-              Apply
-            </button>
-            <button v-else type="button" class="voucher-btn" @click="removeVoucher">Remove</button>
-          </div>
-          <p v-if="voucherError" class="voucher-message is-error">Invalid promo code</p>
-          <p v-else-if="cart.appliedVoucher" class="voucher-message is-success">
-            "{{ cart.appliedVoucher.code }}" applied — {{ Math.round(cart.appliedVoucher.rate * 100) }}% off
+              Couldn't load your Paws Rewards — check your connection and try again.
+            </p>
+            <p
+              v-else-if="!redemptionsLoading && !availableRedemptions.length"
+              class="reward-message"
+            >
+              Earn points on every order and redeem them for rewards in
+              <RouterLink to="/account">your account</RouterLink>.
+            </p>
+          </template>
+          <p v-else class="reward-message">
+            <RouterLink to="/login">Sign in</RouterLink> to use a Paws Reward on this order.
           </p>
         </div>
 
@@ -186,7 +241,7 @@ function proceedToCheckout() {
         <ul class="summary-perks">
           <li>
             <PhTruck :size="18" />
-            <span>Carbon neutral shipping worldwide</span>
+            <span>Nationwide delivery across Cambodia</span>
           </li>
           <li>
             <PhLock :size="18" />
@@ -211,10 +266,14 @@ function proceedToCheckout() {
         <RouterLink
           v-for="p in relatedProducts"
           :key="p.id"
-          :to="`/products/${p.id}`"
+          :to="`/products/${p.slug}`"
           class="related-card"
         >
-          <div class="related-image placeholder-img"></div>
+          <div
+            class="related-image"
+            :class="{ 'placeholder-img': !p.images.length }"
+            :style="p.images.length ? { backgroundImage: `url(${p.images[0]})` } : undefined"
+          ></div>
           <div class="related-info">
             <h3 class="related-name">{{ p.name }}</h3>
             <p class="related-price">{{ formatPrice(p.price) }}</p>
@@ -293,8 +352,10 @@ function proceedToCheckout() {
   display: block;
   aspect-ratio: 1 / 1;
   height: auto;
-  background-size: cover;
+  background-size: contain;
   background-position: center;
+  background-repeat: no-repeat;
+  background-color: #fff;
 }
 
 .item-details {
@@ -421,38 +482,26 @@ function proceedToCheckout() {
   color: var(--color-accent);
 }
 
-.voucher-group {
+.reward-group {
   margin-bottom: 1rem;
 }
 
-.voucher-row {
+.reward-row {
   display: flex;
 }
 
-.voucher-input {
+.reward-row-applied {
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.reward-select {
   flex: 1;
   min-width: 0;
-  height: 2.5rem;
-  padding: 0 0.75rem;
-  background: var(--color-background);
-  border: 1px solid var(--color-border);
-  border-right: none;
-  border-radius: 0;
-  color: var(--color-text);
-  font-family: inherit;
-  font-size: 0.85rem;
 }
 
-.voucher-input:focus {
-  outline: none;
-  border-color: var(--color-accent);
-}
-
-.voucher-input:disabled {
-  opacity: 0.6;
-}
-
-.voucher-btn {
+.reward-btn {
   height: 2.5rem;
   padding: 0 1.1rem;
   background: var(--color-ink);
@@ -465,22 +514,19 @@ function proceedToCheckout() {
   white-space: nowrap;
 }
 
-.voucher-btn:hover {
+.reward-btn:hover {
   background: var(--color-accent);
   border-color: var(--color-accent);
 }
 
-.voucher-message {
+.reward-message {
   margin-top: 0.5rem;
   font-size: 0.75rem;
 }
 
-.voucher-message.is-error {
-  color: #c0392b;
-}
-
-.voucher-message.is-success {
+.reward-message.is-success {
   color: var(--color-accent);
+  margin-top: 0;
 }
 
 .total-row {
@@ -630,6 +676,11 @@ function proceedToCheckout() {
 .related-image {
   aspect-ratio: 1 / 1;
   margin-bottom: 0.9rem;
+  height: auto;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: #fff;
 }
 
 .related-name {

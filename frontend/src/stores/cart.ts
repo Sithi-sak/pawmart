@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
 import type { Product } from '@/lib/products'
+import type { AvailableRedemption } from '@/lib/loyalty'
 
 export interface CartItem {
   productId: number
@@ -50,12 +51,7 @@ export const useCartStore = defineStore('cart', () => {
   const items = ref<CartItem[]>([])
   const loading = ref(true)
 
-  const voucherCodes: Record<string, number> = {
-    PAWMART10: 0.1,
-    WELCOME15: 0.15,
-  }
-
-  const appliedVoucher = ref<{ code: string; rate: number } | null>(null)
+  const appliedRedemption = ref<AvailableRedemption | null>(null)
 
   const itemCount = computed(() => items.value.reduce((sum, item) => sum + item.quantity, 0))
 
@@ -63,9 +59,10 @@ export const useCartStore = defineStore('cart', () => {
     items.value.reduce((sum, item) => sum + item.price * item.quantity, 0),
   )
 
-  const discount = computed(() =>
-    appliedVoucher.value ? subtotal.value * appliedVoucher.value.rate : 0,
-  )
+  const discount = computed(() => {
+    const amount = appliedRedemption.value?.reward.discount_amount ?? 0
+    return Math.min(amount, subtotal.value)
+  })
 
   const total = computed(() => subtotal.value - discount.value)
 
@@ -112,7 +109,7 @@ export const useCartStore = defineStore('cart', () => {
         loading.value = false
       } else if (previousCustomerId) {
         items.value = []
-        appliedVoucher.value = null
+        appliedRedemption.value = null
         loading.value = false
       } else if (auth.initialized) {
         // Auth has resolved and there's no customer at all (never signed
@@ -189,19 +186,12 @@ export const useCartStore = defineStore('cart', () => {
     void persistQuantity(product.id, newQuantity)
   }
 
-  function applyVoucher(code: string) {
-    const normalized = code.trim().toUpperCase()
-    const rate = voucherCodes[normalized]
-    if (rate) {
-      appliedVoucher.value = { code: normalized, rate }
-      return true
-    }
-    appliedVoucher.value = null
-    return false
+  function applyRedemption(redemption: AvailableRedemption) {
+    appliedRedemption.value = redemption
   }
 
-  function removeVoucher() {
-    appliedVoucher.value = null
+  function removeRedemption() {
+    appliedRedemption.value = null
   }
 
   function increment(item: CartItem) {
@@ -224,7 +214,7 @@ export const useCartStore = defineStore('cart', () => {
   function clear() {
     const customerId = auth.customer?.id
     items.value = []
-    appliedVoucher.value = null
+    appliedRedemption.value = null
     if (!customerId) return
     void supabase.from('cart_items').delete().eq('customer_id', customerId)
   }
@@ -232,7 +222,7 @@ export const useCartStore = defineStore('cart', () => {
   return {
     items,
     loading,
-    appliedVoucher,
+    appliedRedemption,
     itemCount,
     subtotal,
     discount,
@@ -240,8 +230,8 @@ export const useCartStore = defineStore('cart', () => {
     activeStoreName,
     conflictsWithCart,
     addItem,
-    applyVoucher,
-    removeVoucher,
+    applyRedemption,
+    removeRedemption,
     increment,
     decrement,
     removeItem,

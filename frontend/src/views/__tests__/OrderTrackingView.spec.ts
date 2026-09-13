@@ -127,22 +127,6 @@ describe('OrderTrackingView', () => {
     expect(steps[2].find('.step-date').exists()).toBe(false)
   })
 
-  it('shows a pending-confirmation note for a KHQR order awaiting payment', async () => {
-    fetchOrderMock.mockResolvedValue(makeOrder({ payment_method: 'khqr', payment_status: 'pending_confirmation' }))
-
-    const wrapper = await mountTracking()
-
-    expect(wrapper.text()).toContain('Payment pending confirmation')
-  })
-
-  it('does not show the pending-confirmation note for a paid order', async () => {
-    fetchOrderMock.mockResolvedValue(makeOrder({ payment_status: 'paid' }))
-
-    const wrapper = await mountTracking()
-
-    expect(wrapper.text()).not.toContain('Payment pending confirmation')
-  })
-
   it('renders order number, items, and totals', async () => {
     fetchOrderMock.mockResolvedValue(makeOrder())
 

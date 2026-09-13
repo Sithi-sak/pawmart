@@ -12,6 +12,9 @@
   --font-serif: 'EB Garamond', Georgia, 'Times New Roman', serif;
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
+  /* Shared max content width for the site header, main, and footer */
+  --content-max-width: 80%;
+
   /* Square corners throughout — overrides Element Plus's default rounding */
   --el-border-radius-base: 0;
   --el-border-radius-small: 0;

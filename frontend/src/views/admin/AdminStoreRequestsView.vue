@@ -211,7 +211,13 @@ onMounted(loadApplications)
       </el-table>
     </div>
 
-    <el-dialog v-model="approveDialogVisible" title="Approve Seller Request" width="420px" align-center>
+    <el-dialog
+      v-model="approveDialogVisible"
+      title="Approve Seller Request"
+      width="90%"
+      class="approve-dialog"
+      align-center
+    >
       <form class="approve-form" @submit.prevent="confirmApprove">
         <div class="form-field">
           <label>Store Name</label>
@@ -231,7 +237,13 @@ onMounted(loadApplications)
       </template>
     </el-dialog>
 
-    <el-dialog v-model="credentialsDialogVisible" title="Store Owner Created" width="440px" align-center>
+    <el-dialog
+      v-model="credentialsDialogVisible"
+      title="Store Owner Created"
+      width="90%"
+      class="credentials-dialog"
+      align-center
+    >
       <p class="credentials-warning">
         Copy this password now — it's shown only once. Relay it to the seller yourself; they
         should change it after first login.
@@ -255,6 +267,14 @@ onMounted(loadApplications)
 </template>
 
 <style scoped>
+:deep(.approve-dialog) {
+  max-width: 420px;
+}
+
+:deep(.credentials-dialog) {
+  max-width: 440px;
+}
+
 .admin-requests {
   display: flex;
   flex-direction: column;

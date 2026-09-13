@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { defineComponent, h } from 'vue'
+import { Fragment, defineComponent, h, type VNode } from 'vue'
 import type { CartItem } from '@/stores/cart'
 
 const createOrderMock = vi.fn()
@@ -35,15 +35,18 @@ const fakeStripe = {
 vi.mock('@/lib/stripe', () => ({ stripePromise: Promise.resolve(fakeStripe) }))
 
 let mockCartItems: CartItem[] = []
-let mockAppliedVoucher: { code: string; rate: number } | null = null
+let mockAppliedRedemption: {
+  id: number
+  reward: { title: string; discount_amount: number | null; free_shipping: boolean }
+} | null = null
 const cartClearMock = vi.fn()
 vi.mock('@/stores/cart', () => ({
   useCartStore: () => ({
     get items() {
       return mockCartItems
     },
-    get appliedVoucher() {
-      return mockAppliedVoucher
+    get appliedRedemption() {
+      return mockAppliedRedemption
     },
     get itemCount() {
       return mockCartItems.reduce((sum, i) => sum + i.quantity, 0)
@@ -52,7 +55,8 @@ vi.mock('@/stores/cart', () => ({
       return mockCartItems.reduce((sum, i) => sum + i.price * i.quantity, 0)
     },
     get discount() {
-      return mockAppliedVoucher ? this.subtotal * mockAppliedVoucher.rate : 0
+      const amount = mockAppliedRedemption?.reward.discount_amount ?? 0
+      return Math.min(amount, this.subtotal)
     },
     get total() {
       return this.subtotal - this.discount
@@ -84,6 +88,51 @@ const ElDialogStub = defineComponent({
   },
 })
 
+// The real el-select renders a popper-based dropdown that jsdom can't drive
+// directly, so this stub reads the <el-option> vnodes passed as its default
+// slot and renders a plain native <select> instead — enough for tests to
+// pick a value and drive v-model.
+// v-for as a slot's only content compiles to a single keyed Fragment vnode
+// wrapping the real per-item vnodes in `.children`, not a flat array, so it
+// needs unwrapping before reading each option's props.
+function flattenVNodes(nodes: unknown[]): VNode[] {
+  return nodes.flatMap((node) => {
+    if (Array.isArray(node)) return flattenVNodes(node)
+    const vnode = node as VNode
+    if (vnode?.type === Fragment && Array.isArray(vnode.children)) {
+      return flattenVNodes(vnode.children)
+    }
+    return [vnode]
+  })
+}
+
+const ElSelectStub = defineComponent({
+  props: ['modelValue'],
+  emits: ['update:modelValue'],
+  inheritAttrs: false,
+  setup(props, { emit, attrs, slots }) {
+    return () => {
+      const options = flattenVNodes(slots.default?.() ?? []).map((vnode) => {
+        const optionProps = vnode.props as { value?: string; label?: string } | null
+        return { value: optionProps?.value ?? '', label: optionProps?.label ?? '' }
+      })
+      return h(
+        'select',
+        {
+          id: attrs.id,
+          disabled: attrs.disabled,
+          value: props.modelValue,
+          onChange: (e: Event) => emit('update:modelValue', (e.target as HTMLSelectElement).value),
+        },
+        [
+          h('option', { value: '' }, ''),
+          ...options.map((opt) => h('option', { value: opt.value }, opt.label)),
+        ],
+      )
+    }
+  },
+})
+
 const { default: CheckoutView } = await import('../CheckoutView.vue')
 
 function makeCartItem(overrides: Partial<CartItem> = {}): CartItem {
@@ -102,15 +151,25 @@ function makeCartItem(overrides: Partial<CartItem> = {}): CartItem {
 }
 
 function mountCheckout() {
-  return mount(CheckoutView, { global: { stubs: { ElDialog: ElDialogStub } } })
+  return mount(CheckoutView, {
+    global: { stubs: { ElDialog: ElDialogStub, ElSelect: ElSelectStub } },
+  })
+}
+
+async function selectFirstOption(wrapper: ReturnType<typeof mountCheckout>, selector: string) {
+  const select = wrapper.find(selector)
+  const value = (select.element as HTMLSelectElement).options[1]!.value
+  await select.setValue(value)
 }
 
 async function fillShippingAndContinue(wrapper: ReturnType<typeof mountCheckout>) {
   await wrapper.find('#fullName').setValue('Jane Doe')
   await wrapper.find('#phone').setValue('012345678')
+  await selectFirstOption(wrapper, '#province')
+  await selectFirstOption(wrapper, '#district')
+  await selectFirstOption(wrapper, '#commune')
+  await selectFirstOption(wrapper, '#village')
   await wrapper.find('#street').setValue('123 Main St')
-  await wrapper.find('#city').setValue('Phnom Penh')
-  await wrapper.find('#postalCode').setValue('12000')
   await wrapper.find('.shipping-form').trigger('submit.prevent')
 }
 
@@ -134,7 +193,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   setActivePinia(createPinia())
   mockCartItems = [makeCartItem()]
-  mockAppliedVoucher = null
+  mockAppliedRedemption = null
   cardChangeHandler = undefined
 })
 

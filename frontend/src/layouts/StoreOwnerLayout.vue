@@ -90,6 +90,7 @@ async function handleSignOut() {
 
 .admin-main {
   flex: 1;
+  min-width: 0;
   min-height: 0;
   padding: 1.5rem;
   overflow-y: auto;

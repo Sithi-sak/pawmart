@@ -69,6 +69,8 @@ function makeReward(overrides: Partial<Reward> = {}): Reward {
     title: `Reward ${id}`,
     description: 'A great reward',
     points_cost: 500,
+    discount_amount: null,
+    free_shipping: false,
     ...overrides,
   }
 }

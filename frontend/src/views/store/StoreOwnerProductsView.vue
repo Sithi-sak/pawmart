@@ -355,7 +355,8 @@ async function deleteProduct(product: Product) {
     <el-dialog
       v-model="dialogVisible"
       :title="dialogMode === 'add' ? 'Add Product' : 'Edit Product'"
-      width="420px"
+      width="90%"
+      class="product-dialog"
       align-center
     >
       <form class="product-form" @submit.prevent="saveProduct">
@@ -479,6 +480,10 @@ async function deleteProduct(product: Product) {
 </template>
 
 <style scoped>
+:deep(.product-dialog) {
+  max-width: 420px;
+}
+
 .admin-products {
   display: flex;
   flex-direction: column;
@@ -635,7 +640,8 @@ async function deleteProduct(product: Product) {
   justify-content: center;
   width: 2.5rem;
   height: 2.5rem;
-  object-fit: cover;
+  object-fit: contain;
+  background-color: #fff;
 }
 
 .cell-thumb--empty {

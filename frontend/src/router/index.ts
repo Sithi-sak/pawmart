@@ -105,6 +105,11 @@ const router = createRouter({
       ],
     },
     {
+      path: '/khqr-pay',
+      name: 'khqr-pay-confirm',
+      component: () => import('../views/KhqrPayConfirmView.vue'),
+    },
+    {
       path: '/',
       component: AuthLayout,
       children: [

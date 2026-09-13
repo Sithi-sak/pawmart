@@ -32,7 +32,7 @@ export interface Order {
   shipping_method: 'standard' | 'express'
   shipping_cost: number
   payment_method: 'visa' | 'aba_payway' | 'khqr'
-  payment_status: 'paid' | 'pending_confirmation'
+  payment_status: 'paid'
   subtotal: number
   discount: number
   tax: number
@@ -50,7 +50,7 @@ export interface OrderSummary {
   created_at: string
   item_count: number
   payment_method: 'visa' | 'aba_payway' | 'khqr'
-  payment_status: 'paid' | 'pending_confirmation'
+  payment_status: 'paid'
   // Only present when fetched by an admin (task 3.8) — the customer's own
   // order history doesn't need it, since it's implicitly their own name.
   customer?: { id: string; full_name: string | null; email: string | null } | null
@@ -67,7 +67,9 @@ export interface CreateOrderPayload {
     method: 'standard' | 'express'
   }
   payment_method: 'visa' | 'aba_payway' | 'khqr'
-  voucher_code?: string | null
+  // id of an unconsumed Paws Rewards redemption (see @/lib/loyalty) the
+  // customer picked in Cart to discount this order with.
+  redemption_id?: number | null
   // Required for payment_method: 'visa' — see createPaymentIntent below.
   payment_intent_id?: string | null
 }
@@ -75,7 +77,7 @@ export interface CreateOrderPayload {
 export interface CreatePaymentIntentPayload {
   items: { product_id: number; quantity: number }[]
   shipping_method: 'standard' | 'express'
-  voucher_code?: string | null
+  redemption_id?: number | null
 }
 
 async function request<T>(path: string, accessToken: string, init?: RequestInit): Promise<T> {

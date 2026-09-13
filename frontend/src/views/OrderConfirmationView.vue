@@ -106,10 +106,7 @@ onMounted(async () => {
       <div class="confirmation-header">
         <h1 class="confirmation-title">Thank You for Choosing Excellence</h1>
         <p class="order-number">Order Confirmed: #{{ order.order_number }}</p>
-        <p v-if="order.payment_status === 'pending_confirmation'" class="pending-note">
-          Payment pending confirmation — we'll notify you once it's verified.
-        </p>
-        <p v-else-if="pointsEarned > 0" class="pending-note">
+        <p v-if="pointsEarned > 0" class="pending-note">
           You earned {{ pointsEarned.toLocaleString('en-US') }} Paws Rewards points on this order.
         </p>
       </div>

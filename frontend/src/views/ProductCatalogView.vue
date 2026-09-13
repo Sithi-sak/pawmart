@@ -7,7 +7,6 @@ import {
   PhGridFour,
   PhList,
   PhMagnifyingGlass,
-  PhShoppingCart,
   PhStorefront,
 } from '@phosphor-icons/vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -103,7 +102,7 @@ const selectedTags = ref<string[]>([])
 const selectedStores = ref<string[]>([])
 const sortBy = ref('newest')
 const page = ref(1)
-const pageSize = 9
+const pageSize = 15
 const viewMode = ref<'grid' | 'list'>('grid')
 
 watch(
@@ -273,20 +272,6 @@ function goToStore(p: Product) {
       </div>
     </div>
 
-    <div class="type-row">
-      <button
-        v-for="c in categoryNames"
-        :key="c"
-        type="button"
-        class="type-card"
-        :class="{ 'is-active': selectedCategory === c }"
-        @click="toggleCategory(c)"
-      >
-        <div class="type-image" :style="{ backgroundImage: `url(${typeImage(c)})` }"></div>
-        <span class="type-label">{{ c }}</span>
-      </button>
-    </div>
-
     <div class="species-row">
       <button
         v-for="s in species"
@@ -298,6 +283,33 @@ function goToStore(p: Product) {
       >
         <div class="species-icon" :style="{ backgroundImage: `url(${speciesImages[s]})` }"></div>
         <p class="species-label">{{ s }}</p>
+      </button>
+    </div>
+
+    <h2 class="section-title">Shop by Item Type</h2>
+
+    <div v-if="loading" class="type-row">
+      <div v-for="n in 6" :key="n" class="type-card">
+        <el-skeleton animated>
+          <template #template>
+            <el-skeleton-item variant="image" class="type-image" />
+            <el-skeleton-item variant="text" class="sk-type-label" />
+          </template>
+        </el-skeleton>
+      </div>
+    </div>
+
+    <div v-else class="type-row">
+      <button
+        v-for="c in categoryNames"
+        :key="c"
+        type="button"
+        class="type-card"
+        :class="{ 'is-active': selectedCategory === c }"
+        @click="toggleCategory(c)"
+      >
+        <div class="type-image" :style="{ backgroundImage: `url(${typeImage(c)})` }"></div>
+        <span class="type-label">{{ c }}</span>
       </button>
     </div>
 
@@ -313,6 +325,13 @@ function goToStore(p: Product) {
               <PhMagnifyingGlass :size="16" />
             </template>
           </el-input>
+        </div>
+
+        <div class="filter-group">
+          <h3 class="filter-title">Sort By</h3>
+          <el-select v-model="sortBy" size="large" style="width: 100%">
+            <el-option v-for="o in sortOptions" :key="o.value" :label="o.label" :value="o.value" />
+          </el-select>
         </div>
 
         <div class="filter-group">
@@ -350,13 +369,6 @@ function goToStore(p: Product) {
               {{ s }}
             </el-checkbox>
           </el-checkbox-group>
-        </div>
-
-        <div class="filter-group">
-          <h3 class="filter-title">Sort By</h3>
-          <el-select v-model="sortBy" size="large" style="width: 100%">
-            <el-option v-for="o in sortOptions" :key="o.value" :label="o.label" :value="o.value" />
-          </el-select>
         </div>
       </aside>
 
@@ -423,7 +435,7 @@ function goToStore(p: Product) {
                     </p>
                   </div>
                   <button type="button" class="cart-btn" @click.prevent="addToCart(p)">
-                    <PhShoppingCart :size="16" />
+                    Add to Cart
                   </button>
                 </div>
               </div>
@@ -510,7 +522,7 @@ function goToStore(p: Product) {
                         </p>
                       </div>
                       <button type="button" class="cart-btn" @click.prevent="addToCart(p)">
-                        <PhShoppingCart :size="16" />
+                        Add to Cart
                       </button>
                     </div>
                   </div>
@@ -551,7 +563,12 @@ function goToStore(p: Product) {
 }
 
 .page-title {
-  font-size: 2.5rem;
+  font-size: 2.15rem;
+}
+
+.section-title {
+  font-size: 1.5rem;
+  margin-bottom: 1.25rem;
 }
 
 .header-controls {
@@ -624,6 +641,7 @@ function goToStore(p: Product) {
 
 .type-image {
   width: 100%;
+  height: auto;
   aspect-ratio: 4 / 3;
   background-color: #fff;
   background-size: 60%;
@@ -631,6 +649,12 @@ function goToStore(p: Product) {
   background-position: center;
   border: 1px solid transparent;
   transition: border-color 0.15s ease;
+}
+
+.sk-type-label {
+  display: block;
+  width: 70%;
+  margin: 0.6rem auto 0;
 }
 
 .type-card:hover .type-image {
@@ -737,7 +761,8 @@ function goToStore(p: Product) {
 }
 
 .filter-title {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   padding-bottom: 0.5rem;
@@ -786,7 +811,7 @@ function goToStore(p: Product) {
 /* Product grid */
 .product-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 1rem;
 }
 
@@ -804,8 +829,10 @@ function goToStore(p: Product) {
   flex-shrink: 0;
   aspect-ratio: 3 / 2;
   height: auto;
-  background-size: cover;
+  background-size: contain;
   background-position: center;
+  background-repeat: no-repeat;
+  background-color: #fff;
 }
 
 .badge-stack {
@@ -901,11 +928,16 @@ function goToStore(p: Product) {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.25rem;
   height: 2.25rem;
+  padding: 0 0.9rem;
   background: var(--color-accent);
   color: #fff;
   border: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -934,7 +966,7 @@ function goToStore(p: Product) {
 }
 
 .sk-cart-btn {
-  width: 2.25rem;
+  width: 5.5rem;
   height: 2.25rem;
 }
 

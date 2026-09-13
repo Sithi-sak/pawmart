@@ -13,8 +13,10 @@ const cart = useCartStore()
         <RouterLink to="/" class="brand">PAWMART</RouterLink>
 
         <nav class="nav-links">
+          <RouterLink to="/" active-class="">Home</RouterLink>
           <RouterLink to="/products">Shop All</RouterLink>
           <RouterLink to="/collections">Collections</RouterLink>
+          <RouterLink to="/about">About Us</RouterLink>
         </nav>
 
         <div class="nav-actions">
@@ -31,7 +33,11 @@ const cart = useCartStore()
     </header>
 
     <main class="site-main">
-      <RouterView />
+      <RouterView v-slot="{ Component }">
+        <Transition name="page" mode="out-in">
+          <component :is="Component" />
+        </Transition>
+      </RouterView>
     </main>
 
     <footer class="site-footer">
@@ -70,6 +76,10 @@ const cart = useCartStore()
 }
 
 .site-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--color-background);
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -77,7 +87,7 @@ const cart = useCartStore()
   display: flex;
   align-items: center;
   gap: 2rem;
-  max-width: 1280px;
+  max-width: var(--content-max-width);
   margin: 0 auto;
   padding: 1rem 1.5rem;
 }
@@ -93,26 +103,49 @@ const cart = useCartStore()
 
 .nav-links {
   display: flex;
-  gap: 1.75rem;
+  gap: 2rem;
   flex: 1;
   justify-content: center;
 }
 
 .nav-links a {
+  position: relative;
   color: var(--color-text);
   text-decoration: none;
-  font-size: 0.8rem;
+  font-size: 0.875rem;
   font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   padding-bottom: 0.35rem;
-  border-bottom: 1px solid transparent;
 }
 
-.nav-links a.router-link-exact-active,
-.nav-links a.router-link-active {
+.nav-links a::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--color-accent);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.25s ease;
+}
+
+.nav-links a:hover {
   color: var(--color-accent);
-  border-bottom-color: var(--color-accent);
+}
+
+.nav-links a:hover::after {
+  transform: scaleX(1);
+}
+
+.nav-links a.router-link-exact-active {
+  color: var(--color-accent);
+}
+
+.nav-links a.router-link-exact-active::after {
+  transform: scaleX(1);
 }
 
 .nav-actions {
@@ -139,10 +172,29 @@ const cart = useCartStore()
 
 .site-main {
   flex: 1;
-  max-width: 1280px;
+  max-width: var(--content-max-width);
   width: 100%;
   margin: 0 auto;
   padding: 1.5rem;
+}
+
+:deep(.page-enter-active) {
+  transition:
+    opacity 0.35s ease,
+    transform 0.35s ease;
+}
+
+:deep(.page-enter-from) {
+  opacity: 0;
+  transform: translateY(16px);
+}
+
+:deep(.page-leave-active) {
+  transition: opacity 0.15s ease;
+}
+
+:deep(.page-leave-to) {
+  opacity: 0;
 }
 
 /* Footer */
@@ -152,7 +204,7 @@ const cart = useCartStore()
 }
 
 .footer-newsletter {
-  max-width: 1280px;
+  max-width: var(--content-max-width);
   margin: 0 auto;
   text-align: center;
   padding: 3.5rem 1.5rem 2.5rem;
@@ -187,7 +239,7 @@ const cart = useCartStore()
 }
 
 .footer-bottom {
-  max-width: 1280px;
+  max-width: var(--content-max-width);
   margin: 0 auto;
   display: flex;
   align-items: center;

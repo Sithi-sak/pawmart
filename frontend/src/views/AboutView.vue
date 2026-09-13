@@ -264,7 +264,7 @@ const features: Feature[] = [
 }
 
 .feature-list h4 {
-  font-size: 0.8rem;
+  font-size: 1rem;
   letter-spacing: 0.05em;
   color: var(--color-heading);
   margin-bottom: 0.4rem;

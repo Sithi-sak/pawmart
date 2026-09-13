@@ -564,8 +564,10 @@ function addToWishlist() {
 .gallery-image {
   aspect-ratio: 1 / 1;
   height: auto;
-  background-size: cover;
+  background-size: contain;
   background-position: center;
+  background-repeat: no-repeat;
+  background-color: #fff;
 }
 
 .state-message {
@@ -1081,8 +1083,10 @@ function addToWishlist() {
 
 .related-image {
   aspect-ratio: 1 / 1;
-  background-size: cover;
+  background-size: contain;
   background-position: center;
+  background-repeat: no-repeat;
+  background-color: #fff;
 }
 
 .related-info {

@@ -46,8 +46,8 @@ class TestAwardPointsForOrder:
         customer = supabase.table("customers").select("*").eq("id", "cust-1").single().execute().data
         assert customer["loyalty_points_balance"] == 105
 
-    def test_pending_confirmation_khqr_order_earns_nothing(self, supabase):
-        award_points_for_order(supabase, "cust-1", _order(payment_status="pending_confirmation"))
+    def test_non_paid_order_earns_nothing(self, supabase):
+        award_points_for_order(supabase, "cust-1", _order(payment_status="refunded"))
 
         assert supabase.table("loyalty_transactions").select("*").execute().data == []
         customer = supabase.table("customers").select("*").eq("id", "cust-1").single().execute().data

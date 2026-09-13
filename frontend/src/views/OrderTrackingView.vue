@@ -183,10 +183,6 @@ onMounted(async () => {
         </div>
       </div>
 
-      <p v-if="order.payment_status === 'pending_confirmation'" class="pending-note">
-        Payment pending confirmation — we'll notify you once it's verified.
-      </p>
-
       <div class="header-divider"></div>
 
       <div class="timeline">
@@ -219,7 +215,7 @@ onMounted(async () => {
           <p class="field-label">Shipping Address</p>
           <p class="field-value">{{ order.shipping_full_name }}</p>
           <p class="field-value">
-            {{ order.shipping_street }}, {{ order.shipping_city }} {{ order.shipping_postal_code }}
+            {{ [order.shipping_street, order.shipping_city, order.shipping_postal_code].filter(Boolean).join(', ') }}
           </p>
 
           <p class="field-label">Shipping Method</p>
@@ -410,13 +406,6 @@ onMounted(async () => {
   font-size: 0.95rem;
   font-weight: 600;
   color: var(--color-heading);
-}
-
-.pending-note {
-  font-size: 0.85rem;
-  color: var(--color-text);
-  opacity: 0.75;
-  margin-bottom: 1.5rem;
 }
 
 .header-divider {
