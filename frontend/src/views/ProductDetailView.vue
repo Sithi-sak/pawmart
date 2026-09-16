@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import {
   PhCaretDown,
   PhTruck,
@@ -9,6 +9,7 @@ import {
   PhStar,
   PhStarHalf,
   PhMegaphone,
+  PhHeart,
 } from '@phosphor-icons/vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { effectivePrice, fetchProductBySlug, fetchRelatedProducts, type Product } from '@/lib/products'
@@ -21,9 +22,12 @@ import {
 } from '@/lib/reviews'
 import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
+import { useWishlistStore } from '@/stores/wishlist'
 
 const cart = useCartStore()
+const wishlist = useWishlistStore()
 const auth = useAuthStore()
+const router = useRouter()
 
 const props = defineProps<{ slug?: string }>()
 
@@ -172,8 +176,8 @@ function decrementQuantity() {
   if (quantity.value > 1) quantity.value--
 }
 
-async function addToCart() {
-  if (!product.value) return
+async function addProductToCart(): Promise<boolean> {
+  if (!product.value) return false
 
   if (cart.conflictsWithCart(product.value)) {
     try {
@@ -183,21 +187,38 @@ async function addToCart() {
         { confirmButtonText: 'Clear Cart & Add', cancelButtonText: 'Cancel', type: 'warning' },
       )
     } catch {
-      return
+      return false
     }
     cart.clear()
   }
 
   cart.addItem(product.value, quantity.value)
+  return true
+}
+
+async function addToCart() {
+  if (!product.value) return
+  const added = await addProductToCart()
+  if (!added) return
+
   const optionsLabel = selectedOptionsSummary().join(', ')
   ElMessage.success(
     `Added ${quantity.value} × "${product.value.name}"${optionsLabel ? ` (${optionsLabel})` : ''} to cart`,
   )
 }
 
-function addToWishlist() {
+async function buyNow() {
   if (!product.value) return
-  ElMessage.success(`Added "${product.value.name}" to wishlist`)
+  const added = await addProductToCart()
+  if (!added) return
+
+  router.push({ name: 'checkout' })
+}
+
+function toggleWishlist() {
+  if (!product.value) return
+  const added = wishlist.toggle(product.value)
+  ElMessage.success(added ? `Added "${product.value.name}" to wishlist` : `Removed "${product.value.name}" from wishlist`)
 }
 </script>
 
@@ -331,10 +352,23 @@ function addToWishlist() {
             </div>
           </div>
 
-          <button type="button" class="add-to-cart-btn" :disabled="product.stock <= 0" @click="addToCart">
-            {{ product.stock > 0 ? 'ADD TO CART' : 'OUT OF STOCK' }}
+          <div class="cart-actions-row">
+            <button type="button" class="add-to-cart-btn" :disabled="product.stock <= 0" @click="addToCart">
+              {{ product.stock > 0 ? 'ADD TO CART' : 'OUT OF STOCK' }}
+            </button>
+            <button type="button" class="buy-now-btn" :disabled="product.stock <= 0" @click="buyNow">
+              BUY NOW
+            </button>
+          </div>
+          <button
+            type="button"
+            class="wishlist-btn"
+            :class="{ 'is-active': product && wishlist.has(product.id) }"
+            @click="toggleWishlist"
+          >
+            <PhHeart :size="16" :weight="product && wishlist.has(product.id) ? 'fill' : 'regular'" />
+            {{ product && wishlist.has(product.id) ? 'WISHLISTED' : 'WISHLIST' }}
           </button>
-          <button type="button" class="wishlist-btn" @click="addToWishlist">WISHLIST</button>
 
           <ul class="perks">
             <li>
@@ -524,11 +558,6 @@ function addToWishlist() {
   background: linear-gradient(180deg, #9a9a9a 0%, #d8d8d8 100%);
 }
 
-@media (prefers-color-scheme: dark) {
-  .placeholder-img {
-    background: linear-gradient(180deg, #4a4a4a 0%, #2c2c2c 100%);
-  }
-}
 
 .product-detail {
   padding: 1rem 0 3rem;
@@ -672,16 +701,6 @@ function addToWishlist() {
   font-size: 0.82rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  .discount-pill {
-    background: rgba(192, 57, 43, 0.85);
-  }
-
-  .promo-banner {
-    background: rgba(43, 108, 176, 0.2);
-    color: #8fb7e3;
-  }
-}
 
 .rating-row {
   display: flex;
@@ -829,6 +848,13 @@ function addToWishlist() {
   font-size: 0.9rem;
 }
 
+.cart-actions-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
 .add-to-cart-btn {
   display: block;
   width: 100%;
@@ -840,7 +866,6 @@ function addToWishlist() {
   letter-spacing: 0.08em;
   font-weight: 500;
   cursor: pointer;
-  margin-bottom: 0.75rem;
 }
 
 .add-to-cart-btn:hover {
@@ -852,8 +877,33 @@ function addToWishlist() {
   cursor: not-allowed;
 }
 
-.wishlist-btn {
+.buy-now-btn {
   display: block;
+  width: 100%;
+  height: 2.5rem;
+  background: var(--color-heading);
+  border: none;
+  color: #fff;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.buy-now-btn:hover {
+  opacity: 0.85;
+}
+
+.buy-now-btn:disabled {
+  background: var(--color-border);
+  cursor: not-allowed;
+}
+
+.wishlist-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
   width: 100%;
   height: 2.5rem;
   background: var(--color-background);
@@ -867,6 +917,11 @@ function addToWishlist() {
 }
 
 .wishlist-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.wishlist-btn.is-active {
   border-color: var(--color-accent);
   color: var(--color-accent);
 }

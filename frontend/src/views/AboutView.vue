@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
+import aboutCover from '@/assets/images/about_cover.jpg'
+import craftImage from '@/assets/images/ad-3.jpg'
+import commitmentImageA from '@/assets/images/ad-1.jpg'
+import commitmentImageB from '@/assets/images/ad-2.jpg'
 
 interface Feature {
   title: string
@@ -29,7 +33,7 @@ const features: Feature[] = [
   <div class="about">
     <!-- Hero -->
     <section class="hero">
-      <div class="hero-media placeholder-img"></div>
+      <div class="hero-media" :style="{ backgroundImage: `url(${aboutCover})` }"></div>
       <div class="hero-card">
         <h1 class="hero-title">Where Design Meets Devotion.</h1>
         <p class="hero-copy">
@@ -48,7 +52,7 @@ const features: Feature[] = [
         <p class="eyebrow">Our Commitment</p>
         <h2 class="section-title">Considered Design, Considered Care</h2>
         <p>
-          Every piece in our collection is selected — or made — with a single question in mind:
+          Every piece in our collection is selected, or made, with a single question in mind:
           does this genuinely improve a pet's daily life? We work with artisans and manufacturers
           who share our standards for material integrity, safety, and craftsmanship.
         </p>
@@ -58,8 +62,8 @@ const features: Feature[] = [
         </p>
       </div>
       <div class="commitment-media">
-        <div class="img-a placeholder-img"></div>
-        <div class="img-b placeholder-img"></div>
+        <div class="img-a" :style="{ backgroundImage: `url(${commitmentImageA})` }"></div>
+        <div class="img-b" :style="{ backgroundImage: `url(${commitmentImageB})` }"></div>
       </div>
     </section>
 
@@ -67,7 +71,7 @@ const features: Feature[] = [
     <section class="section section-soft">
       <div class="craft">
         <div class="craft-frame">
-          <div class="craft-image placeholder-img"></div>
+          <div class="craft-image" :style="{ backgroundImage: `url(${craftImage})` }"></div>
         </div>
         <div class="craft-content">
           <h2 class="craft-title">Built for Real Life</h2>
@@ -94,19 +98,10 @@ const features: Feature[] = [
           <h3>Chea Bunthay</h3>
           <p class="founder-role">Founder &amp; Creative Director</p>
           <p class="founder-bio">
-            Dara founded PawMart after years of searching for pet furniture that matched the rest
-            of her home — and finding nothing that did. She now leads design and sourcing for
+            Bunthay founded PawMart after years of searching for pet furniture that matched the
+            rest of his home, and finding nothing that did. He now leads design and sourcing for
             every collection.
           </p>
-        </div>
-        <div class="studio-workshop placeholder-img">
-          <div class="workshop-overlay">
-            <h3>The Workshop</h3>
-            <p>
-              Every prototype is tested in-studio with a rotating cast of resident dogs and cats
-              before it ever reaches a customer — our most honest quality control.
-            </p>
-          </div>
         </div>
       </div>
     </section>
@@ -131,11 +126,6 @@ const features: Feature[] = [
   background: linear-gradient(180deg, #9a9a9a 0%, #d8d8d8 100%);
 }
 
-@media (prefers-color-scheme: dark) {
-  .placeholder-img {
-    background: linear-gradient(180deg, #4a4a4a 0%, #2c2c2c 100%);
-  }
-}
 
 .section {
   padding: 3.5rem 0;
@@ -178,6 +168,8 @@ const features: Feature[] = [
 
 .hero-media {
   height: 440px;
+  background-size: cover;
+  background-position: center;
 }
 
 .hero-card {
@@ -220,6 +212,12 @@ const features: Feature[] = [
   gap: 1.5rem;
 }
 
+.commitment-media .img-a,
+.commitment-media .img-b {
+  background-size: cover;
+  background-position: center;
+}
+
 .commitment-media .img-a {
   width: 55%;
   aspect-ratio: 4 / 5;
@@ -246,6 +244,8 @@ const features: Feature[] = [
 
 .craft-image {
   aspect-ratio: 1 / 1;
+  background-size: cover;
+  background-position: center;
 }
 
 .craft-title {
@@ -283,9 +283,13 @@ const features: Feature[] = [
 }
 
 .studio-grid {
-  display: grid;
-  grid-template-columns: 1fr 1.4fr;
-  gap: 1.5rem;
+  display: flex;
+  justify-content: center;
+}
+
+.studio-founder {
+  width: 100%;
+  max-width: 420px;
 }
 
 .founder-image {
@@ -311,30 +315,6 @@ const features: Feature[] = [
   color: var(--color-text);
   opacity: 0.85;
   font-size: 0.9rem;
-}
-
-.studio-workshop {
-  position: relative;
-  display: flex;
-  align-items: flex-end;
-  background: linear-gradient(180deg, #9a9a9a 0%, #1a1a1a 100%);
-}
-
-.workshop-overlay {
-  color: #fff;
-  padding: 1.75rem;
-}
-
-.workshop-overlay h3 {
-  font-family: var(--font-serif);
-  font-size: 1.35rem;
-  margin-bottom: 0.6rem;
-}
-
-.workshop-overlay p {
-  opacity: 0.9;
-  font-size: 0.9rem;
-  max-width: 380px;
 }
 
 /* CTA */
@@ -368,8 +348,7 @@ const features: Feature[] = [
   }
 
   .commitment,
-  .craft,
-  .studio-grid {
+  .craft {
     grid-template-columns: 1fr;
   }
 

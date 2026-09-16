@@ -306,17 +306,6 @@ a.cell-name:hover {
   color: #c92a2a;
 }
 
-@media (prefers-color-scheme: dark) {
-  .status-badge {
-    background: rgba(47, 158, 68, 0.18);
-    color: #82d996;
-  }
-
-  .status-badge.is-banned {
-    background: rgba(201, 42, 42, 0.18);
-    color: #f1a3a3;
-  }
-}
 
 @media (max-width: 560px) {
   .toolbar {

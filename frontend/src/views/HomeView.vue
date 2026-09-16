@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import { PhHeart } from '@phosphor-icons/vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
+import { useCartStore } from '@/stores/cart'
+import { useWishlistStore } from '@/stores/wishlist'
 import { fetchRecommendedProducts } from '@/lib/recommendations'
 import type { Product } from '@/lib/products'
 import petCareImg from '@/assets/images/pet_care.jpg'
@@ -12,6 +16,8 @@ import lifestyleImg from '@/assets/images/lifestyle.png'
 import heroVideo from '@/assets/hero_video.mp4'
 
 const auth = useAuthStore()
+const cart = useCartStore()
+const wishlist = useWishlistStore()
 
 interface Collection {
   key: string
@@ -75,6 +81,29 @@ onMounted(async () => {
 
 function formatPrice(value: number) {
   return `$${value.toFixed(2)}`
+}
+
+async function addToCart(p: Product) {
+  if (cart.conflictsWithCart(p)) {
+    try {
+      await ElMessageBox.confirm(
+        `Your cart has items from ${cart.activeStoreName ?? 'another store'}. Clear it to add items from a different store?`,
+        'Different Store',
+        { confirmButtonText: 'Clear Cart & Add', cancelButtonText: 'Cancel', type: 'warning' },
+      )
+    } catch {
+      return
+    }
+    cart.clear()
+  }
+
+  cart.addItem(p)
+  ElMessage.success(`Added "${p.name}" to cart`)
+}
+
+function toggleWishlist(p: Product) {
+  const added = wishlist.toggle(p)
+  ElMessage.success(added ? `Added "${p.name}" to wishlist` : `Removed "${p.name}" from wishlist`)
 }
 </script>
 
@@ -153,10 +182,22 @@ function formatPrice(value: number) {
             class="product-image"
             :class="{ 'placeholder-img': !p.images.length }"
             :style="p.images.length ? { backgroundImage: `url(${p.images[0]})` } : undefined"
-          ></div>
+          >
+            <button
+              type="button"
+              class="wishlist-btn"
+              :class="{ 'is-active': wishlist.has(p.id) }"
+              @click.stop.prevent="toggleWishlist(p)"
+            >
+              <PhHeart :size="18" :weight="wishlist.has(p.id) ? 'fill' : 'regular'" />
+            </button>
+          </div>
           <p class="product-category">{{ p.categories?.name ?? p.species }}</p>
           <h3 class="product-name">{{ p.name }}</h3>
-          <p class="product-price">{{ formatPrice(p.price) }}</p>
+          <div class="product-footer">
+            <p class="product-price">{{ formatPrice(p.price) }}</p>
+            <button type="button" class="cart-btn" @click.stop.prevent="addToCart(p)">Add to Cart</button>
+          </div>
         </RouterLink>
       </div>
     </section>
@@ -196,11 +237,6 @@ function formatPrice(value: number) {
   background: linear-gradient(180deg, #9a9a9a 0%, #d8d8d8 100%);
 }
 
-@media (prefers-color-scheme: dark) {
-  .placeholder-img {
-    background: linear-gradient(180deg, #4a4a4a 0%, #2c2c2c 100%);
-  }
-}
 
 .section {
   padding: 3.5rem 0;
@@ -416,6 +452,7 @@ function formatPrice(value: number) {
 }
 
 .product-image {
+  position: relative;
   aspect-ratio: 1 / 1;
   height: auto;
   margin-bottom: 0.75rem;
@@ -423,6 +460,59 @@ function formatPrice(value: number) {
   background-position: center;
   background-repeat: no-repeat;
   background-color: #fff;
+}
+
+.wishlist-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  background: rgba(255, 255, 255, 0.85);
+  border: none;
+  border-radius: 50%;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.wishlist-btn:hover {
+  color: var(--color-accent);
+}
+
+.wishlist-btn.is-active {
+  color: var(--color-accent);
+}
+
+.product-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.cart-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.25rem;
+  padding: 0 0.9rem;
+  background: var(--color-accent);
+  color: #fff;
+  border: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.cart-btn:hover {
+  background: var(--color-accent-dark);
 }
 
 .product-category {

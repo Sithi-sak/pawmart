@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
-import { PhStorefront, PhShoppingCart, PhMagnifyingGlass } from '@phosphor-icons/vue'
+import { PhStorefront, PhShoppingCart, PhMagnifyingGlass, PhHeart } from '@phosphor-icons/vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { effectivePrice, fetchCategories, fetchProducts, type Category, type Product } from '@/lib/products'
 import { fetchStoreBySlug, type Store } from '@/lib/stores'
 import { useCartStore } from '@/stores/cart'
+import { useWishlistStore } from '@/stores/wishlist'
 import petClothingImg from '@/assets/images/type/pet-clothing-accessories.png'
 import petFoodImg from '@/assets/images/type/pet-food.png'
 import petGroomingImg from '@/assets/images/type/pet-grooming-supplies.png'
@@ -23,6 +24,7 @@ const typeImages: Record<string, string> = {
 }
 
 const cart = useCartStore()
+const wishlist = useWishlistStore()
 
 const props = defineProps<{ slug?: string }>()
 
@@ -136,6 +138,11 @@ async function addToCart(p: Product) {
 
   cart.addItem(p)
   ElMessage.success(`Added "${p.name}" to cart`)
+}
+
+function toggleWishlist(p: Product) {
+  const added = wishlist.toggle(p)
+  ElMessage.success(added ? `Added "${p.name}" to wishlist` : `Removed "${p.name}" from wishlist`)
 }
 </script>
 
@@ -256,6 +263,14 @@ async function addToCart(p: Product) {
                   -{{ Math.round(p.discount_percent) }}%
                 </span>
               </div>
+              <button
+                type="button"
+                class="wishlist-btn"
+                :class="{ 'is-active': wishlist.has(p.id) }"
+                @click.stop.prevent="toggleWishlist(p)"
+              >
+                <PhHeart :size="18" :weight="wishlist.has(p.id) ? 'fill' : 'regular'" />
+              </button>
             </div>
             <div class="product-info">
               <h3 class="product-name">{{ p.name }}</h3>
@@ -292,11 +307,6 @@ async function addToCart(p: Product) {
   background: linear-gradient(180deg, #9a9a9a 0%, #d8d8d8 100%);
 }
 
-@media (prefers-color-scheme: dark) {
-  .placeholder-img {
-    background: linear-gradient(180deg, #4a4a4a 0%, #2c2c2c 100%);
-  }
-}
 
 .store-detail {
   padding: 1rem 0 3rem;
@@ -501,6 +511,31 @@ async function addToCart(p: Product) {
 
 .tag-badge--discount {
   background: #c0392b;
+}
+
+.wishlist-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  background: rgba(255, 255, 255, 0.85);
+  border: none;
+  border-radius: 50%;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.wishlist-btn:hover {
+  color: var(--color-accent);
+}
+
+.wishlist-btn.is-active {
+  color: var(--color-accent);
 }
 
 .product-info {

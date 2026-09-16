@@ -1,4 +1,5 @@
 :root {
+  color-scheme: light;
   --color-background: #ffffff;
   --color-background-soft: #f7f8fa;
   --color-border: #e4e7ed;
@@ -32,15 +33,6 @@
   --el-color-primary-rgb: 218, 109, 31;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-background: #181818;
-    --color-background-soft: #222222;
-    --color-border: #3a3a3a;
-    --color-heading: #f2f2f2;
-    --color-text: #dcdcdc;
-  }
-}
 
 *,
 *::before,

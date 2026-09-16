@@ -462,17 +462,6 @@ onMounted(async () => {
   color: #c0392b;
 }
 
-@media (prefers-color-scheme: dark) {
-  .status-badge {
-    background: rgba(218, 109, 31, 0.18);
-    color: #edb68f;
-  }
-
-  .status-badge.is-critical {
-    background: rgba(192, 57, 43, 0.2);
-    color: #f0908a;
-  }
-}
 
 /* Profile form */
 .profile-form {

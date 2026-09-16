@@ -683,22 +683,6 @@ async function deleteProduct(product: Product) {
   color: #c0392b;
 }
 
-@media (prefers-color-scheme: dark) {
-  .status-badge {
-    background: rgba(47, 158, 68, 0.18);
-    color: #82d996;
-  }
-
-  .status-badge.is-low {
-    background: rgba(218, 109, 31, 0.18);
-    color: #edb68f;
-  }
-
-  .status-badge.is-critical {
-    background: rgba(192, 57, 43, 0.2);
-    color: #f0908a;
-  }
-}
 
 .cell-tags {
   display: flex;
@@ -728,17 +712,6 @@ async function deleteProduct(product: Product) {
   color: #c0392b;
 }
 
-@media (prefers-color-scheme: dark) {
-  .tag-promo {
-    background: rgba(43, 108, 176, 0.2);
-    color: #8fb7e3;
-  }
-
-  .tag-discount {
-    background: rgba(192, 57, 43, 0.2);
-    color: #f0908a;
-  }
-}
 
 .cell-actions {
   display: flex;

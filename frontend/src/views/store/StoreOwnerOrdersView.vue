@@ -441,12 +441,6 @@ onMounted(async () => {
   color: #2f9e44;
 }
 
-@media (prefers-color-scheme: dark) {
-  .payment-badge {
-    background: rgba(47, 158, 68, 0.18);
-    color: #82d996;
-  }
-}
 
 .status-select {
   width: 170px;

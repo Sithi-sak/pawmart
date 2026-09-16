@@ -289,11 +289,6 @@ function proceedToCheckout() {
   background: linear-gradient(180deg, #9a9a9a 0%, #d8d8d8 100%);
 }
 
-@media (prefers-color-scheme: dark) {
-  .placeholder-img {
-    background: linear-gradient(180deg, #4a4a4a 0%, #2c2c2c 100%);
-  }
-}
 
 .cart {
   padding: 1rem 0 3rem;

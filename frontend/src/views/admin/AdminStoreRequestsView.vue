@@ -431,22 +431,6 @@ onMounted(loadApplications)
   color: #c92a2a;
 }
 
-@media (prefers-color-scheme: dark) {
-  .status-badge {
-    background: rgba(218, 109, 31, 0.18);
-    color: #edb68f;
-  }
-
-  .status-badge.is-approved {
-    background: rgba(47, 158, 68, 0.18);
-    color: #82d996;
-  }
-
-  .status-badge.is-rejected {
-    background: rgba(201, 42, 42, 0.18);
-    color: #f1a3a3;
-  }
-}
 
 .row-actions {
   display: flex;

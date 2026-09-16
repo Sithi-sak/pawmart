@@ -44,6 +44,11 @@ const router = createRouter({
         },
         { path: 'cart', name: 'cart', component: () => import('../views/CartView.vue') },
         {
+          path: 'wishlist',
+          name: 'wishlist',
+          component: () => import('../views/WishlistView.vue'),
+        },
+        {
           path: 'checkout',
           name: 'checkout',
           component: () => import('../views/CheckoutView.vue'),
@@ -161,6 +166,11 @@ const router = createRouter({
           path: 'store-requests',
           name: 'admin-store-requests',
           component: () => import('../views/admin/AdminStoreRequestsView.vue'),
+        },
+        {
+          path: 'upcoming-stores',
+          name: 'admin-upcoming-stores',
+          component: () => import('../views/admin/AdminUpcomingStoresView.vue'),
         },
       ],
     },

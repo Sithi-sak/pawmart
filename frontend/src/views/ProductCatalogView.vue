@@ -5,13 +5,16 @@ import {
   PhArrowLeft,
   PhArrowRight,
   PhGridFour,
+  PhHeart,
   PhList,
   PhMagnifyingGlass,
   PhStorefront,
 } from '@phosphor-icons/vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { effectivePrice, fetchCategories, fetchProducts, type Category, type Product } from '@/lib/products'
+import { fetchUpcomingStores, type UpcomingStore } from '@/lib/upcomingStores'
 import { useCartStore } from '@/stores/cart'
+import { useWishlistStore } from '@/stores/wishlist'
 import dogImg from '@/assets/images/dog.png'
 import catImg from '@/assets/images/cat.png'
 import birdImg from '@/assets/images/bird.png'
@@ -24,6 +27,7 @@ import petSuppliesImg from '@/assets/images/type/pet-supplies.png'
 import petTrainingImg from '@/assets/images/type/pet-training-aids.png'
 
 const cart = useCartStore()
+const wishlist = useWishlistStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -61,6 +65,7 @@ const sortOptions = [
 
 const products = ref<Product[]>([])
 const categories = ref<Category[]>([])
+const upcomingStores = ref<UpcomingStore[]>([])
 const categoryNames = computed(() => categories.value.map((c) => c.name))
 const loading = ref(true)
 const loadError = ref(false)
@@ -88,6 +93,13 @@ async function loadCatalog() {
     loadError.value = true
   } finally {
     loading.value = false
+  }
+
+  // Best-effort: a failure here shouldn't block the product catalog itself.
+  try {
+    upcomingStores.value = await fetchUpcomingStores()
+  } catch {
+    upcomingStores.value = []
   }
 }
 
@@ -238,6 +250,11 @@ async function addToCart(p: Product) {
   ElMessage.success(`Added "${p.name}" to cart`)
 }
 
+function toggleWishlist(p: Product) {
+  const added = wishlist.toggle(p)
+  ElMessage.success(added ? `Added "${p.name}" to wishlist` : `Removed "${p.name}" from wishlist`)
+}
+
 function goToStore(p: Product) {
   if (p.stores) router.push(`/store/${p.stores.slug}`)
 }
@@ -369,6 +386,20 @@ function goToStore(p: Product) {
               {{ s }}
             </el-checkbox>
           </el-checkbox-group>
+
+          <div v-if="upcomingStores.length" class="upcoming-stores">
+            <p class="upcoming-stores-title">Coming Soon</p>
+            <ul class="upcoming-stores-list">
+              <li v-for="s in upcomingStores" :key="s.id" class="upcoming-store">
+                <span class="upcoming-store-name">{{ s.name }}</span>
+                <span v-if="s.launch_date" class="upcoming-store-date">
+                  {{
+                    new Date(s.launch_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+                  }}
+                </span>
+              </li>
+            </ul>
+          </div>
         </div>
       </aside>
 
@@ -415,6 +446,14 @@ function goToStore(p: Product) {
                     -{{ Math.round(p.discount_percent) }}%
                   </span>
                 </div>
+                <button
+                  type="button"
+                  class="wishlist-btn"
+                  :class="{ 'is-active': wishlist.has(p.id) }"
+                  @click.stop.prevent="toggleWishlist(p)"
+                >
+                  <PhHeart :size="18" :weight="wishlist.has(p.id) ? 'fill' : 'regular'" />
+                </button>
               </div>
               <div class="product-info">
                 <h3 class="product-name">{{ p.name }}</h3>
@@ -510,6 +549,14 @@ function goToStore(p: Product) {
                         -{{ Math.round(p.discount_percent) }}%
                       </span>
                     </div>
+                    <button
+                      type="button"
+                      class="wishlist-btn"
+                      :class="{ 'is-active': wishlist.has(p.id) }"
+                      @click.stop.prevent="toggleWishlist(p)"
+                    >
+                      <PhHeart :size="18" :weight="wishlist.has(p.id) ? 'fill' : 'regular'" />
+                    </button>
                   </div>
                   <div class="product-info">
                     <h3 class="product-name">{{ p.name }}</h3>
@@ -545,11 +592,6 @@ function goToStore(p: Product) {
   background: linear-gradient(180deg, #9a9a9a 0%, #d8d8d8 100%);
 }
 
-@media (prefers-color-scheme: dark) {
-  .placeholder-img {
-    background: linear-gradient(180deg, #4a4a4a 0%, #2c2c2c 100%);
-  }
-}
 
 .catalog {
   padding: 1rem 0 3rem;
@@ -808,6 +850,54 @@ function goToStore(p: Product) {
   border-top: 1px solid var(--color-border);
 }
 
+.upcoming-stores {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.upcoming-stores-title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.55;
+  margin-bottom: 0.5rem;
+}
+
+.upcoming-stores-list {
+  list-style: none;
+  padding-left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.upcoming-store {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  opacity: 0.65;
+}
+
+.upcoming-store-name::before {
+  content: '';
+  display: inline-block;
+  width: 0.4rem;
+  height: 0.4rem;
+  margin-right: 0.4rem;
+  border-radius: 50%;
+  background: var(--color-accent);
+  vertical-align: middle;
+}
+
+.upcoming-store-date {
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
 /* Product grid */
 .product-grid {
   display: grid;
@@ -859,6 +949,31 @@ function goToStore(p: Product) {
 
 .tag-badge--discount {
   background: #c0392b;
+}
+
+.wishlist-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  background: rgba(255, 255, 255, 0.85);
+  border: none;
+  border-radius: 50%;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.wishlist-btn:hover {
+  color: var(--color-accent);
+}
+
+.wishlist-btn.is-active {
+  color: var(--color-accent);
 }
 
 .product-info {

@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router'
-import { PhShoppingCart, PhUser } from '@phosphor-icons/vue'
+import { PhHeart, PhShoppingCart, PhUser } from '@phosphor-icons/vue'
 import { useCartStore } from '@/stores/cart'
+import { useWishlistStore } from '@/stores/wishlist'
 
 const cart = useCartStore()
+const wishlist = useWishlistStore()
 </script>
 
 <template>
@@ -20,6 +22,11 @@ const cart = useCartStore()
         </nav>
 
         <div class="nav-actions">
+          <RouterLink to="/wishlist" class="icon-link">
+            <el-badge :value="wishlist.itemCount" :hidden="wishlist.itemCount === 0" :max="99">
+              <PhHeart :size="20" />
+            </el-badge>
+          </RouterLink>
           <RouterLink to="/cart" class="icon-link">
             <el-badge :value="cart.itemCount" :hidden="cart.itemCount === 0" :max="99">
               <PhShoppingCart :size="20" />

@@ -19,6 +19,7 @@ async function handleSignOut() {
         <RouterLink to="/admin">Dashboard</RouterLink>
         <RouterLink to="/admin/stores">Stores</RouterLink>
         <RouterLink to="/admin/store-requests">Seller Requests</RouterLink>
+        <RouterLink to="/admin/upcoming-stores">Upcoming Stores</RouterLink>
       </nav>
       <button type="button" class="back-link" @click="handleSignOut">Sign Out</button>
     </aside>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
-import collectionCover from '@/assets/images/collection_cover.jpg'
+import collectionVideo from '@/assets/collection_video.mp4'
 import dogImg from '@/assets/images/dog.png'
 import catImg from '@/assets/images/cat.png'
 import birdImg from '@/assets/images/bird.png'
@@ -52,12 +52,9 @@ const collections: Collection[] = [
 <template>
   <div class="collections">
     <!-- Hero -->
-    <section
-      class="hero"
-      :style="{
-        backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45)), url(${collectionCover})`,
-      }"
-    >
+    <section class="hero">
+      <video class="hero-video" :src="collectionVideo" autoplay muted loop playsinline></video>
+      <div class="hero-overlay"></div>
       <div class="hero-content">
         <h1 class="hero-title">
           EVERY COMPANION,<br />
@@ -124,11 +121,6 @@ const collections: Collection[] = [
   background: linear-gradient(180deg, #9a9a9a 0%, #d8d8d8 100%);
 }
 
-@media (prefers-color-scheme: dark) {
-  .placeholder-img {
-    background: linear-gradient(180deg, #4a4a4a 0%, #2c2c2c 100%);
-  }
-}
 
 .section {
   padding: 3.5rem 0;
@@ -173,6 +165,7 @@ const collections: Collection[] = [
 
 /* Hero */
 .hero {
+  position: relative;
   min-height: 420px;
   display: flex;
   align-items: center;
@@ -180,11 +173,25 @@ const collections: Collection[] = [
   text-align: center;
   margin: -1.5rem calc(-1 * 1.5rem) 0;
   padding: 3rem;
-  background-size: cover;
-  background-position: center;
+  overflow: hidden;
+}
+
+.hero-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
 }
 
 .hero-content {
+  position: relative;
   max-width: 560px;
 }
 

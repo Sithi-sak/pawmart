@@ -144,13 +144,12 @@ async function mountCardElement() {
     elements = stripe.elements()
   }
   if (!cardElement) {
-    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches
     cardElement = elements.create('card', {
       hidePostalCode: true,
       style: {
         base: {
-          color: isDark ? '#dcdcdc' : '#303133',
-          '::placeholder': { color: isDark ? '#707070' : '#a8abb2' },
+          color: '#303133',
+          '::placeholder': { color: '#a8abb2' },
         },
       },
     })
@@ -713,11 +712,6 @@ const shippingMethodLabel = computed(() =>
   background: linear-gradient(180deg, #9a9a9a 0%, #d8d8d8 100%);
 }
 
-@media (prefers-color-scheme: dark) {
-  .placeholder-img {
-    background: linear-gradient(180deg, #4a4a4a 0%, #2c2c2c 100%);
-  }
-}
 
 .checkout {
   padding: 1rem 0 4rem;
