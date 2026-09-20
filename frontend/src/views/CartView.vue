@@ -289,7 +289,6 @@ function proceedToCheckout() {
   background: linear-gradient(180deg, #9a9a9a 0%, #d8d8d8 100%);
 }
 
-
 .cart {
   padding: 1rem 0 3rem;
 }

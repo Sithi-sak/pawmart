@@ -50,7 +50,10 @@ const wishlist = useWishlistStore()
     <footer class="site-footer">
       <div class="footer-newsletter">
         <h2>Stay in the Loop</h2>
-        <p>Get new arrivals, seasonal collections, and pet-care tips delivered straight to your inbox.</p>
+        <p>
+          Get new arrivals, seasonal collections, and pet-care tips delivered straight to your
+          inbox.
+        </p>
         <div class="newsletter-form">
           <el-input placeholder="Your email address" size="large" />
           <el-button type="primary" class="accent-btn" size="large">Subscribe</el-button>
@@ -60,7 +63,9 @@ const wishlist = useWishlistStore()
       <div class="footer-bottom">
         <div class="footer-brand">
           <p class="brand">PAWMART</p>
-          <p class="copyright">&copy; {{ new Date().getFullYear() }} PawMart. All rights reserved.</p>
+          <p class="copyright">
+            &copy; {{ new Date().getFullYear() }} PawMart. All rights reserved.
+          </p>
         </div>
 
         <nav class="footer-links">

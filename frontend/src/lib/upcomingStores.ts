@@ -34,7 +34,10 @@ export async function createUpcomingStore(input: UpcomingStoreInput): Promise<Up
   return data as UpcomingStore
 }
 
-export async function updateUpcomingStore(id: number, input: UpcomingStoreInput): Promise<UpcomingStore> {
+export async function updateUpcomingStore(
+  id: number,
+  input: UpcomingStoreInput,
+): Promise<UpcomingStore> {
   const { data, error } = await supabase
     .from('upcoming_stores')
     .update(input)

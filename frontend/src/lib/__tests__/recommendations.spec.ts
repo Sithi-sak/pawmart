@@ -110,11 +110,15 @@ describe('signed-in customer with a scoring signal', () => {
     const catFood = makeProduct({ species: 'Cat', created_at: '2026-01-05T00:00:00Z' })
     fetchProductsMock.mockResolvedValue([catFood, dogFood])
 
-    fromMock.mockReturnValueOnce(queryResult([{ species: 'Dog' }])).mockReturnValueOnce(queryResult([]))
+    fromMock
+      .mockReturnValueOnce(queryResult([{ species: 'Dog' }]))
+      .mockReturnValueOnce(queryResult([]))
     const withDog = await fetchRecommendedProducts('cust-1')
     expect(withDog.products[0].id).toBe(dogFood.id)
 
-    fromMock.mockReturnValueOnce(queryResult([{ species: 'Cat' }])).mockReturnValueOnce(queryResult([]))
+    fromMock
+      .mockReturnValueOnce(queryResult([{ species: 'Cat' }]))
+      .mockReturnValueOnce(queryResult([]))
     const withCat = await fetchRecommendedProducts('cust-1')
     expect(withCat.products[0].id).toBe(catFood.id)
   })
@@ -125,9 +129,7 @@ describe('signed-in customer with a scoring signal', () => {
     fetchProductsMock.mockResolvedValue([otherCategory, sameCategory])
     fromMock
       .mockReturnValueOnce(queryResult([]))
-      .mockReturnValueOnce(
-        queryResult([{ product_id: 999, products: { category_id: 7 } }]),
-      )
+      .mockReturnValueOnce(queryResult([{ product_id: 999, products: { category_id: 7 } }]))
 
     const result = await fetchRecommendedProducts('cust-1')
 

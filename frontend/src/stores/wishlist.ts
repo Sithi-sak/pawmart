@@ -111,13 +111,20 @@ export const useWishlistStore = defineStore('wishlist', () => {
     if (!customerId) return
     await supabase
       .from('wishlist_items')
-      .upsert({ customer_id: customerId, product_id: productId }, { onConflict: 'customer_id,product_id' })
+      .upsert(
+        { customer_id: customerId, product_id: productId },
+        { onConflict: 'customer_id,product_id' },
+      )
   }
 
   async function persistRemoval(productId: number) {
     const customerId = auth.customer?.id
     if (!customerId) return
-    await supabase.from('wishlist_items').delete().eq('customer_id', customerId).eq('product_id', productId)
+    await supabase
+      .from('wishlist_items')
+      .delete()
+      .eq('customer_id', customerId)
+      .eq('product_id', productId)
   }
 
   function add(product: Product) {

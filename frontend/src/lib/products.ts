@@ -77,6 +77,7 @@ export function effectivePrice(
 export interface ProductInput {
   category_id: number | null
   name: string
+  description: string | null
   brand: string | null
   species: string | null
   price: number
@@ -118,7 +119,10 @@ async function uniqueSlug(name: string): Promise<string> {
 }
 
 export async function fetchProducts(storeId?: number): Promise<Product[]> {
-  let query = supabase.from('products').select(PRODUCT_COLUMNS).order('created_at', { ascending: false })
+  let query = supabase
+    .from('products')
+    .select(PRODUCT_COLUMNS)
+    .order('created_at', { ascending: false })
   if (storeId !== undefined) {
     query = query.eq('store_id', storeId)
   }
@@ -161,6 +165,22 @@ export async function deleteProduct(id: number): Promise<void> {
   if (error) throw error
 }
 
+// Brand suggestions come from the whole catalog, not just the current
+// store: a new store has no products yet, so a store-scoped list would
+// always start empty. Free text either way -- brand is a plain column, not
+// a table, so this only saves typing and keeps spelling consistent.
+export async function fetchBrands(): Promise<string[]> {
+  const { data, error } = await supabase.from('products').select('brand').not('brand', 'is', null)
+
+  if (error) throw error
+  const brands = (data as { brand: string | null }[])
+    .map((row) => row.brand?.trim())
+    .filter((b): b is string => !!b)
+  return Array.from(new Map(brands.map((b) => [b.toLowerCase(), b])).values()).sort((a, b) =>
+    a.localeCompare(b),
+  )
+}
+
 export async function fetchCategories(): Promise<Category[]> {
   const { data, error } = await supabase.from('categories').select('*').order('name')
 
@@ -195,4 +215,91 @@ export async function fetchRelatedProducts(
 
   if (error) throw error
   return data as unknown as Product[]
+}
+
+export interface ProductOptionGroupInput {
+  name: string
+  values: string[]
+}
+
+// Rewrites a product's whole option set instead of diffing it: option rows
+// are referenced by nothing else (the detail page snapshots the chosen
+// values into the cart as plain text at add-to-cart time), so a delete +
+// re-insert stays correct and keeps the store-owner form's save simple.
+export async function saveProductOptions(
+  productId: number,
+  groups: ProductOptionGroupInput[],
+): Promise<ProductOptionGroup[]> {
+  const cleaned: ProductOptionGroupInput[] = []
+  for (const group of groups) {
+    const name = group.name.trim()
+    const values = Array.from(
+      new Map(
+        group.values
+          .map((v) => v.trim())
+          .filter(Boolean)
+          .map((v) => [v.toLowerCase(), v]),
+      ).values(),
+    )
+    // Drop half-filled rows (a named group with no values, or the reverse)
+    // rather than failing the save -- the form leaves a blank row behind
+    // whenever the owner adds one and changes their mind.
+    if (!name || !values.length) continue
+    if (cleaned.some((g) => g.name.toLowerCase() === name.toLowerCase())) continue
+    cleaned.push({ name, values })
+  }
+
+  const { error: deleteError } = await supabase
+    .from('product_option_groups')
+    .delete()
+    .eq('product_id', productId)
+  if (deleteError) throw deleteError
+
+  if (!cleaned.length) return []
+
+  const { data: groupRows, error: groupError } = await supabase
+    .from('product_option_groups')
+    .insert(cleaned.map((g, i) => ({ product_id: productId, name: g.name, sort_order: i })))
+    .select('id, name, sort_order')
+  if (groupError) throw groupError
+
+  // Match the inserted ids back by name rather than by position -- the
+  // insert's return order isn't guaranteed. Names are unique per product
+  // after the dedupe above.
+  const idByName = new Map(
+    (groupRows as { id: number; name: string }[]).map((row) => [row.name.toLowerCase(), row.id]),
+  )
+
+  const valueRows = cleaned.flatMap((group) =>
+    group.values.map((value, i) => ({
+      group_id: idByName.get(group.name.toLowerCase()) as number,
+      value,
+      sort_order: i,
+    })),
+  )
+
+  const { data: insertedValues, error: valueError } = await supabase
+    .from('product_option_values')
+    .insert(valueRows)
+    .select('id, group_id, value, sort_order')
+  if (valueError) throw valueError
+
+  const valuesByGroup = new Map<number, ProductOptionValue[]>()
+  for (const row of insertedValues as (ProductOptionValue & { group_id: number })[]) {
+    const list = valuesByGroup.get(row.group_id) ?? []
+    list.push({ id: row.id, value: row.value, sort_order: row.sort_order })
+    valuesByGroup.set(row.group_id, list)
+  }
+
+  return cleaned.map((group, i) => {
+    const id = idByName.get(group.name.toLowerCase()) as number
+    return {
+      id,
+      name: group.name,
+      sort_order: i,
+      product_option_values: (valuesByGroup.get(id) ?? []).sort(
+        (a, b) => a.sort_order - b.sort_order,
+      ),
+    }
+  })
 }

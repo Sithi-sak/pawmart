@@ -40,15 +40,17 @@ async function handleSubmit() {
       <p class="eyebrow">Sell on PawMart</p>
       <h1 class="page-title">Become a Seller</h1>
       <p class="page-copy">
-        Run a storefront on PawMart alongside our own catalogue. Tell us a bit about your
-        business below. We will review every request personally and will reach out once
-        it's been decided.
+        Run a storefront on PawMart alongside our own catalogue. Tell us a bit about your business
+        below. We will review every request personally and will reach out once it's been decided.
       </p>
     </section>
 
     <section v-if="submitted" class="confirmation">
       <h2>Thanks for applying!</h2>
-      <p>We've received your request and will review it shortly. We'll be in touch at {{ form.email }}.</p>
+      <p>
+        We've received your request and will review it shortly. We'll be in touch at
+        {{ form.email }}.
+      </p>
     </section>
 
     <el-form v-else class="seller-form" label-position="top" @submit.prevent="handleSubmit">

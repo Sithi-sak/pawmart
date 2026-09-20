@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { PhHeart } from '@phosphor-icons/vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
 import { useWishlistStore } from '@/stores/wishlist'
 import { fetchRecommendedProducts } from '@/lib/recommendations'
+import { usePetsStore } from '@/stores/pets'
 import type { Product } from '@/lib/products'
 import petCareImg from '@/assets/images/pet_care.jpg'
 import bedImg from '@/assets/images/bed.jpg'
@@ -18,6 +19,7 @@ import heroVideo from '@/assets/hero_video.mp4'
 const auth = useAuthStore()
 const cart = useCartStore()
 const wishlist = useWishlistStore()
+const pets = usePetsStore()
 
 interface Collection {
   key: string
@@ -79,6 +81,19 @@ onMounted(async () => {
   }
 })
 
+// Naming the pets makes the personalization visible -- otherwise the section
+// looks identical to the guest "New Arrivals" list.
+const recommendationSubtitle = computed(() => {
+  if (!personalized.value) return 'Fresh picks for every paw.'
+  const names = pets.pets.map((pet) => pet.name)
+  if (!names.length) return 'Picked based on your pets and past orders.'
+  const list =
+    names.length === 1
+      ? names[0]
+      : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+  return `Picked for ${list}, based on your pets and past orders.`
+})
+
 function formatPrice(value: number) {
   return `$${value.toFixed(2)}`
 }
@@ -114,11 +129,10 @@ function toggleWishlist(p: Product) {
       <video class="hero-video" :src="heroVideo" autoplay muted loop playsinline></video>
       <div class="hero-overlay"></div>
       <div class="hero-content">
-        <h1 class="hero-title">
-          The Care Your Pet Deserves<br />
-        </h1>
+        <h1 class="hero-title">The Care Your Pet Deserves<br /></h1>
         <p class="hero-copy">
-          We thoughtfully curate food, gear, and comfort for the animals who share our homes so that every pet can enjoy a life well lived.
+          We thoughtfully curate food, gear, and comfort for the animals who share our homes so that
+          every pet can enjoy a life well lived.
         </p>
         <RouterLink to="/products">
           <el-button type="primary" class="accent-btn" size="large">EXPLORE COLLECTIONS</el-button>
@@ -149,12 +163,15 @@ function toggleWishlist(p: Product) {
     </section>
 
     <!-- Recommended products -->
-    <section v-if="loadingRecommendations || recommendedProducts.length" class="section section-soft">
+    <section
+      v-if="loadingRecommendations || recommendedProducts.length"
+      class="section section-soft"
+    >
       <div class="section-header">
         <div>
           <h2 class="section-title">{{ personalized ? 'Recommended For You' : 'New Arrivals' }}</h2>
           <p class="section-subtitle">
-            {{ personalized ? 'Picked based on your pets and past orders.' : 'Fresh picks for every paw.' }}
+            {{ recommendationSubtitle }}
           </p>
         </div>
         <RouterLink to="/products" class="view-all-link">View All Products</RouterLink>
@@ -183,6 +200,7 @@ function toggleWishlist(p: Product) {
             :class="{ 'placeholder-img': !p.images.length }"
             :style="p.images.length ? { backgroundImage: `url(${p.images[0]})` } : undefined"
           >
+            <span v-if="pets.matchLabel(p)" class="pet-badge">{{ pets.matchLabel(p) }}</span>
             <button
               type="button"
               class="wishlist-btn"
@@ -196,7 +214,9 @@ function toggleWishlist(p: Product) {
           <h3 class="product-name">{{ p.name }}</h3>
           <div class="product-footer">
             <p class="product-price">{{ formatPrice(p.price) }}</p>
-            <button type="button" class="cart-btn" @click.stop.prevent="addToCart(p)">Add to Cart</button>
+            <button type="button" class="cart-btn" @click.stop.prevent="addToCart(p)">
+              Add to Cart
+            </button>
           </div>
         </RouterLink>
       </div>
@@ -212,8 +232,8 @@ function toggleWishlist(p: Product) {
         <p class="eyebrow">Our Philosophy</p>
         <h2 class="section-title">Every Pet, Well Cared For</h2>
         <p>
-          We believe pet care should be simple, honest, and built around what animals actually
-          need. Every product on PawMart is chosen with that in mind.
+          We believe pet care should be simple, honest, and built around what animals actually need.
+          Every product on PawMart is chosen with that in mind.
         </p>
         <p>
           From everyday essentials to seasonal comforts, we work to make caring for your pet feel
@@ -236,7 +256,6 @@ function toggleWishlist(p: Product) {
 .placeholder-img {
   background: linear-gradient(180deg, #9a9a9a 0%, #d8d8d8 100%);
 }
-
 
 .section {
   padding: 3.5rem 0;
@@ -361,8 +380,8 @@ function toggleWishlist(p: Product) {
 .collection-image {
   position: absolute;
   inset: 0;
-  background-image: linear-gradient(transparent 40%, rgba(0, 0, 0, 0.65) 100%),
-    var(--collection-image);
+  background-image:
+    linear-gradient(transparent 40%, rgba(0, 0, 0, 0.65) 100%), var(--collection-image);
   background-size: cover;
   background-position: center;
   transition: transform 0.35s ease;
@@ -460,6 +479,19 @@ function toggleWishlist(p: Product) {
   background-position: center;
   background-repeat: no-repeat;
   background-color: #fff;
+}
+
+.pet-badge {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.6rem;
 }
 
 .wishlist-btn {

@@ -11,11 +11,25 @@ import {
   PhForkKnife,
 } from '@phosphor-icons/vue'
 import { useAuthStore } from '@/stores/auth'
-import { fetchPets, createPet, updatePet, deletePet as deletePetRequest, type Pet } from '@/lib/pets'
+import { usePetsStore } from '@/stores/pets'
+import {
+  fetchPets,
+  createPet,
+  updatePet,
+  deletePet as deletePetRequest,
+  type Pet,
+} from '@/lib/pets'
 
 const auth = useAuthStore()
+const petsStore = usePetsStore()
 
 const pets = reactive<Pet[]>([])
+
+// Keep the shared store in step so the "For <pet>" markers across the catalog
+// reflect an add/edit/removal without a page reload.
+function syncPetsStore() {
+  petsStore.setPets(pets.map((pet) => ({ ...pet })))
+}
 const loading = ref(true)
 const loadError = ref(false)
 
@@ -70,6 +84,7 @@ async function saveNewPet() {
       diet: newPet.diet.trim() || null,
     })
     pets.push(pet)
+    syncPetsStore()
     isAddingPet.value = false
   } catch {
     ElMessage.error('Could not save this companion. Try again.')
@@ -113,6 +128,7 @@ async function saveEditPet() {
       diet: editForm.diet.trim() || null,
     })
     Object.assign(pet, updated)
+    syncPetsStore()
     editingPetId.value = null
   } catch {
     ElMessage.error('Could not save changes. Try again.')
@@ -136,6 +152,7 @@ async function deletePet(pet: Pet) {
     await deletePetRequest(pet.id)
     const index = pets.findIndex((p) => p.id === pet.id)
     if (index !== -1) pets.splice(index, 1)
+    syncPetsStore()
   } catch {
     ElMessage.error('Could not remove this companion. Try again.')
   }
@@ -169,7 +186,6 @@ async function deletePet(pet: Pet) {
         <div v-for="n in 3" :key="n" class="pet-card">
           <el-skeleton animated>
             <template #template>
-              <el-skeleton-item variant="image" class="pet-image" />
               <div class="pet-details">
                 <el-skeleton-item variant="h3" class="sk-pet-name" />
                 <el-skeleton-item variant="text" class="sk-pet-meta" />
@@ -296,7 +312,6 @@ async function deletePet(pet: Pet) {
         </template>
 
         <template v-else>
-          <div class="pet-image placeholder-img"></div>
           <div class="pet-details">
             <h3 class="pet-name">{{ pet.name }}</h3>
             <p class="pet-meta">
@@ -339,18 +354,11 @@ async function deletePet(pet: Pet) {
       </div>
     </div>
 
-    <div v-if="loadError" class="state-message">
-      We couldn't load your pets. Try again later.
-    </div>
+    <div v-if="loadError" class="state-message">We couldn't load your pets. Try again later.</div>
   </div>
 </template>
 
 <style scoped>
-.placeholder-img {
-  background: linear-gradient(180deg, #9a9a9a 0%, #d8d8d8 100%);
-}
-
-
 .pet-profiles {
   padding: 1rem 0 4rem;
 }
@@ -440,13 +448,8 @@ async function deletePet(pet: Pet) {
   padding: 1.5rem;
 }
 
-.pet-image {
-  aspect-ratio: 1 / 0.9;
-  height: auto;
-}
-
 .pet-details {
-  padding: 1.1rem 1.25rem 1.25rem;
+  padding: 1.25rem;
 }
 
 .pet-name {

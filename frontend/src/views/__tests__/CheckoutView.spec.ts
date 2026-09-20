@@ -20,7 +20,8 @@ vi.mock('element-plus', () => ({
 // success/decline branching actually depends on; elements()/create() just
 // need to hand back something mountable with an `on('change', ...)` hook.
 const confirmCardPaymentMock = vi.fn()
-let cardChangeHandler: ((event: { complete: boolean; error?: { message: string } }) => void) | undefined
+let cardChangeHandler:
+  ((event: { complete: boolean; error?: { message: string } }) => void) | undefined
 const fakeCardElement = {
   on: vi.fn((event: string, cb: typeof cardChangeHandler) => {
     if (event === 'change') cardChangeHandler = cb
@@ -84,7 +85,8 @@ const ElDialogStub = defineComponent({
   props: ['modelValue'],
   emits: ['update:modelValue'],
   setup(props, { slots }) {
-    return () => (props.modelValue ? h('div', { class: 'el-dialog-stub' }, slots.default?.()) : null)
+    return () =>
+      props.modelValue ? h('div', { class: 'el-dialog-stub' }, slots.default?.()) : null
   },
 })
 
@@ -200,8 +202,13 @@ beforeEach(() => {
 describe('CheckoutView', () => {
   describe('Visa payment', () => {
     it('charges the card and creates the order on success', async () => {
-      createPaymentIntentMock.mockResolvedValue({ client_secret: 'cs_1', payment_intent_id: 'pi_1' })
-      confirmCardPaymentMock.mockResolvedValue({ paymentIntent: { id: 'pi_1', status: 'succeeded' } })
+      createPaymentIntentMock.mockResolvedValue({
+        client_secret: 'cs_1',
+        payment_intent_id: 'pi_1',
+      })
+      confirmCardPaymentMock.mockResolvedValue({
+        paymentIntent: { id: 'pi_1', status: 'succeeded' },
+      })
       createOrderMock.mockResolvedValue({ id: 42, total: 21.75 })
 
       const wrapper = mountCheckout()
@@ -218,18 +225,26 @@ describe('CheckoutView', () => {
       )
       expect(confirmCardPaymentMock).toHaveBeenCalledWith(
         'cs_1',
-        expect.objectContaining({ payment_method: expect.objectContaining({ card: fakeCardElement }) }),
+        expect.objectContaining({
+          payment_method: expect.objectContaining({ card: fakeCardElement }),
+        }),
       )
       expect(createOrderMock).toHaveBeenCalledWith(
         expect.objectContaining({ payment_method: 'visa', payment_intent_id: 'pi_1' }),
         'tok-1',
       )
       expect(cartClearMock).toHaveBeenCalled()
-      expect(routerPushMock).toHaveBeenCalledWith({ name: 'order-confirm', query: { orderId: '42' } })
+      expect(routerPushMock).toHaveBeenCalledWith({
+        name: 'order-confirm',
+        query: { orderId: '42' },
+      })
     })
 
     it('shows the decline error and never creates an order when the card is declined', async () => {
-      createPaymentIntentMock.mockResolvedValue({ client_secret: 'cs_1', payment_intent_id: 'pi_1' })
+      createPaymentIntentMock.mockResolvedValue({
+        client_secret: 'cs_1',
+        payment_intent_id: 'pi_1',
+      })
       confirmCardPaymentMock.mockResolvedValue({ error: { message: 'Your card was declined.' } })
 
       const wrapper = mountCheckout()
@@ -281,7 +296,10 @@ describe('CheckoutView', () => {
 
       await wrapper.find('.khqr-dialog .continue-btn').trigger('click')
 
-      expect(routerPushMock).toHaveBeenCalledWith({ name: 'order-confirm', query: { orderId: '44' } })
+      expect(routerPushMock).toHaveBeenCalledWith({
+        name: 'order-confirm',
+        query: { orderId: '44' },
+      })
     })
   })
 

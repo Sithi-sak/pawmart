@@ -8,6 +8,9 @@ export interface OrderItem {
   sku: string | null
   price: number
   quantity: number
+  // First catalog image of the product, resolved server-side at read time
+  // (order_items itself only snapshots name/price/sku).
+  image_url: string | null
 }
 
 export type OrderStatus = 'confirmed' | 'processing' | 'shipping' | 'out_for_delivery' | 'delivered'

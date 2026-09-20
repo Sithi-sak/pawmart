@@ -40,9 +40,7 @@ function mockSignedInAs(role: Role) {
   }
   const authUser = { id: `user-${role}`, email: 'a@gmail.com', user_metadata: {} }
   authMocks.getSession.mockResolvedValue({ data: { session: { user: authUser } } })
-  fromMock.mockReturnValueOnce(
-    queryResult({ id: authUser.id, full_name: 'Existing Name', role }),
-  )
+  fromMock.mockReturnValueOnce(queryResult({ id: authUser.id, full_name: 'Existing Name', role }))
 }
 
 beforeEach(async () => {

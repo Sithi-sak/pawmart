@@ -25,7 +25,11 @@ const filteredStores = computed(() => {
 })
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return new Date(iso).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
 }
 
 async function loadStores() {
@@ -118,7 +122,9 @@ onMounted(loadStores)
       >
         <el-table-column label="Store" min-width="180">
           <template #default="{ row }">
-            <RouterLink :to="`/store/${row.slug}`" class="cell-name" target="_blank">{{ row.name }}</RouterLink>
+            <RouterLink :to="`/store/${row.slug}`" class="cell-name" target="_blank">{{
+              row.name
+            }}</RouterLink>
             <p class="cell-sub">/store/{{ row.slug }}</p>
           </template>
         </el-table-column>
@@ -147,7 +153,7 @@ onMounted(loadStores)
         <el-table-column label="" min-width="110">
           <template #default="{ row }">
             <el-button
-              size="small"
+              size="default"
               :type="row.status === 'active' ? 'danger' : 'primary'"
               :loading="workingId === row.id"
               @click="toggleBan(row)"
@@ -283,7 +289,7 @@ a.cell-name:hover {
 }
 
 .cell-sub {
-  font-size: 0.78rem;
+  font-size: 0.825rem;
   opacity: 0.65;
   margin-top: 0.15rem;
 }
@@ -291,7 +297,7 @@ a.cell-name:hover {
 .status-badge {
   display: inline-flex;
   align-items: center;
-  height: 1.5rem;
+  height: 2rem;
   padding: 0 0.55rem;
   font-size: 0.65rem;
   letter-spacing: 0.03em;
@@ -305,7 +311,6 @@ a.cell-name:hover {
   background: #fbeaea;
   color: #c92a2a;
 }
-
 
 @media (max-width: 560px) {
   .toolbar {

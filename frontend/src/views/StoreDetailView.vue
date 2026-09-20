@@ -3,7 +3,13 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { PhStorefront, PhShoppingCart, PhMagnifyingGlass, PhHeart } from '@phosphor-icons/vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { effectivePrice, fetchCategories, fetchProducts, type Category, type Product } from '@/lib/products'
+import {
+  effectivePrice,
+  fetchCategories,
+  fetchProducts,
+  type Category,
+  type Product,
+} from '@/lib/products'
 import { fetchStoreBySlug, type Store } from '@/lib/stores'
 import { useCartStore } from '@/stores/cart'
 import { useWishlistStore } from '@/stores/wishlist'
@@ -191,13 +197,22 @@ function toggleWishlist(p: Product) {
     </template>
 
     <div v-else-if="notFound || loadError || !store" class="state-message">
-      <p>{{ loadError ? "Couldn't load this store right now. Please try again shortly." : "We couldn't find that store." }}</p>
+      <p>
+        {{
+          loadError
+            ? "Couldn't load this store right now. Please try again shortly."
+            : "We couldn't find that store."
+        }}
+      </p>
       <RouterLink to="/products" class="view-all-link">Back to Products</RouterLink>
     </div>
 
     <template v-else>
       <section class="store-header">
-        <div class="store-logo placeholder-img" :style="store.logo_url ? { backgroundImage: `url(${store.logo_url})` } : undefined">
+        <div
+          class="store-logo placeholder-img"
+          :style="store.logo_url ? { backgroundImage: `url(${store.logo_url})` } : undefined"
+        >
           <PhStorefront v-if="!store.logo_url" :size="28" />
         </div>
         <div class="store-info">
@@ -210,7 +225,9 @@ function toggleWishlist(p: Product) {
       <section class="products-section">
         <div class="section-header">
           <h2 class="section-title">Products</h2>
-          <p class="results-count">{{ filteredProducts.length }} item{{ filteredProducts.length === 1 ? '' : 's' }}</p>
+          <p class="results-count">
+            {{ filteredProducts.length }} item{{ filteredProducts.length === 1 ? '' : 's' }}
+          </p>
         </div>
 
         <template v-if="products.length">
@@ -223,7 +240,10 @@ function toggleWishlist(p: Product) {
               :class="{ 'is-active': selectedCategory === c.name }"
               @click="toggleCategory(c.name)"
             >
-              <div class="type-image" :style="{ backgroundImage: `url(${typeImage(c.name)})` }"></div>
+              <div
+                class="type-image"
+                :style="{ backgroundImage: `url(${typeImage(c.name)})` }"
+              ></div>
               <span class="type-label">{{ c.name }}</span>
             </button>
           </div>
@@ -239,7 +259,12 @@ function toggleWishlist(p: Product) {
               </template>
             </el-input>
             <el-select v-model="sortBy" class="store-sort">
-              <el-option v-for="o in sortOptions" :key="o.value" :label="o.label" :value="o.value" />
+              <el-option
+                v-for="o in sortOptions"
+                :key="o.value"
+                :label="o.label"
+                :value="o.value"
+              />
             </el-select>
           </div>
         </template>
@@ -259,7 +284,10 @@ function toggleWishlist(p: Product) {
               <div class="badge-stack">
                 <span v-if="p.is_new" class="new-badge">NEW</span>
                 <span v-if="p.is_promotional" class="tag-badge tag-badge--promo">Promo</span>
-                <span v-if="p.is_discounted && p.discount_percent" class="tag-badge tag-badge--discount">
+                <span
+                  v-if="p.is_discounted && p.discount_percent"
+                  class="tag-badge tag-badge--discount"
+                >
                   -{{ Math.round(p.discount_percent) }}%
                 </span>
               </div>
@@ -306,7 +334,6 @@ function toggleWishlist(p: Product) {
 .placeholder-img {
   background: linear-gradient(180deg, #9a9a9a 0%, #d8d8d8 100%);
 }
-
 
 .store-detail {
   padding: 1rem 0 3rem;

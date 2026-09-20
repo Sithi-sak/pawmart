@@ -37,8 +37,8 @@ const features: Feature[] = [
       <div class="hero-card">
         <h1 class="hero-title">Where Design Meets Devotion.</h1>
         <p class="hero-copy">
-          PawMart began with a simple conviction: the objects that shape a pet's daily life
-          deserve the same care as anything else in a well-considered home.
+          PawMart began with a simple conviction: the objects that shape a pet's daily life deserve
+          the same care as anything else in a well-considered home.
         </p>
         <RouterLink to="/products">
           <el-button type="primary" class="accent-btn" size="large">SHOP FOR WELLBEING</el-button>
@@ -52,13 +52,13 @@ const features: Feature[] = [
         <p class="eyebrow">Our Commitment</p>
         <h2 class="section-title">Considered Design, Considered Care</h2>
         <p>
-          Every piece in our collection is selected, or made, with a single question in mind:
-          does this genuinely improve a pet's daily life? We work with artisans and manufacturers
-          who share our standards for material integrity, safety, and craftsmanship.
+          Every piece in our collection is selected, or made, with a single question in mind: does
+          this genuinely improve a pet's daily life? We work with artisans and manufacturers who
+          share our standards for material integrity, safety, and craftsmanship.
         </p>
         <p>
-          The result is a catalogue that looks at home in a considered interior, and holds up to
-          the realities of muddy paws, chew sessions, and everyday companionship.
+          The result is a catalogue that looks at home in a considered interior, and holds up to the
+          realities of muddy paws, chew sessions, and everyday companionship.
         </p>
       </div>
       <div class="commitment-media">
@@ -94,13 +94,12 @@ const features: Feature[] = [
 
       <div class="studio-grid">
         <div class="studio-founder">
-          <div class="founder-image placeholder-img"></div>
           <h3>Chea Bunthay</h3>
           <p class="founder-role">Founder &amp; Creative Director</p>
           <p class="founder-bio">
-            Bunthay founded PawMart after years of searching for pet furniture that matched the
-            rest of his home, and finding nothing that did. He now leads design and sourcing for
-            every collection.
+            Bunthay founded PawMart after years of searching for pet furniture that matched the rest
+            of his home, and finding nothing that did. He now leads design and sourcing for every
+            collection.
           </p>
         </div>
       </div>
@@ -125,7 +124,6 @@ const features: Feature[] = [
 .placeholder-img {
   background: linear-gradient(180deg, #9a9a9a 0%, #d8d8d8 100%);
 }
-
 
 .section {
   padding: 3.5rem 0;
@@ -238,7 +236,7 @@ const features: Feature[] = [
 }
 
 .craft-frame {
-  border: 1px solid var(--color-heading);
+  border: 1px solid var(--color-border);
   padding: 6px;
 }
 

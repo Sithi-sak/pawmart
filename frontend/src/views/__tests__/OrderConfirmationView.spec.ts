@@ -53,8 +53,21 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
     tax: 1.75,
     total: 21.75,
     created_at: '2026-01-01T00:00:00Z',
-    items: [{ id: 1, product_id: 1, name: 'Chew Toy', variant: null, sku: null, price: 20, quantity: 1 }],
-    status_history: [{ id: 1, order_id: 42, status: 'confirmed', created_at: '2026-01-01T00:00:00Z' }],
+    items: [
+      {
+        id: 1,
+        product_id: 1,
+        name: 'Chew Toy',
+        variant: null,
+        sku: null,
+        price: 20,
+        quantity: 1,
+        image_url: null,
+      },
+    ],
+    status_history: [
+      { id: 1, order_id: 42, status: 'confirmed', created_at: '2026-01-01T00:00:00Z' },
+    ],
     ...overrides,
   }
 }
@@ -122,7 +135,9 @@ describe('OrderConfirmationView', () => {
   })
 
   it('shows points earned for a paid order', async () => {
-    fetchOrderMock.mockResolvedValue(makeOrder({ subtotal: 100, discount: 0, payment_status: 'paid' }))
+    fetchOrderMock.mockResolvedValue(
+      makeOrder({ subtotal: 100, discount: 0, payment_status: 'paid' }),
+    )
 
     const wrapper = await mountConfirmation()
 

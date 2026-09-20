@@ -62,8 +62,8 @@ async function handleGoogleSignUp() {
     <template v-if="confirmEmailSent">
       <h1 class="auth-title">Check Your Email</h1>
       <p class="auth-subtitle">
-        We've sent a confirmation link to {{ form.email }}. Confirm your address to finish
-        creating your account.
+        We've sent a confirmation link to {{ form.email }}. Confirm your address to finish creating
+        your account.
       </p>
       <p class="switch-note">
         <RouterLink to="/login">Back to Sign In</RouterLink>
@@ -72,60 +72,69 @@ async function handleGoogleSignUp() {
     </template>
 
     <template v-else>
-    <h1 class="auth-title">Create Account</h1>
-    <p class="auth-subtitle">
-      Join PawMart for curated gear, pet-care tips, and personalized recommendations.
-    </p>
-
-    <form class="form" @submit.prevent="handleSubmit">
-      <div class="form-row">
-        <div class="form-field">
-          <label for="firstName">First Name</label>
-          <input id="firstName" v-model="form.firstName" type="text" required />
-        </div>
-        <div class="form-field">
-          <label for="lastName">Last Name</label>
-          <input id="lastName" v-model="form.lastName" type="text" required />
-        </div>
-      </div>
-
-      <div class="form-field">
-        <label for="email">Email Address</label>
-        <input id="email" v-model="form.email" type="email" placeholder="jlean@gmail.com" required />
-      </div>
-
-      <div class="form-field">
-        <label for="password">Password</label>
-        <input id="password" v-model="form.password" type="password" minlength="8" required />
-      </div>
-
-      <label class="terms-checkbox">
-        <input v-model="form.agreedToTerms" type="checkbox" />
-        <span class="checkbox-box"></span>
-        <span>I agree to the <a href="#" @click.prevent>Privacy Policy</a> and <a href="#" @click.prevent>Terms of Service</a>.</span>
-      </label>
-      <p v-if="submitAttempted && !form.agreedToTerms" class="field-error">
-        Please agree to the Privacy Policy and Terms of Service to continue.
+      <h1 class="auth-title">Create Account</h1>
+      <p class="auth-subtitle">
+        Join PawMart for curated gear, pet-care tips, and personalized recommendations.
       </p>
-      <p v-if="errorMessage" class="field-error">{{ errorMessage }}</p>
 
-      <button type="submit" class="primary-btn" :disabled="submitting">
-        {{ submitting ? 'Creating Account…' : 'Create Account' }}
+      <form class="form" @submit.prevent="handleSubmit">
+        <div class="form-row">
+          <div class="form-field">
+            <label for="firstName">First Name</label>
+            <input id="firstName" v-model="form.firstName" type="text" required />
+          </div>
+          <div class="form-field">
+            <label for="lastName">Last Name</label>
+            <input id="lastName" v-model="form.lastName" type="text" required />
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="email">Email Address</label>
+          <input
+            id="email"
+            v-model="form.email"
+            type="email"
+            placeholder="jlean@gmail.com"
+            required
+          />
+        </div>
+
+        <div class="form-field">
+          <label for="password">Password</label>
+          <input id="password" v-model="form.password" type="password" minlength="8" required />
+        </div>
+
+        <label class="terms-checkbox">
+          <input v-model="form.agreedToTerms" type="checkbox" />
+          <span class="checkbox-box"></span>
+          <span
+            >I agree to the <a href="#" @click.prevent>Privacy Policy</a> and
+            <a href="#" @click.prevent>Terms of Service</a>.</span
+          >
+        </label>
+        <p v-if="submitAttempted && !form.agreedToTerms" class="field-error">
+          Please agree to the Privacy Policy and Terms of Service to continue.
+        </p>
+        <p v-if="errorMessage" class="field-error">{{ errorMessage }}</p>
+
+        <button type="submit" class="primary-btn" :disabled="submitting">
+          {{ submitting ? 'Creating Account…' : 'Create Account' }}
+        </button>
+      </form>
+
+      <div class="divider"><span>OR</span></div>
+
+      <button type="button" class="oauth-btn" @click="handleGoogleSignUp">
+        <GoogleLogo :size="20" />
+        Sign up with Google
       </button>
-    </form>
 
-    <div class="divider"><span>OR</span></div>
+      <p class="switch-note">
+        Already have an account? <RouterLink to="/login">Sign In</RouterLink>
+      </p>
 
-    <button type="button" class="oauth-btn" @click="handleGoogleSignUp">
-      <GoogleLogo :size="20" />
-      Sign up with Google
-    </button>
-
-    <p class="switch-note">
-      Already have an account? <RouterLink to="/login">Sign In</RouterLink>
-    </p>
-
-    <p class="auth-footer">&copy; {{ currentYear }} PawMart Inc.</p>
+      <p class="auth-footer">&copy; {{ currentYear }} PawMart Inc.</p>
     </template>
   </div>
 </template>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { PhCheck, PhArchive, PhTruck, PhMapPin, PhPackage, PhHeadset } from '@phosphor-icons/vue'
 import { useAuthStore } from '../stores/auth'
@@ -30,6 +30,22 @@ const currentStepIndex = computed(() =>
   order.value ? STEP_DEFS.findIndex((s) => s.key === order.value!.status) : -1,
 )
 
+// There is no courier feed behind these statuses, so once the order's real
+// progress is on screen the timeline plays the rest of the journey out as a
+// 10s demo animation: each leg takes a fifth of that, and the connector
+// between two steps fills while the next step is pending.
+const TOTAL_PROGRESS_MS = 10_000
+const STEP_DURATION_MS = TOTAL_PROGRESS_MS / (STEP_DEFS.length - 1)
+
+const displayStepIndex = ref(-1)
+// Steps the animation walks past have no row in status_history, so stamp
+// them as they're reached to keep the timeline reading consistently.
+const simulatedDates = ref(new Map<OrderStatus, string>())
+// Held off until after the first paint so the fill has a 0-width frame to
+// transition away from rather than snapping straight to full.
+const fillStarted = ref(false)
+let stepTimer: ReturnType<typeof setInterval> | undefined
+
 const historyDateByStatus = computed(() => {
   const map = new Map<OrderStatus, string>()
   for (const entry of order.value?.status_history ?? []) {
@@ -41,16 +57,43 @@ const historyDateByStatus = computed(() => {
 const steps = computed(() =>
   STEP_DEFS.map((step) => ({
     ...step,
-    date: historyDateByStatus.value.get(step.key) ?? null,
+    date: historyDateByStatus.value.get(step.key) ?? simulatedDates.value.get(step.key) ?? null,
   })),
 )
+
+async function startProgressAnimation() {
+  displayStepIndex.value = currentStepIndex.value
+
+  await nextTick()
+  requestAnimationFrame(() => {
+    fillStarted.value = true
+  })
+
+  if (displayStepIndex.value >= STEP_DEFS.length - 1) return
+
+  stepTimer = setInterval(() => {
+    displayStepIndex.value += 1
+    const step = STEP_DEFS[displayStepIndex.value]
+    if (step && !historyDateByStatus.value.has(step.key)) {
+      simulatedDates.value = new Map(simulatedDates.value).set(step.key, new Date().toISOString())
+    }
+    if (displayStepIndex.value >= STEP_DEFS.length - 1) {
+      clearInterval(stepTimer)
+      stepTimer = undefined
+    }
+  }, STEP_DURATION_MS)
+}
+
+onUnmounted(() => {
+  if (stepTimer) clearInterval(stepTimer)
+})
 
 const SHIPPING_METHOD_LABELS = { standard: 'Standard Shipping', express: 'Express Shipping' }
 const ETA_DAYS_FROM_ORDER = { standard: [3, 5], express: [1, 2] } as const
 
 const estimatedArrival = computed(() => {
   if (!order.value) return ''
-  if (order.value.status === 'delivered') return 'Delivered'
+  if (displayStepIndex.value >= STEP_DEFS.length - 1) return 'Delivered'
 
   const [minDays, maxDays] = ETA_DAYS_FROM_ORDER[order.value.shipping_method]
   const created = new Date(order.value.created_at)
@@ -59,7 +102,8 @@ const estimatedArrival = computed(() => {
   const end = new Date(created)
   end.setDate(end.getDate() + maxDays)
 
-  const fmt = (d: Date) => d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })
+  const fmt = (d: Date) =>
+    d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })
   return `${fmt(start)} – ${fmt(end)}`
 })
 
@@ -93,6 +137,8 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+
+  if (order.value) void startProgressAnimation()
 })
 </script>
 
@@ -187,20 +233,26 @@ onMounted(async () => {
 
       <div class="timeline">
         <template v-for="(step, i) in steps" :key="step.key">
-          <div class="timeline-step" :class="{ 'is-done': i <= currentStepIndex }">
+          <div
+            class="timeline-step"
+            :class="{ 'is-done': i <= displayStepIndex, 'is-current': i === displayStepIndex }"
+          >
             <div class="step-icon">
               <component :is="step.icon" :size="18" weight="bold" />
             </div>
             <div class="step-text">
               <p class="step-label">{{ step.label }}</p>
-              <p v-if="step.date" class="step-date">{{ formatStepDate(step.date) }}</p>
+              <p v-if="step.date && i <= displayStepIndex" class="step-date">
+                {{ formatStepDate(step.date) }}
+              </p>
             </div>
           </div>
-          <div
-            v-if="i < steps.length - 1"
-            class="timeline-connector"
-            :class="{ 'is-done': i < currentStepIndex }"
-          ></div>
+          <div v-if="i < steps.length - 1" class="timeline-connector">
+            <span
+              class="connector-fill"
+              :class="{ 'is-filling': fillStarted && i <= displayStepIndex }"
+            ></span>
+          </div>
         </template>
       </div>
 
@@ -215,7 +267,11 @@ onMounted(async () => {
           <p class="field-label">Shipping Address</p>
           <p class="field-value">{{ order.shipping_full_name }}</p>
           <p class="field-value">
-            {{ [order.shipping_street, order.shipping_city, order.shipping_postal_code].filter(Boolean).join(', ') }}
+            {{
+              [order.shipping_street, order.shipping_city, order.shipping_postal_code]
+                .filter(Boolean)
+                .join(', ')
+            }}
           </p>
 
           <p class="field-label">Shipping Method</p>
@@ -236,7 +292,13 @@ onMounted(async () => {
 
           <div class="order-items">
             <div v-for="item in order.items" :key="item.id" class="order-item">
-              <div class="order-item-image placeholder-img"></div>
+              <img
+                v-if="item.image_url"
+                :src="item.image_url"
+                :alt="item.name"
+                class="order-item-image"
+              />
+              <div v-else class="order-item-image placeholder-img"></div>
               <div class="order-item-details">
                 <p class="order-item-name">{{ item.name }}</p>
                 <p v-if="item.variant" class="order-item-variant">{{ item.variant }}</p>
@@ -257,7 +319,9 @@ onMounted(async () => {
           </div>
           <div class="totals-row">
             <span>Shipping</span>
-            <span>{{ order.shipping_cost ? formatPrice(order.shipping_cost) : 'Complimentary' }}</span>
+            <span>{{
+              order.shipping_cost ? formatPrice(order.shipping_cost) : 'Complimentary'
+            }}</span>
           </div>
           <div v-if="order.discount" class="totals-row">
             <span>Discount</span>
@@ -284,7 +348,6 @@ onMounted(async () => {
 .placeholder-img {
   background: linear-gradient(180deg, #9a9a9a 0%, #d8d8d8 100%);
 }
-
 
 .tracking {
   padding: 1rem 0 5rem;
@@ -425,6 +488,7 @@ onMounted(async () => {
 }
 
 .step-icon {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -436,11 +500,58 @@ onMounted(async () => {
   opacity: 0.5;
 }
 
+.step-icon {
+  transition:
+    background-color 350ms ease,
+    border-color 350ms ease,
+    color 350ms ease,
+    opacity 350ms ease,
+    transform 350ms ease;
+}
+
 .timeline-step.is-done .step-icon {
   background: var(--color-accent);
   border-color: var(--color-accent);
   color: #fff;
   opacity: 1;
+}
+
+/* The step the shipment is sitting on right now, while the leg after it
+   fills in. */
+.timeline-step.is-current .step-icon {
+  animation: step-pop 350ms ease-out;
+}
+
+.timeline-step.is-current .step-icon::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 1px solid var(--color-accent);
+  opacity: 0;
+  animation: step-halo 1.8s ease-out infinite;
+}
+
+@keyframes step-pop {
+  0% {
+    transform: scale(0.85);
+  }
+  60% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes step-halo {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.65;
+  }
+  100% {
+    transform: scale(1.25);
+    opacity: 0;
+  }
 }
 
 .step-label {
@@ -465,14 +576,27 @@ onMounted(async () => {
 }
 
 .timeline-connector {
+  position: relative;
   flex: 1;
   height: 1px;
   background: var(--color-border);
   margin: 1.35rem 0.5rem 0;
+  overflow: hidden;
 }
 
-.timeline-connector.is-done {
+/* Grows left-to-right over one leg's worth of the 10s journey, so the line
+   is visibly travelling towards the next step rather than snapping on. */
+.connector-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  height: 100%;
   background: var(--color-accent);
+  transition: width 2500ms linear;
+}
+
+.connector-fill.is-filling {
+  width: 100%;
 }
 
 /* Body */
@@ -586,7 +710,10 @@ onMounted(async () => {
 
 .order-item-image {
   aspect-ratio: 1 / 1;
+  width: 100%;
   height: auto;
+  object-fit: cover;
+  background: var(--color-background-soft);
 }
 
 .order-item-name {
@@ -708,6 +835,19 @@ onMounted(async () => {
     margin: 0.15rem 0 0.15rem 1.375rem;
   }
 
+  /* Vertical on a phone, so the same leg animates top-to-bottom instead. */
+  .connector-fill {
+    inset: 0 0 auto 0;
+    width: 100%;
+    height: 0;
+    transition: height 2500ms linear;
+  }
+
+  .connector-fill.is-filling {
+    width: 100%;
+    height: 100%;
+  }
+
   .tracking-body {
     grid-template-columns: 1fr;
   }
@@ -734,6 +874,17 @@ onMounted(async () => {
 
   .order-item-price {
     grid-area: price;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .connector-fill,
+  .step-icon {
+    transition: none;
+  }
+
+  .timeline-step.is-current .step-icon,
+  .timeline-step.is-current .step-icon::after {
+    animation: none;
   }
 }
 </style>

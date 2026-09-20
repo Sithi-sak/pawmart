@@ -11,9 +11,16 @@ import {
   PhStorefront,
 } from '@phosphor-icons/vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { effectivePrice, fetchCategories, fetchProducts, type Category, type Product } from '@/lib/products'
+import {
+  effectivePrice,
+  fetchCategories,
+  fetchProducts,
+  type Category,
+  type Product,
+} from '@/lib/products'
 import { fetchUpcomingStores, type UpcomingStore } from '@/lib/upcomingStores'
 import { useCartStore } from '@/stores/cart'
+import { usePetsStore } from '@/stores/pets'
 import { useWishlistStore } from '@/stores/wishlist'
 import dogImg from '@/assets/images/dog.png'
 import catImg from '@/assets/images/cat.png'
@@ -28,6 +35,7 @@ import petTrainingImg from '@/assets/images/type/pet-training-aids.png'
 
 const cart = useCartStore()
 const wishlist = useWishlistStore()
+const pets = usePetsStore()
 const route = useRoute()
 const router = useRouter()
 
@@ -56,12 +64,19 @@ const priceRanges = [
   { label: '$500+', min: 500, max: Infinity },
 ]
 
-const sortOptions = [
+const baseSortOptions = [
   { value: 'newest', label: 'Newest Arrivals' },
   { value: 'price-asc', label: 'Price: Low to High' },
   { value: 'price-desc', label: 'Price: High to Low' },
   { value: 'name', label: 'Name: A-Z' },
 ]
+
+// Only worth offering once there's a pet profile to match against.
+const sortOptions = computed(() =>
+  pets.hasPets
+    ? [{ value: 'pets', label: 'Best for My Pets' }, ...baseSortOptions]
+    : baseSortOptions,
+)
 
 const products = ref<Product[]>([])
 const categories = ref<Category[]>([])
@@ -113,6 +128,17 @@ const tagOptions = ['Promotional', 'Discount']
 const selectedTags = ref<string[]>([])
 const selectedStores = ref<string[]>([])
 const sortBy = ref('newest')
+const sortTouched = ref(false)
+
+// Pet profiles arrive after the first render, so the pet-aware ordering is
+// applied as soon as they land -- unless the shopper picked a sort already.
+watch(
+  () => pets.hasPets,
+  (hasPets) => {
+    if (hasPets && !sortTouched.value) sortBy.value = 'pets'
+  },
+  { immediate: true },
+)
 const page = ref(1)
 const pageSize = 15
 const viewMode = ref<'grid' | 'list'>('grid')
@@ -125,6 +151,20 @@ watch(
 
     const q = typeof query.q === 'string' ? query.q : null
     searchQuery.value = q ?? ''
+
+    // Entry points elsewhere (collections page, homepage tiles) deep-link into
+    // the catalog with a species/tag/sort already chosen.
+    const sp = typeof query.species === 'string' ? query.species : null
+    selectedSpecies.value = sp && species.includes(sp) ? sp : null
+
+    const tag = typeof query.tag === 'string' ? query.tag : null
+    selectedTags.value = tag && tagOptions.includes(tag) ? [tag] : []
+
+    const sort = typeof query.sort === 'string' ? query.sort : null
+    if (sort && baseSortOptions.some((o) => o.value === sort)) {
+      sortBy.value = sort
+      sortTouched.value = true
+    }
   },
   { immediate: true },
 )
@@ -192,6 +232,10 @@ const filteredProducts = computed(() => {
       result.sort((a, b) => b.id - a.id)
   }
 
+  if (sortBy.value === 'pets') {
+    result = pets.sortPetsFirst(result)
+  }
+
   return result
 })
 
@@ -222,7 +266,15 @@ const storeRows = computed<StoreRow[]>(() => {
 })
 
 watch(
-  [selectedSpecies, selectedCategory, selectedPriceRanges, selectedTags, selectedStores, sortBy, searchQuery],
+  [
+    selectedSpecies,
+    selectedCategory,
+    selectedPriceRanges,
+    selectedTags,
+    selectedStores,
+    sortBy,
+    searchQuery,
+  ],
   () => {
     page.value = 1
   },
@@ -333,11 +385,7 @@ function goToStore(p: Product) {
     <div class="catalog-body">
       <aside class="filters">
         <div class="filter-group">
-          <el-input
-            v-model="searchQuery"
-            placeholder="Search products or stores"
-            size="large"
-          >
+          <el-input v-model="searchQuery" placeholder="Search products or stores" size="large">
             <template #prefix>
               <PhMagnifyingGlass :size="16" />
             </template>
@@ -346,7 +394,7 @@ function goToStore(p: Product) {
 
         <div class="filter-group">
           <h3 class="filter-title">Sort By</h3>
-          <el-select v-model="sortBy" size="large" style="width: 100%">
+          <el-select v-model="sortBy" size="large" style="width: 100%" @change="sortTouched = true">
             <el-option v-for="o in sortOptions" :key="o.value" :label="o.label" :value="o.value" />
           </el-select>
         </div>
@@ -372,7 +420,10 @@ function goToStore(p: Product) {
               {{ r.label }}
             </el-checkbox>
           </el-checkbox-group>
-          <el-checkbox-group v-model="selectedTags" class="filter-checkboxes filter-checkboxes--tags">
+          <el-checkbox-group
+            v-model="selectedTags"
+            class="filter-checkboxes filter-checkboxes--tags"
+          >
             <el-checkbox v-for="t in tagOptions" :key="t" :label="t" :value="t">
               {{ t }}
             </el-checkbox>
@@ -394,7 +445,10 @@ function goToStore(p: Product) {
                 <span class="upcoming-store-name">{{ s.name }}</span>
                 <span v-if="s.launch_date" class="upcoming-store-date">
                   {{
-                    new Date(s.launch_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+                    new Date(s.launch_date).toLocaleDateString('en-US', {
+                      month: 'short',
+                      year: 'numeric',
+                    })
                   }}
                 </span>
               </li>
@@ -440,9 +494,15 @@ function goToStore(p: Product) {
                 :style="p.images.length ? { backgroundImage: `url(${p.images[0]})` } : undefined"
               >
                 <div class="badge-stack">
+                  <span v-if="pets.matchLabel(p)" class="tag-badge tag-badge--pet">
+                    {{ pets.matchLabel(p) }}
+                  </span>
                   <span v-if="p.is_new" class="new-badge">NEW</span>
                   <span v-if="p.is_promotional" class="tag-badge tag-badge--promo">Promo</span>
-                  <span v-if="p.is_discounted && p.discount_percent" class="tag-badge tag-badge--discount">
+                  <span
+                    v-if="p.is_discounted && p.discount_percent"
+                    class="tag-badge tag-badge--discount"
+                  >
                     -{{ Math.round(p.discount_percent) }}%
                   </span>
                 </div>
@@ -486,21 +546,11 @@ function goToStore(p: Product) {
           </div>
 
           <div class="pagination">
-            <button
-              type="button"
-              class="page-btn"
-              :disabled="page === 1"
-              @click="page--"
-            >
+            <button type="button" class="page-btn" :disabled="page === 1" @click="page--">
               <PhArrowLeft :size="16" />
             </button>
             <span class="page-indicator">{{ pad(page) }} / {{ pad(totalPages) }}</span>
-            <button
-              type="button"
-              class="page-btn"
-              :disabled="page === totalPages"
-              @click="page++"
-            >
+            <button type="button" class="page-btn" :disabled="page === totalPages" @click="page++">
               <PhArrowRight :size="16" />
             </button>
           </div>
@@ -512,7 +562,11 @@ function goToStore(p: Product) {
               <div class="store-row-header">
                 <div
                   class="store-row-logo placeholder-img"
-                  :style="row.store.logo_url ? { backgroundImage: `url(${row.store.logo_url})` } : undefined"
+                  :style="
+                    row.store.logo_url
+                      ? { backgroundImage: `url(${row.store.logo_url})` }
+                      : undefined
+                  "
                 >
                   <PhStorefront v-if="!row.store.logo_url" :size="20" />
                 </div>
@@ -523,7 +577,9 @@ function goToStore(p: Product) {
                   <p v-if="row.store.description" class="store-row-description">
                     {{ row.store.description }}
                   </p>
-                  <p class="store-row-count">{{ row.products.length }} product{{ row.products.length === 1 ? '' : 's' }}</p>
+                  <p class="store-row-count">
+                    {{ row.products.length }} product{{ row.products.length === 1 ? '' : 's' }}
+                  </p>
                 </div>
                 <RouterLink :to="`/store/${row.store.slug}`" class="visit-store-btn">
                   Visit Store
@@ -540,12 +596,20 @@ function goToStore(p: Product) {
                   <div
                     class="product-image"
                     :class="{ 'placeholder-img': !p.images.length }"
-                    :style="p.images.length ? { backgroundImage: `url(${p.images[0]})` } : undefined"
+                    :style="
+                      p.images.length ? { backgroundImage: `url(${p.images[0]})` } : undefined
+                    "
                   >
                     <div class="badge-stack">
+                      <span v-if="pets.matchLabel(p)" class="tag-badge tag-badge--pet">
+                        {{ pets.matchLabel(p) }}
+                      </span>
                       <span v-if="p.is_new" class="new-badge">NEW</span>
                       <span v-if="p.is_promotional" class="tag-badge tag-badge--promo">Promo</span>
-                      <span v-if="p.is_discounted && p.discount_percent" class="tag-badge tag-badge--discount">
+                      <span
+                        v-if="p.is_discounted && p.discount_percent"
+                        class="tag-badge tag-badge--discount"
+                      >
                         -{{ Math.round(p.discount_percent) }}%
                       </span>
                     </div>
@@ -564,7 +628,10 @@ function goToStore(p: Product) {
                     <div class="product-footer">
                       <div class="price-group">
                         <p class="product-price">${{ effectivePrice(p).toFixed(2) }}</p>
-                        <p v-if="p.is_discounted && p.discount_percent" class="product-price-original">
+                        <p
+                          v-if="p.is_discounted && p.discount_percent"
+                          class="product-price-original"
+                        >
                           ${{ Number(p.price).toFixed(2) }}
                         </p>
                       </div>
@@ -591,7 +658,6 @@ function goToStore(p: Product) {
 .placeholder-img {
   background: linear-gradient(180deg, #9a9a9a 0%, #d8d8d8 100%);
 }
-
 
 .catalog {
   padding: 1rem 0 3rem;
@@ -945,6 +1011,12 @@ function goToStore(p: Product) {
 
 .tag-badge--promo {
   background: #2b6cb0;
+}
+
+.tag-badge--pet {
+  background: var(--color-accent);
+  text-transform: uppercase;
+  font-weight: 600;
 }
 
 .tag-badge--discount {

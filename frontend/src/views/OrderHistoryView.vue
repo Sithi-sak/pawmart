@@ -20,7 +20,11 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
 }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return new Date(iso).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
 }
 
 function formatPrice(value: number) {
@@ -76,7 +80,9 @@ onMounted(async () => {
         </el-skeleton>
       </div>
     </div>
-    <div v-else-if="loadError" class="state-message">We couldn't load your orders. Try again later.</div>
+    <div v-else-if="loadError" class="state-message">
+      We couldn't load your orders. Try again later.
+    </div>
     <div v-else-if="orders.length === 0" class="state-message">
       <p>You haven't placed any orders yet.</p>
       <RouterLink to="/products" class="view-all-link">Browse Products</RouterLink>
@@ -110,7 +116,6 @@ onMounted(async () => {
 .placeholder-img {
   background: linear-gradient(180deg, #9a9a9a 0%, #d8d8d8 100%);
 }
-
 
 .order-history {
   padding: 1rem 0 4rem;

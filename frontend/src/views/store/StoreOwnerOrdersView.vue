@@ -441,7 +441,6 @@ onMounted(async () => {
   color: #2f9e44;
 }
 
-
 .status-select {
   width: 170px;
 }

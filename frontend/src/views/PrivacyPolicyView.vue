@@ -17,7 +17,8 @@ const rights: RightCard[] = [
   },
   {
     title: 'Erasure',
-    description: "Exercise your 'right to be forgotten' and request the total removal of your data.",
+    description:
+      "Exercise your 'right to be forgotten' and request the total removal of your data.",
   },
   {
     title: 'Restriction',
@@ -46,14 +47,14 @@ const rights: RightCard[] = [
         <div class="legal-body">
           <h2>Introduction</h2>
           <p>
-            PAWMART ("we", "us", or "our") is committed to protecting the privacy of our
-            discerning clientele. This Privacy Policy outlines how we collect, use, and safeguard
-            your personal information through our digital boutique and editorial platforms.
+            PAWMART ("we", "us", or "our") is committed to protecting the privacy of our discerning
+            clientele. This Privacy Policy outlines how we collect, use, and safeguard your personal
+            information through our digital boutique and editorial platforms.
           </p>
           <p>
-            As an architectural pet luxury brand, we prioritize transparency and security in
-            every interaction. By engaging with PAWMART, you acknowledge the practices described
-            in this document.
+            As an architectural pet luxury brand, we prioritize transparency and security in every
+            interaction. By engaging with PAWMART, you acknowledge the practices described in this
+            document.
           </p>
         </div>
       </div>
@@ -98,8 +99,8 @@ const rights: RightCard[] = [
           </p>
           <p>
             All sensitive transactions are handled through high-grade SSL encryption. We restrict
-            access to personal information to PAWMART employees, contractors, and agents who
-            require that data to provide our luxury services.
+            access to personal information to PAWMART employees, contractors, and agents who require
+            that data to provide our luxury services.
           </p>
         </div>
       </div>
@@ -109,8 +110,8 @@ const rights: RightCard[] = [
         <div class="legal-body">
           <h2>Your Rights</h2>
           <p>
-            As a PAWMART client, you retain absolute authority over your information. You have
-            the right to:
+            As a PAWMART client, you retain absolute authority over your information. You have the
+            right to:
           </p>
           <div class="rights-grid">
             <div v-for="r in rights" :key="r.title" class="rights-card">
@@ -124,8 +125,8 @@ const rights: RightCard[] = [
       <div class="questions">
         <h2>Questions?</h2>
         <p>
-          Our privacy team is happy to walk through any part of this policy or help with a
-          specific request regarding your data.
+          Our privacy team is happy to walk through any part of this policy or help with a specific
+          request regarding your data.
         </p>
         <el-button type="primary" class="accent-btn" size="large">CONTACT</el-button>
       </div>
@@ -142,7 +143,6 @@ const rights: RightCard[] = [
 .placeholder-img {
   background: linear-gradient(180deg, #9a9a9a 0%, #d8d8d8 100%);
 }
-
 
 .eyebrow {
   color: var(--color-accent);

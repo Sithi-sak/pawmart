@@ -22,7 +22,11 @@ export interface StoreUpdateInput {
 // storefront identity (`/store/:slug`, task 3.10.5) and shouldn't drift out
 // from under it via a self-service form.
 export async function fetchStoreByOwnerId(ownerId: string): Promise<Store | null> {
-  const { data, error } = await supabase.from('stores').select('*').eq('owner_id', ownerId).maybeSingle()
+  const { data, error } = await supabase
+    .from('stores')
+    .select('*')
+    .eq('owner_id', ownerId)
+    .maybeSingle()
   if (error) throw error
   return data as Store | null
 }
@@ -35,7 +39,12 @@ export async function fetchStoreBySlug(slug: string): Promise<Store | null> {
 }
 
 export async function updateStore(id: number, input: StoreUpdateInput): Promise<Store> {
-  const { data, error } = await supabase.from('stores').update(input).eq('id', id).select('*').single()
+  const { data, error } = await supabase
+    .from('stores')
+    .update(input)
+    .eq('id', id)
+    .select('*')
+    .single()
   if (error) throw error
   return data as Store
 }
@@ -44,7 +53,12 @@ export async function updateStore(id: number, input: StoreUpdateInput): Promise<
 // that's the store owner's own narrow self-edit surface (description/logo
 // only), not something a ban action should share.
 export async function setStoreStatus(id: number, status: StoreStatus): Promise<Store> {
-  const { data, error } = await supabase.from('stores').update({ status }).eq('id', id).select('*').single()
+  const { data, error } = await supabase
+    .from('stores')
+    .update({ status })
+    .eq('id', id)
+    .select('*')
+    .single()
   if (error) throw error
   return data as Store
 }

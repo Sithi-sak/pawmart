@@ -63,7 +63,7 @@ function makeStats(overrides: Partial<DashboardStats> = {}): DashboardStats {
     ordersThisMonth: 5,
     ordersLastMonth: 4,
     newCustomersThisMonth: 0,
-    newCustomersThisWeek: 0,
+    newCustomersLastMonth: 0,
     avgOrderValueThisMonth: 100,
     avgOrderValueLastMonth: 100,
     ...overrides,
@@ -119,7 +119,9 @@ async function mountView(stats: DashboardStats, products: Product[] = []) {
 
 describe('StoreOwnerDashboardView', () => {
   it('renders the sales overview stats', async () => {
-    const wrapper = await mountView(makeStats({ revenueThisMonth: 500, ordersThisMonth: 5, avgOrderValueThisMonth: 100 }))
+    const wrapper = await mountView(
+      makeStats({ revenueThisMonth: 500, ordersThisMonth: 5, avgOrderValueThisMonth: 100 }),
+    )
 
     expect(wrapper.text()).toContain('$500.00')
     expect(wrapper.text()).toContain('Orders This Month')
@@ -162,7 +164,11 @@ describe('StoreOwnerDashboardView', () => {
 
   describe('store profile', () => {
     it('saves profile changes', async () => {
-      updateStoreMock.mockResolvedValue({ ...STORE, description: 'New desc', logo_url: 'https://x/logo.png' })
+      updateStoreMock.mockResolvedValue({
+        ...STORE,
+        description: 'New desc',
+        logo_url: 'https://x/logo.png',
+      })
       const wrapper = await mountView(makeStats())
 
       await wrapper.find('#s-description').setValue('New desc')

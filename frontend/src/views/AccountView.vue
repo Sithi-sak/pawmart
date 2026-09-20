@@ -251,11 +251,8 @@ async function saveCompanion() {
           <div v-for="n in 2" :key="n" class="pet-card">
             <el-skeleton animated>
               <template #template>
-                <el-skeleton-item variant="image" class="pet-image" />
-                <div class="pet-details">
-                  <el-skeleton-item variant="h3" class="sk-pet-name" />
-                  <el-skeleton-item variant="text" class="sk-pet-meta" />
-                </div>
+                <el-skeleton-item variant="h3" class="sk-pet-name" />
+                <el-skeleton-item variant="text" class="sk-pet-meta" />
               </template>
             </el-skeleton>
           </div>
@@ -263,16 +260,15 @@ async function saveCompanion() {
 
         <div v-else class="pets-grid">
           <RouterLink v-for="pet in pets" :key="pet.id" to="/account/pets" class="pet-card">
-            <div class="pet-image placeholder-img">
+            <div class="pet-card-head">
+              <h3 class="pet-name">{{ pet.name }}</h3>
               <span class="status-badge">Active</span>
             </div>
-            <div class="pet-details">
-              <h3 class="pet-name">{{ pet.name }}</h3>
-              <p class="pet-meta">
-                <template v-if="pet.breed">{{ pet.breed.toUpperCase() }} &bull; </template
-                >{{ pet.age }} YEARS
-              </p>
-            </div>
+            <p class="pet-meta">
+              {{ pet.species.toUpperCase()
+              }}<template v-if="pet.breed"> &bull; {{ pet.breed.toUpperCase() }}</template
+              ><template v-if="pet.age !== null"> &bull; {{ pet.age }} YEARS</template>
+            </p>
           </RouterLink>
         </div>
 
@@ -491,7 +487,6 @@ async function saveCompanion() {
   background: linear-gradient(180deg, #9a9a9a 0%, #d8d8d8 100%);
 }
 
-
 .account {
   padding: 1rem 0 4rem;
 }
@@ -664,6 +659,7 @@ async function saveCompanion() {
 
 .pet-card {
   display: block;
+  padding: 1.1rem 1.25rem;
   background: var(--color-background);
   border: 1px solid var(--color-border);
   color: inherit;
@@ -674,32 +670,27 @@ async function saveCompanion() {
   border-color: var(--color-accent);
 }
 
-.pet-image {
-  position: relative;
-  aspect-ratio: 4 / 3;
-  height: auto;
+.pet-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.3rem;
 }
 
 .status-badge {
-  position: absolute;
-  top: 0.75rem;
-  left: 0.75rem;
-  padding: 0.3rem 0.65rem;
+  flex-shrink: 0;
+  padding: 0.22rem 0.55rem;
   background: var(--color-accent);
   color: #fff;
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   letter-spacing: 0.05em;
   font-weight: 600;
   text-transform: uppercase;
 }
 
-.pet-details {
-  padding: 1.1rem 1.25rem 1.25rem;
-}
-
 .pet-name {
   font-size: 1.4rem;
-  margin-bottom: 0.3rem;
 }
 
 .pet-meta {

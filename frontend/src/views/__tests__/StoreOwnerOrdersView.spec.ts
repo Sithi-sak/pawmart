@@ -119,7 +119,10 @@ describe('StoreOwnerOrdersView', () => {
     it('offers every forward status but neither the current nor any past status', async () => {
       const wrapper = await mountView([makeOrder({ status: 'processing' })])
 
-      const values = wrapper.find('select').findAll('option').map((o) => o.element.value)
+      const values = wrapper
+        .find('select')
+        .findAll('option')
+        .map((o) => o.element.value)
 
       expect(values).toEqual(['processing', 'shipping', 'out_for_delivery', 'delivered'])
       expect(values).not.toContain('confirmed')

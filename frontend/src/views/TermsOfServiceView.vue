@@ -14,8 +14,8 @@ const obligations: string[] = [
       <p class="eyebrow">Legal Governance</p>
       <h1 class="hero-title">Terms of Service</h1>
       <p class="hero-copy">
-        The agreement between you and PAWMART that governs access to our digital boutique,
-        editorial content, and bespoke architectural services.
+        The agreement between you and PAWMART that governs access to our digital boutique, editorial
+        content, and bespoke architectural services.
       </p>
       <div class="hero-divider"></div>
     </section>
@@ -27,16 +27,14 @@ const obligations: string[] = [
         <div class="legal-body">
           <h2>Acceptance of Terms</h2>
           <p>
-            These Terms of Service constitute a legally binding agreement made between you,
-            whether personally or on behalf of an entity, and PAWMART, concerning your access to
-            and use of our digital platforms, editorial content, and bespoke architectural
-            services.
+            These Terms of Service constitute a legally binding agreement made between you, whether
+            personally or on behalf of an entity, and PAWMART, concerning your access to and use of
+            our digital platforms, editorial content, and bespoke architectural services.
           </p>
           <p>
-            By accessing PAWMART, you signify that you have read, understood, and agree to be
-            bound by all of these terms. If you do not agree with all of these terms, then you
-            are expressly prohibited from using our services and must discontinue use
-            immediately.
+            By accessing PAWMART, you signify that you have read, understood, and agree to be bound
+            by all of these terms. If you do not agree with all of these terms, then you are
+            expressly prohibited from using our services and must discontinue use immediately.
           </p>
         </div>
       </div>
@@ -57,17 +55,17 @@ const obligations: string[] = [
         <div class="legal-body">
           <h2>Intellectual Property</h2>
           <p>
-            Unless otherwise indicated, the Site and Services are our proprietary property and
-            all source code, databases, functionality, software, website designs, audio, video,
-            text, photographs, and graphics on the Site (collectively, the "Content") and the
-            trademarks, service marks, and logos contained therein (the "Marks") are owned or
-            controlled by us or licensed to us.
+            Unless otherwise indicated, the Site and Services are our proprietary property and all
+            source code, databases, functionality, software, website designs, audio, video, text,
+            photographs, and graphics on the Site (collectively, the "Content") and the trademarks,
+            service marks, and logos contained therein (the "Marks") are owned or controlled by us
+            or licensed to us.
           </p>
           <p>
-            The Content and Marks are provided on the Site "AS IS" for your information and
-            personal use only. No part of the Site and no Content or Marks may be copied,
-            reproduced, aggregated, republished, uploaded, posted, or distributed for any
-            commercial purpose whatsoever without our express prior written permission.
+            The Content and Marks are provided on the Site "AS IS" for your information and personal
+            use only. No part of the Site and no Content or Marks may be copied, reproduced,
+            aggregated, republished, uploaded, posted, or distributed for any commercial purpose
+            whatsoever without our express prior written permission.
           </p>
         </div>
       </div>
@@ -77,16 +75,16 @@ const obligations: string[] = [
         <div class="legal-body">
           <h2>Limitation of Liability</h2>
           <p>
-            In no event will we or our directors, employees, or agents be liable to you or any
-            third party for any direct, indirect, consequential, exemplary, incidental, special,
-            or punitive damages, including lost profit, lost revenue, loss of data, or other
-            damages arising from your use of our architectural products or digital services.
+            In no event will we or our directors, employees, or agents be liable to you or any third
+            party for any direct, indirect, consequential, exemplary, incidental, special, or
+            punitive damages, including lost profit, lost revenue, loss of data, or other damages
+            arising from your use of our architectural products or digital services.
           </p>
           <p>
-            Notwithstanding anything to the contrary contained herein, our liability to you for
-            any cause whatsoever and regardless of the form of the action, will at all times be
-            limited to the amount paid, if any, by you to us during the six (6) month period
-            prior to any cause of action arising.
+            Notwithstanding anything to the contrary contained herein, our liability to you for any
+            cause whatsoever and regardless of the form of the action, will at all times be limited
+            to the amount paid, if any, by you to us during the six (6) month period prior to any
+            cause of action arising.
           </p>
         </div>
       </div>
@@ -96,10 +94,10 @@ const obligations: string[] = [
         <div class="legal-body">
           <h2>Governing Law</h2>
           <p>
-            These Terms shall be governed by and defined following the laws of the jurisdiction
-            in which PAWMART is headquartered. You irrevocably consent that the courts of said
-            jurisdiction shall have exclusive jurisdiction to resolve any dispute which may arise
-            in connection with these terms.
+            These Terms shall be governed by and defined following the laws of the jurisdiction in
+            which PAWMART is headquartered. You irrevocably consent that the courts of said
+            jurisdiction shall have exclusive jurisdiction to resolve any dispute which may arise in
+            connection with these terms.
           </p>
         </div>
       </div>
@@ -124,7 +122,6 @@ const obligations: string[] = [
 .placeholder-img {
   background: linear-gradient(180deg, #9a9a9a 0%, #d8d8d8 100%);
 }
-
 
 .eyebrow {
   color: var(--color-accent);

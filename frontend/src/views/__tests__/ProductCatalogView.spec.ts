@@ -9,7 +9,11 @@ const fetchCategoriesMock = vi.fn()
 vi.mock('@/lib/products', () => ({
   fetchProducts: (...args: unknown[]) => fetchProductsMock(...args),
   fetchCategories: (...args: unknown[]) => fetchCategoriesMock(...args),
-  effectivePrice: (p: { price: number; is_discounted: boolean; discount_percent: number | null }) =>
+  effectivePrice: (p: {
+    price: number
+    is_discounted: boolean
+    discount_percent: number | null
+  }) =>
     p.is_discounted && p.discount_percent
       ? Math.round(p.price * (1 - p.discount_percent / 100) * 100) / 100
       : p.price,
@@ -91,8 +95,7 @@ const ElCheckboxStub = defineComponent({
   props: ['value', 'label'],
   setup(props, { slots }) {
     const group = inject(checkboxGroupKey) as
-      | { isChecked: (v: string) => boolean; toggle: (v: string) => void }
-      | undefined
+      { isChecked: (v: string) => boolean; toggle: (v: string) => void } | undefined
     return () =>
       h('label', { class: 'stub-checkbox' }, [
         h('input', {
@@ -212,7 +215,10 @@ describe('ProductCatalogView', () => {
     })
 
     it('filters by category', async () => {
-      const food = makeProduct({ name: 'Kibble', categories: { id: 1, name: 'Food', slug: 'food' } })
+      const food = makeProduct({
+        name: 'Kibble',
+        categories: { id: 1, name: 'Food', slug: 'food' },
+      })
       const toy = makeProduct({ name: 'Ball', categories: { id: 2, name: 'Toys', slug: 'toys' } })
       const wrapper = await mountCatalog([food, toy])
 
@@ -281,7 +287,12 @@ describe('ProductCatalogView', () => {
     it('combines multiple active filters', async () => {
       const acmeStore = { id: 1, name: 'Acme Store', slug: 'acme-store' }
       const petcoStore = { id: 2, name: 'PetCo Store', slug: 'petco-store' }
-      const match = makeProduct({ name: 'Dog Kibble', species: 'Dog', stores: acmeStore, price: 20 })
+      const match = makeProduct({
+        name: 'Dog Kibble',
+        species: 'Dog',
+        stores: acmeStore,
+        price: 20,
+      })
       const wrongSpecies = makeProduct({
         name: 'Cat Kibble',
         species: 'Cat',

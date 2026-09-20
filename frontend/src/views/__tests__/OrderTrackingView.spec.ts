@@ -31,7 +31,13 @@ vi.mock('vue-router', () => ({
 
 const { default: OrderTrackingView } = await import('../OrderTrackingView.vue')
 
-const STATUS_ORDER: OrderStatus[] = ['confirmed', 'processing', 'shipping', 'out_for_delivery', 'delivered']
+const STATUS_ORDER: OrderStatus[] = [
+  'confirmed',
+  'processing',
+  'shipping',
+  'out_for_delivery',
+  'delivered',
+]
 const STEP_LABELS = ['Confirmed', 'Processing', 'Shipping', 'Out for Delivery', 'Delivered']
 
 function makeOrder(overrides: Partial<Order> = {}): Order {
@@ -54,7 +60,18 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
     tax: 1.75,
     total: 21.75,
     created_at: '2026-01-01T00:00:00Z',
-    items: [{ id: 1, product_id: 1, name: 'Chew Toy', variant: null, sku: null, price: 20, quantity: 1 }],
+    items: [
+      {
+        id: 1,
+        product_id: 1,
+        name: 'Chew Toy',
+        variant: null,
+        sku: null,
+        price: 20,
+        quantity: 1,
+        image_url: null,
+      },
+    ],
     status_history: [
       { id: 1, order_id: 7, status: 'confirmed', created_at: '2026-01-01T00:00:00Z' },
       { id: 2, order_id: 7, status: 'processing', created_at: '2026-01-02T00:00:00Z' },
@@ -104,7 +121,9 @@ describe('OrderTrackingView', () => {
     ['out_for_delivery', 3],
     ['delivered', 4],
   ] as const)('marks exactly the steps up through "%s" as done', async (status, doneIndex) => {
-    fetchOrderMock.mockResolvedValue(makeOrder({ status, status_history: historyThroughIndex(doneIndex) }))
+    fetchOrderMock.mockResolvedValue(
+      makeOrder({ status, status_history: historyThroughIndex(doneIndex) }),
+    )
 
     const wrapper = await mountTracking()
 
@@ -117,7 +136,9 @@ describe('OrderTrackingView', () => {
   })
 
   it('shows a date only for steps that have actually happened', async () => {
-    fetchOrderMock.mockResolvedValue(makeOrder({ status: 'processing', status_history: historyThroughIndex(1) }))
+    fetchOrderMock.mockResolvedValue(
+      makeOrder({ status: 'processing', status_history: historyThroughIndex(1) }),
+    )
 
     const wrapper = await mountTracking()
 

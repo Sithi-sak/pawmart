@@ -103,7 +103,9 @@ function removeFromWishlist(item: WishlistItem) {
 
           <div class="wishlist-info">
             <p v-if="item.storeName" class="wishlist-store">{{ item.storeName }}</p>
-            <RouterLink :to="`/products/${item.slug}`" class="wishlist-name">{{ item.name }}</RouterLink>
+            <RouterLink :to="`/products/${item.slug}`" class="wishlist-name">{{
+              item.name
+            }}</RouterLink>
             <p class="wishlist-price">{{ formatPrice(item.price) }}</p>
           </div>
 
@@ -180,7 +182,6 @@ function removeFromWishlist(item: WishlistItem) {
 .placeholder-img {
   background: linear-gradient(180deg, #9a9a9a 0%, #d8d8d8 100%);
 }
-
 
 .wishlist-info {
   flex: 1;

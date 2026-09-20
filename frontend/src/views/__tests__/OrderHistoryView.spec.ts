@@ -72,7 +72,10 @@ describe('OrderHistoryView', () => {
   })
 
   it('links each order card to its own tracking page', async () => {
-    fetchOrdersMock.mockResolvedValue([makeOrderSummary({ id: 7 }), makeOrderSummary({ id: 8, order_number: 'PM-000008' })])
+    fetchOrdersMock.mockResolvedValue([
+      makeOrderSummary({ id: 7 }),
+      makeOrderSummary({ id: 8, order_number: 'PM-000008' }),
+    ])
 
     const wrapper = await mountHistory()
 

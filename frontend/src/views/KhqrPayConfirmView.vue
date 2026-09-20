@@ -78,7 +78,9 @@ onBeforeUnmount(stopTimer)
       <template v-else>
         <PhSealWarning :size="56" class="khqr-confirm-icon is-expired" weight="fill" />
         <h1 class="khqr-confirm-title">Session Expired</h1>
-        <p class="khqr-confirm-note">No payment was confirmed in time. Please scan the code again.</p>
+        <p class="khqr-confirm-note">
+          No payment was confirmed in time. Please scan the code again.
+        </p>
       </template>
     </div>
   </div>

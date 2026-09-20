@@ -106,7 +106,9 @@ const orderTotal = computed(() => cart.total + shippingCost.value + estimatedTax
 // Points are only credited once a payment actually clears (see orders.py's
 // award_points_for_order) — for KHQR that's still a manual admin step (4.1),
 // so this estimate only reflects what Visa/ABA orders earn immediately.
-const estimatedPoints = computed(() => Math.floor((cart.subtotal - cart.discount) * POINTS_PER_DOLLAR))
+const estimatedPoints = computed(() =>
+  Math.floor((cart.subtotal - cart.discount) * POINTS_PER_DOLLAR),
+)
 
 type PaymentMethod = 'visa' | 'aba_payway' | 'khqr'
 
@@ -346,7 +348,12 @@ const shippingMethodLabel = computed(() =>
             <div class="form-row address-row">
               <div class="form-field">
                 <label for="province">Province</label>
-                <el-select id="province" v-model="selectedProvinceCode" filterable placeholder="Select province">
+                <el-select
+                  id="province"
+                  v-model="selectedProvinceCode"
+                  filterable
+                  placeholder="Select province"
+                >
                   <el-option
                     v-for="province in cambodiaAddressOptions"
                     :key="province.value"
@@ -424,7 +431,10 @@ const shippingMethodLabel = computed(() =>
               <h2 class="method-title">Shipping Method</h2>
               <div class="method-divider"></div>
 
-              <label class="method-option" :class="{ 'is-selected': shippingForm.method === 'standard' }">
+              <label
+                class="method-option"
+                :class="{ 'is-selected': shippingForm.method === 'standard' }"
+              >
                 <input v-model="shippingForm.method" type="radio" name="method" value="standard" />
                 <span class="method-radio"></span>
                 <span class="method-info">
@@ -434,7 +444,10 @@ const shippingMethodLabel = computed(() =>
                 <span class="method-price complimentary">Complimentary</span>
               </label>
 
-              <label class="method-option" :class="{ 'is-selected': shippingForm.method === 'express' }">
+              <label
+                class="method-option"
+                :class="{ 'is-selected': shippingForm.method === 'express' }"
+              >
                 <input v-model="shippingForm.method" type="radio" name="method" value="express" />
                 <span class="method-radio"></span>
                 <span class="method-info">
@@ -475,8 +488,8 @@ const shippingMethodLabel = computed(() =>
               <div class="redirect-panel">
                 <PhQrCode :size="32" />
                 <p class="redirect-note">
-                  You'll scan a KHQR code with your banking app to complete this payment on the
-                  next step.
+                  You'll scan a KHQR code with your banking app to complete this payment on the next
+                  step.
                 </p>
               </div>
             </template>
@@ -485,8 +498,8 @@ const shippingMethodLabel = computed(() =>
               <div class="redirect-panel">
                 <PhArrowSquareOut :size="32" />
                 <p class="redirect-note">
-                  You'll be redirected to ABA PayWay's secure checkout to enter your card or
-                  account details and complete this payment.
+                  You'll be redirected to ABA PayWay's secure checkout to enter your card or account
+                  details and complete this payment.
                 </p>
               </div>
             </template>
@@ -569,8 +582,12 @@ const shippingMethodLabel = computed(() =>
               <div>
                 <p class="payment-summary-method">{{ paymentMethodLabel }}</p>
                 <p class="payment-summary-detail">
-                  <template v-if="paymentMethod === 'visa'">Card charged on order placement</template>
-                  <template v-else-if="paymentMethod === 'aba_payway'">Redirect at checkout</template>
+                  <template v-if="paymentMethod === 'visa'"
+                    >Card charged on order placement</template
+                  >
+                  <template v-else-if="paymentMethod === 'aba_payway'"
+                    >Redirect at checkout</template
+                  >
                   <template v-else>Scan to pay</template>
                 </p>
               </div>
@@ -618,7 +635,9 @@ const shippingMethodLabel = computed(() =>
               <p v-if="item.brand" class="summary-item-variant">{{ item.brand.toUpperCase() }}</p>
               <div class="summary-item-bottom">
                 <span class="summary-item-qty">Qty: {{ item.quantity }}</span>
-                <span class="summary-item-price">{{ formatPrice(item.price * item.quantity) }}</span>
+                <span class="summary-item-price">{{
+                  formatPrice(item.price * item.quantity)
+                }}</span>
               </div>
             </div>
           </div>
@@ -699,9 +718,7 @@ const shippingMethodLabel = computed(() =>
           Scan this code with your phone's camera or any Bakong-linked banking app, then confirm
           once the transfer is complete.
         </p>
-        <button type="button" class="continue-btn" @click="confirmKhqrPayment">
-          I Have Paid
-        </button>
+        <button type="button" class="continue-btn" @click="confirmKhqrPayment">I Have Paid</button>
       </div>
     </el-dialog>
   </div>
@@ -711,7 +728,6 @@ const shippingMethodLabel = computed(() =>
 .placeholder-img {
   background: linear-gradient(180deg, #9a9a9a 0%, #d8d8d8 100%);
 }
-
 
 .checkout {
   padding: 1rem 0 4rem;
@@ -1048,7 +1064,6 @@ const shippingMethodLabel = computed(() =>
   flex-direction: column;
   gap: 1.5rem;
 }
-
 
 .redirect-panel {
   display: flex;

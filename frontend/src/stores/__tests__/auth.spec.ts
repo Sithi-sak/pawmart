@@ -249,7 +249,9 @@ describe('session persistence (init)', () => {
   it('applies the existing session and creates a customer row if missing', async () => {
     const authUser = { id: 'u3', email: 'a@gmail.com', user_metadata: { full_name: 'A Name' } }
     authMocks.getSession.mockResolvedValue({ data: { session: { user: authUser } } })
-    authMocks.onAuthStateChange.mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } })
+    authMocks.onAuthStateChange.mockReturnValue({
+      data: { subscription: { unsubscribe: vi.fn() } },
+    })
     fromMock
       .mockReturnValueOnce(queryResult(null)) // existing customer lookup -> none
       .mockReturnValueOnce(queryResult({ id: 'u3', full_name: 'A Name', role: 'customer' })) // insert
@@ -264,7 +266,9 @@ describe('session persistence (init)', () => {
 
   it('is idempotent across repeated calls', async () => {
     authMocks.getSession.mockResolvedValue({ data: { session: null } })
-    authMocks.onAuthStateChange.mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } })
+    authMocks.onAuthStateChange.mockReturnValue({
+      data: { subscription: { unsubscribe: vi.fn() } },
+    })
 
     const store = useAuthStore()
     await Promise.all([store.init(), store.init()])

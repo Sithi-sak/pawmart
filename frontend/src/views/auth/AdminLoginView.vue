@@ -46,7 +46,13 @@ async function handleSubmit() {
     <form class="form" @submit.prevent="handleSubmit">
       <div class="form-field">
         <label for="email">Email Address</label>
-        <input id="email" v-model="form.email" type="email" placeholder="admin@pawmart.com" required />
+        <input
+          id="email"
+          v-model="form.email"
+          type="email"
+          placeholder="admin@pawmart.com"
+          required
+        />
       </div>
 
       <div class="form-field">

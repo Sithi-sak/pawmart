@@ -5,6 +5,10 @@ import dogImg from '@/assets/images/dog.png'
 import catImg from '@/assets/images/cat.png'
 import birdImg from '@/assets/images/bird.png'
 import fishImg from '@/assets/images/fish.png'
+import petFoodImg from '@/assets/images/type/pet-food.png'
+import petTrainingImg from '@/assets/images/type/pet-training-aids.png'
+import petGroomingImg from '@/assets/images/type/pet-grooming-supplies.png'
+import petSuppliesImg from '@/assets/images/type/pet-supplies.png'
 
 interface Species {
   key: string
@@ -12,17 +16,21 @@ interface Species {
   image: string
 }
 
+// `species` matches the values the catalog filters on (products.species).
 const speciesList: Species[] = [
-  { key: 'dog', label: 'Dogs', image: dogImg },
-  { key: 'cat', label: 'Cats', image: catImg },
-  { key: 'bird', label: 'Birds', image: birdImg },
-  { key: 'fish', label: 'Fish', image: fishImg },
+  { key: 'Dog', label: 'Dogs', image: dogImg },
+  { key: 'Cat', label: 'Cats', image: catImg },
+  { key: 'Bird', label: 'Birds', image: birdImg },
+  { key: 'Fish', label: 'Fish', image: fishImg },
 ]
 
 interface Collection {
   key: string
   title: string
   description: string
+  image: string
+  /** Catalog query this collection resolves to -- every one must match a real filter. */
+  query: Record<string, string>
 }
 
 const collections: Collection[] = [
@@ -30,21 +38,29 @@ const collections: Collection[] = [
     key: 'new-arrivals',
     title: 'New Arrivals',
     description: 'The latest additions to the shelves — fresh gear, food, and comforts.',
+    image: petSuppliesImg,
+    query: { sort: 'newest' },
   },
   {
-    key: 'seasonal-favorites',
-    title: 'Seasonal Favorites',
-    description: 'Warm bedding, cozy layers, and treats picked for the season ahead.',
+    key: 'everyday-nutrition',
+    title: 'Everyday Nutrition',
+    description: 'Daily food, toppers, and treats from every store on the marketplace.',
+    image: petFoodImg,
+    query: { category: 'Pet Food' },
   },
   {
     key: 'trainers-picks',
     title: "Trainer's Picks",
-    description: 'Recommended toys and tools our in-house trainers reach for first.',
+    description: 'Clickers, leashes, and enrichment toys for building better habits.',
+    image: petTrainingImg,
+    query: { category: 'Pet Training Aids' },
   },
   {
-    key: 'small-pet-essentials',
-    title: 'Small Pet Essentials',
-    description: 'Habitats, bedding, and enrichment sized for rabbits, birds, and more.',
+    key: 'grooming-and-care',
+    title: 'Grooming & Care',
+    description: 'Brushes, shampoos, and coat care to keep every companion comfortable.',
+    image: petGroomingImg,
+    query: { category: 'Pet Grooming Supplies' },
   },
 ]
 </script>
@@ -61,8 +77,8 @@ const collections: Collection[] = [
           <span class="accent-italic">ITS OWN COLLECTION.</span>
         </h1>
         <p class="hero-copy">
-          Browse curated groupings of food, gear, and comfort — organized by species, then by
-          the moments that matter most.
+          Browse curated groupings of food, gear, and comfort — organized by species, then by the
+          moments that matter most.
         </p>
         <RouterLink to="/products">
           <el-button type="primary" class="accent-btn" size="large">VIEW THE ARCHIVE</el-button>
@@ -78,7 +94,12 @@ const collections: Collection[] = [
       </div>
 
       <div class="species-grid">
-        <RouterLink v-for="s in speciesList" :key="s.key" to="/products" class="species-card">
+        <RouterLink
+          v-for="s in speciesList"
+          :key="s.key"
+          :to="{ name: 'products', query: { species: s.key } }"
+          class="species-card"
+        >
           <div class="species-image">
             <img :src="s.image" :alt="s.label" />
           </div>
@@ -97,11 +118,13 @@ const collections: Collection[] = [
 
       <div class="collection-grid">
         <div v-for="c in collections" :key="c.key" class="collection-card">
-          <div class="collection-image placeholder-img"></div>
+          <div class="collection-image">
+            <img :src="c.image" :alt="c.title" />
+          </div>
           <div class="collection-content">
             <h3>{{ c.title }}</h3>
             <p>{{ c.description }}</p>
-            <RouterLink to="/products">
+            <RouterLink :to="{ name: 'products', query: c.query }">
               <el-button class="outline-btn" size="large">EXPLORE</el-button>
             </RouterLink>
           </div>
@@ -116,11 +139,6 @@ const collections: Collection[] = [
   display: flex;
   flex-direction: column;
 }
-
-.placeholder-img {
-  background: linear-gradient(180deg, #9a9a9a 0%, #d8d8d8 100%);
-}
-
 
 .section {
   padding: 3.5rem 0;
@@ -302,6 +320,19 @@ const collections: Collection[] = [
 .collection-image {
   width: 40%;
   flex-shrink: 0;
+  background: var(--color-background);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.collection-image img {
+  width: 100%;
+  height: 100%;
+  max-height: 180px;
+  object-fit: contain;
+  display: block;
 }
 
 .collection-content {

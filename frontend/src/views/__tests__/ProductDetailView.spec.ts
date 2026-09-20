@@ -9,7 +9,11 @@ const fetchRelatedProductsMock = vi.fn()
 vi.mock('@/lib/products', () => ({
   fetchProductBySlug: (...args: unknown[]) => fetchProductBySlugMock(...args),
   fetchRelatedProducts: (...args: unknown[]) => fetchRelatedProductsMock(...args),
-  effectivePrice: (p: { price: number; is_discounted: boolean; discount_percent: number | null }) =>
+  effectivePrice: (p: {
+    price: number
+    is_discounted: boolean
+    discount_percent: number | null
+  }) =>
     p.is_discounted && p.discount_percent
       ? Math.round(p.price * (1 - p.discount_percent / 100) * 100) / 100
       : p.price,
@@ -167,7 +171,10 @@ describe('ProductDetailView', () => {
       const wrapper = await mountDetail()
 
       expect(wrapper.text()).toContain('Related Products')
-      expect(wrapper.findAll('.related-name').map((n) => n.text())).toEqual(['Related A', 'Related B'])
+      expect(wrapper.findAll('.related-name').map((n) => n.text())).toEqual([
+        'Related A',
+        'Related B',
+      ])
       expect(fetchRelatedProductsMock).toHaveBeenCalledWith(1, 1)
     })
 

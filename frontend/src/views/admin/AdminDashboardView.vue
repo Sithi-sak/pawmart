@@ -7,26 +7,29 @@ import {
   PhChartLineUp,
   PhTrendUp,
   PhTrendDown,
+  PhMinus,
 } from '@phosphor-icons/vue'
-import { fetchDashboardStats, type DashboardStats } from '@/lib/adminDashboard'
+import {
+  fetchDashboardStats,
+  formatDelta,
+  type DashboardStats,
+  type DeltaTrend,
+} from '@/lib/adminDashboard'
 
 interface Stat {
   label: string
   value: string
   delta: string
-  trend: 'up' | 'down'
+  trend: DeltaTrend
   icon: typeof PhCurrencyDollar
 }
 
 const currencyFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
 
-function formatDelta(current: number, previous: number): { text: string; trend: 'up' | 'down' } {
-  if (previous === 0) {
-    return current > 0 ? { text: 'New this month', trend: 'up' } : { text: 'No change', trend: 'up' }
-  }
-  const pct = ((current - previous) / previous) * 100
-  const sign = pct >= 0 ? '+' : ''
-  return { text: `${sign}${pct.toFixed(1)}% vs last month`, trend: pct >= 0 ? 'up' : 'down' }
+const trendIcons: Record<DeltaTrend, typeof PhTrendUp> = {
+  up: PhTrendUp,
+  down: PhTrendDown,
+  flat: PhMinus,
 }
 
 const dashboardStats = ref<DashboardStats | null>(null)
@@ -40,10 +43,11 @@ const stats = computed<Stat[]>(() => {
   const revenueDelta = formatDelta(s.revenueThisMonth, s.revenueLastMonth)
   const ordersDelta = formatDelta(s.ordersThisMonth, s.ordersLastMonth)
   const avgOrderDelta = formatDelta(s.avgOrderValueThisMonth, s.avgOrderValueLastMonth)
+  const customersDelta = formatDelta(s.newCustomersThisMonth, s.newCustomersLastMonth)
 
   return [
     {
-      label: 'Total Revenue',
+      label: 'Revenue This Month',
       value: currencyFormatter.format(s.revenueThisMonth),
       delta: revenueDelta.text,
       trend: revenueDelta.trend,
@@ -57,10 +61,10 @@ const stats = computed<Stat[]>(() => {
       icon: PhShoppingBagOpen,
     },
     {
-      label: 'New Customers',
+      label: 'New Customers This Month',
       value: String(s.newCustomersThisMonth),
-      delta: `+${s.newCustomersThisWeek} this week`,
-      trend: 'up',
+      delta: customersDelta.text,
+      trend: customersDelta.trend,
       icon: PhUsers,
     },
     {
@@ -115,8 +119,8 @@ onMounted(async () => {
           </div> -->
           <p class="stat-label">{{ stat.label }}</p>
           <p class="stat-value">{{ stat.value }}</p>
-          <p class="stat-delta" :class="stat.trend === 'up' ? 'is-up' : 'is-down'">
-            <component :is="stat.trend === 'up' ? PhTrendUp : PhTrendDown" :size="14" weight="bold" />
+          <p class="stat-delta" :class="`is-${stat.trend}`">
+            <component :is="trendIcons[stat.trend]" :size="14" weight="bold" />
             {{ stat.delta }}
           </p>
         </div>
@@ -209,6 +213,11 @@ onMounted(async () => {
 
 .stat-delta.is-down {
   color: #c0392b;
+}
+
+.stat-delta.is-flat {
+  color: var(--color-text);
+  opacity: 0.6;
 }
 
 .sk-stat-label {

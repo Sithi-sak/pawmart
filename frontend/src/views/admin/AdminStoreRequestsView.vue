@@ -35,7 +35,11 @@ function statusCount(status: StoreApplicationStatus) {
 }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return new Date(iso).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
 }
 
 async function loadApplications() {
@@ -93,7 +97,11 @@ async function handleReject(application: StoreApplication) {
     const { value } = await ElMessageBox.prompt(
       `Reject the request from "${application.contact_name}"? You can add a note (optional).`,
       'Reject Request',
-      { confirmButtonText: 'Reject', cancelButtonText: 'Cancel', inputPlaceholder: 'Reason (optional)' },
+      {
+        confirmButtonText: 'Reject',
+        cancelButtonText: 'Cancel',
+        inputPlaceholder: 'Reason (optional)',
+      },
     )
     reason = value
   } catch {
@@ -139,7 +147,7 @@ onMounted(loadApplications)
         All ({{ applications.length }})
       </button>
       <button
-        v-for="s in (['pending', 'approved', 'rejected'] as StoreApplicationStatus[])"
+        v-for="s in ['pending', 'approved', 'rejected'] as StoreApplicationStatus[]"
         :key="s"
         type="button"
         class="filter-pill"
@@ -169,12 +177,16 @@ onMounted(loadApplications)
       <el-table
         :data="filteredApplications"
         style="width: 100%"
-        :empty-text="applications.length === 0 ? 'No seller requests yet.' : 'No requests match this filter.'"
+        :empty-text="
+          applications.length === 0 ? 'No seller requests yet.' : 'No requests match this filter.'
+        "
       >
         <el-table-column label="Applicant" min-width="180">
           <template #default="{ row }">
             <span class="cell-name">{{ row.contact_name }}</span>
-            <p class="cell-sub">{{ row.email }}<span v-if="row.phone"> · {{ row.phone }}</span></p>
+            <p class="cell-sub">
+              {{ row.email }}<span v-if="row.phone"> · {{ row.phone }}</span>
+            </p>
           </template>
         </el-table-column>
         <el-table-column label="Proposed Store" prop="store_name" min-width="160" />
@@ -188,21 +200,23 @@ onMounted(loadApplications)
         </el-table-column>
         <el-table-column label="Status" min-width="110">
           <template #default="{ row }">
-            <span class="status-badge" :class="`is-${row.status}`">{{ STATUS_LABELS[row.status as StoreApplicationStatus] }}</span>
+            <span class="status-badge" :class="`is-${row.status}`">{{
+              STATUS_LABELS[row.status as StoreApplicationStatus]
+            }}</span>
           </template>
         </el-table-column>
         <el-table-column label="" min-width="180">
           <template #default="{ row }">
             <div v-if="row.status === 'pending'" class="row-actions">
               <el-button
-                size="small"
+                size="default"
                 type="primary"
                 :loading="workingId === row.id"
                 @click="openApproveDialog(row)"
               >
                 Approve
               </el-button>
-              <el-button size="small" :loading="workingId === row.id" @click="handleReject(row)">
+              <el-button size="default" :loading="workingId === row.id" @click="handleReject(row)">
                 Reject
               </el-button>
             </div>
@@ -231,7 +245,11 @@ onMounted(loadApplications)
       </form>
       <template #footer>
         <el-button @click="approveDialogVisible = false">Cancel</el-button>
-        <el-button type="primary" :loading="workingId === approveTarget?.id" @click="confirmApprove">
+        <el-button
+          type="primary"
+          :loading="workingId === approveTarget?.id"
+          @click="confirmApprove"
+        >
           Approve &amp; Create Store
         </el-button>
       </template>
@@ -245,8 +263,8 @@ onMounted(loadApplications)
       align-center
     >
       <p class="credentials-warning">
-        Copy this password now — it's shown only once. Relay it to the seller yourself; they
-        should change it after first login.
+        Copy this password now — it's shown only once. Relay it to the seller yourself; they should
+        change it after first login.
       </p>
       <div v-if="credentials" class="credentials-block">
         <div class="credential-row">
@@ -399,7 +417,7 @@ onMounted(loadApplications)
 }
 
 .cell-sub {
-  font-size: 0.78rem;
+  font-size: 0.825rem;
   opacity: 0.65;
   margin-top: 0.15rem;
 }
@@ -411,9 +429,9 @@ onMounted(loadApplications)
 .status-badge {
   display: inline-flex;
   align-items: center;
-  height: 1.5rem;
+  height: 2rem;
   padding: 0 0.55rem;
-  font-size: 0.65rem;
+  font-size: 0.825rem;
   letter-spacing: 0.03em;
   font-weight: 600;
   text-transform: uppercase;
@@ -431,10 +449,8 @@ onMounted(loadApplications)
   color: #c92a2a;
 }
 
-
 .row-actions {
   display: flex;
-  gap: 0.5rem;
 }
 
 .approve-form {

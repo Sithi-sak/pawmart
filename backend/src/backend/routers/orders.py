@@ -193,6 +193,25 @@ def _price_cart(
     }
 
 
+def _attach_item_images(supabase, items: list[dict]) -> list[dict]:
+    """Add the product's first catalog image to each order item.
+
+    order_items snapshots name/price at purchase time but not the image, so
+    the tracking page would otherwise only have a grey placeholder to show.
+    """
+    product_ids = [i["product_id"] for i in items if i.get("product_id") is not None]
+    images_by_product: dict[int, str | None] = {}
+    if product_ids:
+        products = (
+            supabase.table("products").select("id, images").in_("id", product_ids).execute().data
+        )
+        for product in products:
+            images = product.get("images") or []
+            images_by_product[product["id"]] = images[0] if images else None
+
+    return [{**i, "image_url": images_by_product.get(i.get("product_id"))} for i in items]
+
+
 def _load_order(supabase, order_id: int) -> dict:
     order = (
         supabase.table("orders").select("*").eq("id", order_id).maybe_single().execute().data
@@ -208,7 +227,7 @@ def _load_order(supabase, order_id: int) -> dict:
         .execute()
         .data
     )
-    return {**order, "items": items, "status_history": history}
+    return {**order, "items": _attach_item_images(supabase, items), "status_history": history}
 
 
 @router.post("/payment-intent")
@@ -324,7 +343,11 @@ def create_order(
 
     award_points_for_order(supabase, customer.id, order)
 
-    return {**order, "items": inserted_items, "status_history": history}
+    return {
+        **order,
+        "items": _attach_item_images(supabase, inserted_items),
+        "status_history": history,
+    }
 
 
 @router.get("")

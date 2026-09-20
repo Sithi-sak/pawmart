@@ -16,7 +16,11 @@ const loadError = ref(false)
 const workingId = ref<number | null>(null)
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return new Date(iso).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
 }
 
 async function loadStores() {
@@ -97,11 +101,15 @@ async function saveStore() {
 
 async function handleDelete(store: UpcomingStore) {
   try {
-    await ElMessageBox.confirm(`Remove "${store.name}" from the upcoming stores list?`, 'Remove Upcoming Store', {
-      confirmButtonText: 'Remove',
-      cancelButtonText: 'Cancel',
-      type: 'warning',
-    })
+    await ElMessageBox.confirm(
+      `Remove "${store.name}" from the upcoming stores list?`,
+      'Remove Upcoming Store',
+      {
+        confirmButtonText: 'Remove',
+        cancelButtonText: 'Cancel',
+        type: 'warning',
+      },
+    )
   } catch {
     return
   }
@@ -128,8 +136,8 @@ async function handleDelete(store: UpcomingStore) {
 
     <div class="toolbar">
       <p class="toolbar-hint">
-        Shown as a "Coming Soon" list under the Store filter on the shop page — no store account
-        or products required.
+        Shown as a "Coming Soon" list under the Store filter on the shop page — no store account or
+        products required.
       </p>
       <el-button type="primary" @click="openCreateDialog">
         <PhPlus :size="16" style="margin-right: 0.35rem" />
@@ -159,7 +167,9 @@ async function handleDelete(store: UpcomingStore) {
           </template>
         </el-table-column>
         <el-table-column label="Launch Date" min-width="130">
-          <template #default="{ row }">{{ row.launch_date ? formatDate(row.launch_date) : '—' }}</template>
+          <template #default="{ row }">{{
+            row.launch_date ? formatDate(row.launch_date) : '—'
+          }}</template>
         </el-table-column>
         <el-table-column label="Sort Order" width="110" prop="sort_order" />
         <el-table-column label="Added" min-width="120">
@@ -205,7 +215,13 @@ async function handleDelete(store: UpcomingStore) {
         </div>
         <div class="form-field">
           <label>Launch Date</label>
-          <el-date-picker v-model="form.launch_date" type="date" value-format="YYYY-MM-DD" placeholder="Optional" style="width: 100%" />
+          <el-date-picker
+            v-model="form.launch_date"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="Optional"
+            style="width: 100%"
+          />
         </div>
         <div class="form-field">
           <label>Sort Order</label>

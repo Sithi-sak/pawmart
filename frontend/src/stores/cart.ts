@@ -69,7 +69,9 @@ export const useCartStore = defineStore('cart', () => {
   async function load(customerId: string) {
     const { data, error } = await supabase
       .from('cart_items')
-      .select('quantity, products(id, slug, name, brand, price, images, store_id, stores(id, name))')
+      .select(
+        'quantity, products(id, slug, name, brand, price, images, store_id, stores(id, name))',
+      )
       .eq('customer_id', customerId)
 
     if (error) throw error

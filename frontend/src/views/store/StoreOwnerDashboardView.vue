@@ -7,10 +7,16 @@ import {
   PhChartLineUp,
   PhTrendUp,
   PhTrendDown,
+  PhMinus,
   PhWarning,
 } from '@phosphor-icons/vue'
 import { useAuthStore } from '@/stores/auth'
-import { fetchDashboardStats, type DashboardStats } from '@/lib/adminDashboard'
+import {
+  fetchDashboardStats,
+  formatDelta,
+  type DashboardStats,
+  type DeltaTrend,
+} from '@/lib/adminDashboard'
 import { LOW_STOCK_THRESHOLD, fetchProducts, isLowStock, type Product } from '@/lib/products'
 import { fetchStoreByOwnerId, updateStore, type Store } from '@/lib/stores'
 
@@ -18,19 +24,16 @@ interface Stat {
   label: string
   value: string
   delta: string
-  trend: 'up' | 'down'
+  trend: DeltaTrend
   icon: typeof PhCurrencyDollar
 }
 
 const currencyFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
 
-function formatDelta(current: number, previous: number): { text: string; trend: 'up' | 'down' } {
-  if (previous === 0) {
-    return current > 0 ? { text: 'New this month', trend: 'up' } : { text: 'No change', trend: 'up' }
-  }
-  const pct = ((current - previous) / previous) * 100
-  const sign = pct >= 0 ? '+' : ''
-  return { text: `${sign}${pct.toFixed(1)}% vs last month`, trend: pct >= 0 ? 'up' : 'down' }
+const trendIcons: Record<DeltaTrend, typeof PhTrendUp> = {
+  up: PhTrendUp,
+  down: PhTrendDown,
+  flat: PhMinus,
 }
 
 const auth = useAuthStore()
@@ -173,12 +176,18 @@ onMounted(async () => {
             <h2>Store Profile</h2>
           </div>
         </div>
-        <el-skeleton animated class="profile-form">
+        <el-skeleton animated>
           <template #template>
-            <el-skeleton-item variant="text" class="sk-form-label" />
-            <el-skeleton-item variant="p" style="height: 4.5rem" />
-            <el-skeleton-item variant="text" class="sk-form-label" style="margin-top: 0.6rem" />
-            <el-skeleton-item variant="text" style="height: 2.6rem" />
+            <div class="profile-grid">
+              <div class="form-field">
+                <el-skeleton-item variant="text" class="sk-form-label" />
+                <el-skeleton-item variant="p" style="height: 6rem" />
+              </div>
+              <div class="form-field">
+                <el-skeleton-item variant="text" class="sk-form-label" />
+                <el-skeleton-item variant="text" style="height: 2.6rem" />
+              </div>
+            </div>
           </template>
         </el-skeleton>
       </div>
@@ -191,8 +200,8 @@ onMounted(async () => {
         <div v-for="stat in stats" :key="stat.label" class="stat-card">
           <p class="stat-label">{{ stat.label }}</p>
           <p class="stat-value">{{ stat.value }}</p>
-          <p class="stat-delta" :class="stat.trend === 'up' ? 'is-up' : 'is-down'">
-            <component :is="stat.trend === 'up' ? PhTrendUp : PhTrendDown" :size="14" weight="bold" />
+          <p class="stat-delta" :class="`is-${stat.trend}`">
+            <component :is="trendIcons[stat.trend]" :size="14" weight="bold" />
             {{ stat.delta }}
           </p>
         </div>
@@ -207,7 +216,11 @@ onMounted(async () => {
           <span class="widget-count">{{ lowStockProducts.length }} items</span>
         </div>
 
-        <el-table :data="lowStockProducts" style="width: 100%" empty-text="No low-stock products right now.">
+        <el-table
+          :data="lowStockProducts"
+          style="width: 100%"
+          empty-text="No low-stock products right now."
+        >
           <el-table-column prop="name" label="Product">
             <template #default="{ row }">
               <span class="cell-name">{{ row.name }}</span>
@@ -240,18 +253,28 @@ onMounted(async () => {
         </div>
 
         <form class="profile-form" @submit.prevent="saveProfile">
-          <div class="form-field">
-            <label for="s-description">Description</label>
-            <textarea
-              id="s-description"
-              v-model="profileForm.description"
-              rows="3"
-              placeholder="Tell shoppers about your store"
-            />
-          </div>
-          <div class="form-field">
-            <label for="s-logo">Logo URL</label>
-            <input id="s-logo" v-model="profileForm.logo_url" type="url" placeholder="https://…" />
+          <div class="profile-grid">
+            <div class="form-field">
+              <label for="s-description">Description</label>
+              <textarea
+                id="s-description"
+                v-model="profileForm.description"
+                rows="4"
+                placeholder="Tell shoppers about your store"
+              />
+            </div>
+            <div class="form-field">
+              <label for="s-logo">Logo URL</label>
+              <input
+                id="s-logo"
+                v-model="profileForm.logo_url"
+                type="url"
+                placeholder="https://…"
+              />
+              <p class="field-hint">
+                Square images look best. Leave blank to use the default mark.
+              </p>
+            </div>
           </div>
           <div class="form-actions">
             <button type="submit" class="save-btn" :disabled="savingProfile">
@@ -337,6 +360,11 @@ onMounted(async () => {
 
 .stat-delta.is-down {
   color: #c0392b;
+}
+
+.stat-delta.is-flat {
+  color: var(--color-text);
+  opacity: 0.6;
 }
 
 .sk-stat-label {
@@ -462,13 +490,24 @@ onMounted(async () => {
   color: #c0392b;
 }
 
-
 /* Profile form */
 .profile-form {
   display: flex;
   flex-direction: column;
-  gap: 1.1rem;
-  max-width: 420px;
+  gap: 1.25rem;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.field-hint {
+  font-size: 0.75rem;
+  color: var(--color-text);
+  opacity: 0.6;
 }
 
 .form-field {
@@ -499,6 +538,10 @@ onMounted(async () => {
 
 .form-field input {
   height: 2.6rem;
+}
+
+.form-field textarea {
+  min-height: 6rem;
 }
 
 .form-field input:focus,
@@ -538,6 +581,10 @@ onMounted(async () => {
 @media (max-width: 900px) {
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .profile-grid {
+    grid-template-columns: 1fr;
   }
 }
 

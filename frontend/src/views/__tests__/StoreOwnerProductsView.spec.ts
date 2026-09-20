@@ -7,15 +7,19 @@ import type { Product } from '@/lib/products'
 
 const fetchProductsMock = vi.fn()
 const fetchCategoriesMock = vi.fn()
+const fetchBrandsMock = vi.fn()
 const createProductMock = vi.fn()
 const updateProductMock = vi.fn()
 const deleteProductMock = vi.fn()
+const saveProductOptionsMock = vi.fn()
 vi.mock('@/lib/products', () => ({
   fetchProducts: (...args: unknown[]) => fetchProductsMock(...args),
   fetchCategories: (...args: unknown[]) => fetchCategoriesMock(...args),
+  fetchBrands: (...args: unknown[]) => fetchBrandsMock(...args),
   createProduct: (...args: unknown[]) => createProductMock(...args),
   updateProduct: (...args: unknown[]) => updateProductMock(...args),
   deleteProduct: (...args: unknown[]) => deleteProductMock(...args),
+  saveProductOptions: (...args: unknown[]) => saveProductOptionsMock(...args),
   isLowStock: (p: { stock: number }) => p.stock <= 10,
 }))
 
@@ -79,13 +83,16 @@ const ElOptionStub = defineComponent({
   },
 })
 
-// Renders its slot inline whenever open, same pattern as CheckoutView.spec.ts's
-// KHQR modal stub -- the real el-dialog teleports and isn't worth driving here.
-const ElDialogStub = defineComponent({
+// Renders its slots inline whenever open, same pattern as CheckoutView.spec.ts's
+// KHQR modal stub -- the real el-drawer teleports and isn't worth driving here.
+const ElDrawerStub = defineComponent({
   props: ['modelValue'],
   emits: ['update:modelValue'],
   setup(props, { slots }) {
-    return () => (props.modelValue ? h('div', { class: 'el-dialog-stub' }, slots.default?.()) : null)
+    return () =>
+      props.modelValue
+        ? h('div', { class: 'el-drawer-stub' }, [slots.default?.(), slots.footer?.()])
+        : null
   },
 })
 
@@ -145,6 +152,8 @@ beforeEach(() => {
   nextId = 1
   fetchStoreByOwnerIdMock.mockResolvedValue(STORE)
   fetchCategoriesMock.mockResolvedValue([])
+  fetchBrandsMock.mockResolvedValue([])
+  saveProductOptionsMock.mockResolvedValue([])
 })
 
 async function mountView(products: Product[] = []) {
@@ -156,7 +165,7 @@ async function mountView(products: Product[] = []) {
       stubs: {
         ElSelect: ElSelectStub,
         ElOption: ElOptionStub,
-        ElDialog: ElDialogStub,
+        ElDrawer: ElDrawerStub,
         ElUpload: ElUploadStub,
       },
     },
@@ -170,7 +179,7 @@ async function mountView(products: Product[] = []) {
   return wrapper
 }
 
-async function openAddDialog(wrapper: Awaited<ReturnType<typeof mountView>>) {
+async function openAddDrawer(wrapper: Awaited<ReturnType<typeof mountView>>) {
   await wrapper.find('.add-btn').trigger('click')
   await nextTick()
 }
@@ -200,7 +209,7 @@ describe('StoreOwnerProductsView', () => {
         stubs: {
           ElSelect: ElSelectStub,
           ElOption: ElOptionStub,
-          ElDialog: ElDialogStub,
+          ElDrawer: ElDrawerStub,
           ElUpload: ElUploadStub,
         },
       },
@@ -217,12 +226,13 @@ describe('StoreOwnerProductsView', () => {
       createProductMock.mockResolvedValue(created)
       const wrapper = await mountView([])
 
-      await openAddDialog(wrapper)
+      await openAddDrawer(wrapper)
       const rawFile = new File(['data'], 'photo.jpg', { type: 'image/jpeg' })
       await wrapper
         .findComponent(ElUploadStub)
         .vm.$emit('update:fileList', [{ name: 'photo.jpg', raw: rawFile }])
       await wrapper.find('#p-name').setValue('New Toy')
+      await wrapper.find('#p-description').setValue('A squeaky rope toy.')
       await wrapper.find('#p-price').setValue(9.99)
       await wrapper.find('#p-stock').setValue(20)
       await wrapper.find('.product-form').trigger('submit')
@@ -232,6 +242,7 @@ describe('StoreOwnerProductsView', () => {
       expect(createProductMock).toHaveBeenCalledWith(
         expect.objectContaining({
           name: 'New Toy',
+          description: 'A squeaky rope toy.',
           price: 9.99,
           stock: 20,
           images: ['https://cdn/x.jpg'],
@@ -241,10 +252,29 @@ describe('StoreOwnerProductsView', () => {
       expect(wrapper.text()).toContain('New Toy')
     })
 
+    it('saves a brand typed into the autocomplete without picking a suggestion', async () => {
+      const created = makeProduct({ id: 42, name: 'Kibble', brand: 'Meow Mix' })
+      createProductMock.mockResolvedValue(created)
+      const wrapper = await mountView([])
+
+      await openAddDrawer(wrapper)
+      await wrapper
+        .findComponent(ElUploadStub)
+        .vm.$emit('update:fileList', [{ name: 'photo.jpg', url: 'https://cdn/x.jpg' }])
+      await wrapper.find('#p-name').setValue('Kibble')
+      await wrapper.find('#p-brand').setValue('Meow Mix')
+      await wrapper.find('#p-price').setValue(9.99)
+      await wrapper.find('#p-stock').setValue(20)
+      await wrapper.find('.product-form').trigger('submit')
+      await flushPromises()
+
+      expect(createProductMock).toHaveBeenCalledWith(expect.objectContaining({ brand: 'Meow Mix' }))
+    })
+
     it('requires at least one image before saving', async () => {
       const wrapper = await mountView([])
 
-      await openAddDialog(wrapper)
+      await openAddDrawer(wrapper)
       await wrapper.find('#p-name').setValue('New Toy')
       await wrapper.find('#p-price').setValue(9.99)
       await wrapper.find('#p-stock').setValue(20)
@@ -258,7 +288,7 @@ describe('StoreOwnerProductsView', () => {
     it('requires name, price, and stock before saving', async () => {
       const wrapper = await mountView([])
 
-      await openAddDialog(wrapper)
+      await openAddDrawer(wrapper)
       await wrapper
         .findComponent(ElUploadStub)
         .vm.$emit('update:fileList', [{ name: 'photo.jpg', url: 'https://cdn/x.jpg' }])
@@ -269,12 +299,12 @@ describe('StoreOwnerProductsView', () => {
       expect(createProductMock).not.toHaveBeenCalled()
     })
 
-    it('shows an error and keeps the dialog open when the create request fails', async () => {
+    it('shows an error and keeps the drawer open when the create request fails', async () => {
       uploadProductImageMock.mockResolvedValue({ path: 'x.jpg', url: 'https://cdn/x.jpg' })
       createProductMock.mockRejectedValue(new Error('boom'))
       const wrapper = await mountView([])
 
-      await openAddDialog(wrapper)
+      await openAddDrawer(wrapper)
       await wrapper
         .findComponent(ElUploadStub)
         .vm.$emit('update:fileList', [{ name: 'photo.jpg', raw: new File(['d'], 'p.jpg') }])
@@ -285,13 +315,18 @@ describe('StoreOwnerProductsView', () => {
       await flushPromises()
 
       expect(elMessageErrorMock).toHaveBeenCalled()
-      expect(wrapper.find('.el-dialog-stub').exists()).toBe(true)
+      expect(wrapper.find('.el-drawer-stub').exists()).toBe(true)
     })
   })
 
   describe('edit', () => {
     it('updates a product without re-uploading an already-hosted image', async () => {
-      const existing = makeProduct({ id: 5, name: 'Old Bowl', stock: 3, images: ['https://cdn/old.jpg'] })
+      const existing = makeProduct({
+        id: 5,
+        name: 'Old Bowl',
+        stock: 3,
+        images: ['https://cdn/old.jpg'],
+      })
       updateProductMock.mockResolvedValue({ ...existing, stock: 40 })
       const wrapper = await mountView([existing])
 
@@ -306,6 +341,89 @@ describe('StoreOwnerProductsView', () => {
         5,
         expect.objectContaining({ images: ['https://cdn/old.jpg'], stock: 40 }),
       )
+    })
+  })
+
+  describe('options', () => {
+    it('saves the option groups entered on the form with the new product', async () => {
+      uploadProductImageMock.mockResolvedValue({ path: 'x.jpg', url: 'https://cdn/x.jpg' })
+      const created = makeProduct({ id: 99, name: 'Kibble' })
+      createProductMock.mockResolvedValue(created)
+      saveProductOptionsMock.mockResolvedValue([])
+      const wrapper = await mountView([])
+
+      await openAddDrawer(wrapper)
+      await wrapper
+        .findComponent(ElUploadStub)
+        .vm.$emit('update:fileList', [{ name: 'photo.jpg', raw: new File(['d'], 'photo.jpg') }])
+      await wrapper.find('#p-name').setValue('Kibble')
+      await wrapper.find('#p-price').setValue(9.99)
+      await wrapper.find('#p-stock').setValue(20)
+      await wrapper.find('.add-option-btn').trigger('click')
+      await nextTick()
+      // The drawer's option rows are the only place the form model is a
+      // nested array, so reach through the vm rather than driving the
+      // stubbed multi-select.
+      const form = (wrapper.vm as unknown as { form: { optionGroups: unknown[] } }).form
+      form.optionGroups[0] = { name: 'Weight', values: ['1 kg', '5 kg'] }
+      await wrapper.find('.product-form').trigger('submit')
+      await flushPromises()
+
+      expect(saveProductOptionsMock).toHaveBeenCalledWith(99, [
+        { name: 'Weight', values: ['1 kg', '5 kg'] },
+      ])
+    })
+
+    it('refuses to save an option row that has a name but no values', async () => {
+      const wrapper = await mountView([])
+
+      await openAddDrawer(wrapper)
+      await wrapper
+        .findComponent(ElUploadStub)
+        .vm.$emit('update:fileList', [{ name: 'photo.jpg', url: 'https://cdn/x.jpg' }])
+      await wrapper.find('#p-name').setValue('Kibble')
+      await wrapper.find('#p-price').setValue(9.99)
+      await wrapper.find('#p-stock').setValue(20)
+      await wrapper.find('.add-option-btn').trigger('click')
+      await nextTick()
+      const form = (wrapper.vm as unknown as { form: { optionGroups: unknown[] } }).form
+      form.optionGroups[0] = { name: 'Weight', values: [] }
+      await wrapper.find('.product-form').trigger('submit')
+      await flushPromises()
+
+      expect(elMessageWarningMock).toHaveBeenCalled()
+      expect(createProductMock).not.toHaveBeenCalled()
+    })
+
+    it("prefills the editor with the product's existing options", async () => {
+      const p = makeProduct({
+        id: 5,
+        product_option_groups: [
+          {
+            id: 1,
+            name: 'Weight',
+            sort_order: 0,
+            product_option_values: [{ id: 1, value: '1 kg', sort_order: 0 }],
+          },
+          {
+            id: 2,
+            name: 'Flavor',
+            sort_order: 1,
+            product_option_values: [{ id: 2, value: 'Chicken', sort_order: 0 }],
+          },
+        ],
+      })
+      const wrapper = await mountView([p])
+
+      await wrapper.find('.icon-btn').trigger('click')
+      await nextTick()
+
+      expect(wrapper.findAll('.option-row')).toHaveLength(2)
+      const form = (wrapper.vm as unknown as { form: { optionGroups: unknown[] } }).form
+      expect(form.optionGroups).toEqual([
+        { name: 'Weight', values: ['1 kg'] },
+        { name: 'Flavor', values: ['Chicken'] },
+      ])
     })
   })
 
