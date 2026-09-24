@@ -1,0 +1,235 @@
+digraph PawMartERD {
+  graph [
+    rankdir=TB,
+    splines=ortho,
+    nodesep=0.22,
+    ranksep=0.45,
+    concentrate=false,
+    pad=0.3,
+    bgcolor="white",
+    fontname="Helvetica",
+    newrank=true
+  ];
+  node [shape=plaintext, fontname="Helvetica", fontsize=10];
+  edge [
+    fontname="Helvetica",
+    fontsize=9,
+    fontcolor="#1f2937",
+    color="#475569",
+    arrowhead=none,
+    penwidth=1.1,
+    labeldistance=1.4,
+    labelangle=0,
+    labelfloat=false
+  ];
+
+  // ---------- entities ----------
+  categories [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3">
+      <TR><TD BGCOLOR="#1e3a5f" COLSPAN="2"><FONT COLOR="white"><B>categories</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT">PK</TD><TD ALIGN="LEFT">id  bigint</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">name  text</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">slug  text</TD></TR>
+    </TABLE>>];
+
+  products [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3">
+      <TR><TD BGCOLOR="#1e3a5f" COLSPAN="2"><FONT COLOR="white"><B>products</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT">PK</TD><TD ALIGN="LEFT">id  bigint</TD></TR>
+      <TR><TD ALIGN="LEFT">FK</TD><TD ALIGN="LEFT">category_id  bigint</TD></TR>
+      <TR><TD ALIGN="LEFT">FK</TD><TD ALIGN="LEFT">store_id  bigint</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">name  text</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">slug  text</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">brand  text</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">species  text</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">price  numeric</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">stock  integer</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">images  text[]</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">is_new  boolean</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">is_promotional  boolean</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">is_discounted  boolean</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">discount_percent  numeric</TD></TR>
+    </TABLE>>];
+
+  customers [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3">
+      <TR><TD BGCOLOR="#1e3a5f" COLSPAN="2"><FONT COLOR="white"><B>customers</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT">PK</TD><TD ALIGN="LEFT">id  uuid</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">full_name  text</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">email  text</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">phone  text</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">location  text</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">role  text</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">loyalty_points_balance  int</TD></TR>
+    </TABLE>>];
+
+  stores [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3">
+      <TR><TD BGCOLOR="#1e3a5f" COLSPAN="2"><FONT COLOR="white"><B>stores</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT">PK</TD><TD ALIGN="LEFT">id  bigint</TD></TR>
+      <TR><TD ALIGN="LEFT">FK</TD><TD ALIGN="LEFT">owner_id  uuid</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">name  text</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">slug  text</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">logo_url  text</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">status  text</TD></TR>
+    </TABLE>>];
+
+  orders [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3">
+      <TR><TD BGCOLOR="#1e3a5f" COLSPAN="2"><FONT COLOR="white"><B>orders</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT">PK</TD><TD ALIGN="LEFT">id  bigint</TD></TR>
+      <TR><TD ALIGN="LEFT">FK</TD><TD ALIGN="LEFT">customer_id  uuid</TD></TR>
+      <TR><TD ALIGN="LEFT">FK</TD><TD ALIGN="LEFT">store_id  bigint</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">order_number  text</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">status  text</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">shipping_method  text</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">payment_method  text</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">payment_status  text</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">subtotal  numeric</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">discount  numeric</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">total  numeric</TD></TR>
+    </TABLE>>];
+
+  order_items [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3">
+      <TR><TD BGCOLOR="#1e3a5f" COLSPAN="2"><FONT COLOR="white"><B>order_items</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT">PK</TD><TD ALIGN="LEFT">id  bigint</TD></TR>
+      <TR><TD ALIGN="LEFT">FK</TD><TD ALIGN="LEFT">order_id  bigint</TD></TR>
+      <TR><TD ALIGN="LEFT">FK</TD><TD ALIGN="LEFT">product_id  bigint</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">name  text</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">variant  text</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">price  numeric</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">quantity  integer</TD></TR>
+    </TABLE>>];
+
+  order_status_history [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3">
+      <TR><TD BGCOLOR="#1e3a5f" COLSPAN="2"><FONT COLOR="white"><B>order_status_history</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT">PK</TD><TD ALIGN="LEFT">id  bigint</TD></TR>
+      <TR><TD ALIGN="LEFT">FK</TD><TD ALIGN="LEFT">order_id  bigint</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">status  text</TD></TR>
+    </TABLE>>];
+
+  cart_items [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3">
+      <TR><TD BGCOLOR="#1e3a5f" COLSPAN="2"><FONT COLOR="white"><B>cart_items</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT">PK</TD><TD ALIGN="LEFT">id  bigint</TD></TR>
+      <TR><TD ALIGN="LEFT">FK</TD><TD ALIGN="LEFT">customer_id  uuid</TD></TR>
+      <TR><TD ALIGN="LEFT">FK</TD><TD ALIGN="LEFT">product_id  bigint</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">quantity  integer</TD></TR>
+    </TABLE>>];
+
+  wishlist_items [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3">
+      <TR><TD BGCOLOR="#1e3a5f" COLSPAN="2"><FONT COLOR="white"><B>wishlist_items</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT">PK</TD><TD ALIGN="LEFT">id  bigint</TD></TR>
+      <TR><TD ALIGN="LEFT">FK</TD><TD ALIGN="LEFT">customer_id  uuid</TD></TR>
+      <TR><TD ALIGN="LEFT">FK</TD><TD ALIGN="LEFT">product_id  bigint</TD></TR>
+    </TABLE>>];
+
+  product_reviews [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3">
+      <TR><TD BGCOLOR="#1e3a5f" COLSPAN="2"><FONT COLOR="white"><B>product_reviews</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT">PK</TD><TD ALIGN="LEFT">id  bigint</TD></TR>
+      <TR><TD ALIGN="LEFT">FK</TD><TD ALIGN="LEFT">product_id  bigint</TD></TR>
+      <TR><TD ALIGN="LEFT">FK</TD><TD ALIGN="LEFT">customer_id  uuid</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">rating  integer</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">comment  text</TD></TR>
+    </TABLE>>];
+
+  product_option_groups [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3">
+      <TR><TD BGCOLOR="#1e3a5f" COLSPAN="2"><FONT COLOR="white"><B>product_option_groups</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT">PK</TD><TD ALIGN="LEFT">id  bigint</TD></TR>
+      <TR><TD ALIGN="LEFT">FK</TD><TD ALIGN="LEFT">product_id  bigint</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">name  text</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">sort_order  integer</TD></TR>
+    </TABLE>>];
+
+  product_option_values [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3">
+      <TR><TD BGCOLOR="#1e3a5f" COLSPAN="2"><FONT COLOR="white"><B>product_option_values</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT">PK</TD><TD ALIGN="LEFT">id  bigint</TD></TR>
+      <TR><TD ALIGN="LEFT">FK</TD><TD ALIGN="LEFT">group_id  bigint</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">value  text</TD></TR>
+    </TABLE>>];
+
+  pet_profiles [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3">
+      <TR><TD BGCOLOR="#1e3a5f" COLSPAN="2"><FONT COLOR="white"><B>pet_profiles</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT">PK</TD><TD ALIGN="LEFT">id  bigint</TD></TR>
+      <TR><TD ALIGN="LEFT">FK</TD><TD ALIGN="LEFT">customer_id  uuid</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">name  text</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">species  text</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">breed  text</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">age  numeric</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">weight  numeric</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">diet  text</TD></TR>
+    </TABLE>>];
+
+  loyalty_rewards [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3">
+      <TR><TD BGCOLOR="#1e3a5f" COLSPAN="2"><FONT COLOR="white"><B>loyalty_rewards</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT">PK</TD><TD ALIGN="LEFT">id  bigint</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">title  text</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">points_cost  integer</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">discount_amount  numeric</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">free_shipping  boolean</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">is_active  boolean</TD></TR>
+    </TABLE>>];
+
+  loyalty_transactions [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3">
+      <TR><TD BGCOLOR="#1e3a5f" COLSPAN="2"><FONT COLOR="white"><B>loyalty_transactions</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT">PK</TD><TD ALIGN="LEFT">id  bigint</TD></TR>
+      <TR><TD ALIGN="LEFT">FK</TD><TD ALIGN="LEFT">customer_id  uuid</TD></TR>
+      <TR><TD ALIGN="LEFT">FK</TD><TD ALIGN="LEFT">order_id  bigint</TD></TR>
+      <TR><TD ALIGN="LEFT">FK</TD><TD ALIGN="LEFT">reward_id  bigint</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">points  integer</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">type  text</TD></TR>
+    </TABLE>>];
+
+  store_applications [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3">
+      <TR><TD BGCOLOR="#1e3a5f" COLSPAN="2"><FONT COLOR="white"><B>store_applications</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT">PK</TD><TD ALIGN="LEFT">id  bigint</TD></TR>
+      <TR><TD ALIGN="LEFT">FK</TD><TD ALIGN="LEFT">reviewed_by  uuid</TD></TR>
+      <TR><TD ALIGN="LEFT">FK</TD><TD ALIGN="LEFT">created_store_id  bigint</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">contact_name  text</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">store_name  text</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">status  text</TD></TR>
+    </TABLE>>];
+
+  upcoming_stores [label=<
+    <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="3">
+      <TR><TD BGCOLOR="#64748b" COLSPAN="2"><FONT COLOR="white"><B>upcoming_stores</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT">PK</TD><TD ALIGN="LEFT">id  bigint</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">name  text</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">launch_date  date</TD></TR>
+      <TR><TD ALIGN="LEFT"></TD><TD ALIGN="LEFT">sort_order  integer</TD></TR>
+    </TABLE>>];
+
+  // ---------- relationships (numerical cardinality) ----------
+  categories -> products              [taillabel="1", headlabel="0..N"];
+  stores -> products                  [taillabel="1", headlabel="0..N"];
+  customers -> stores                 [taillabel="1", headlabel="0..1"];
+  customers -> pet_profiles           [taillabel="1", headlabel="0..N"];
+  customers -> orders                 [taillabel="1", headlabel="0..N"];
+  stores -> orders                    [taillabel="1", headlabel="0..N"];
+  orders -> order_items               [taillabel="1", headlabel="1..N"];
+  products -> order_items             [taillabel="0..1", headlabel="0..N"];
+  orders -> order_status_history      [taillabel="1", headlabel="0..N"];
+  customers -> cart_items             [taillabel="1", headlabel="0..N"];
+  products -> cart_items              [taillabel="1", headlabel="0..N"];
+  customers -> wishlist_items         [taillabel="1", headlabel="0..N"];
+  products -> wishlist_items          [taillabel="1", headlabel="0..N"];
+  products -> product_reviews         [taillabel="1", headlabel="0..N"];
+  customers -> product_reviews        [taillabel="1", headlabel="0..N"];
+  products -> product_option_groups   [taillabel="1", headlabel="0..N"];
+  product_option_groups -> product_option_values [taillabel="1", headlabel="0..N"];
+  customers -> loyalty_transactions   [taillabel="1", headlabel="0..N"];
+  orders -> loyalty_transactions      [taillabel="0..1", headlabel="0..N"];
+  loyalty_rewards -> loyalty_transactions [taillabel="0..1", headlabel="0..N"];
+  customers -> store_applications     [taillabel="0..1", headlabel="0..N"];
+  stores -> store_applications        [taillabel="0..1", headlabel="0..1"];
+}

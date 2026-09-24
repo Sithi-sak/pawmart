@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="740" height="622" viewBox="0 0 740 622">
+  <rect width="740" height="622" fill="#ffffff"/>
+  <text x="26" y="42" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="10" font-weight="bold" letter-spacing="1.6" fill="#8a8f99">BRAND</text>
+    <g transform="translate(26,58)">
+      <rect width="330" height="46" fill="#da6d1f" stroke="#e4e7ed" stroke-width="0"/>
+      <text x="16" y="28" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="13" font-weight="bold" fill="#ffffff">Accent</text>
+      <text x="314" y="28" text-anchor="end" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="12.5" fill="#ffffff">#DA6D1F</text>
+    </g>
+    <g transform="translate(26,104)">
+      <rect width="330" height="46" fill="#b8571a" stroke="#e4e7ed" stroke-width="0"/>
+      <text x="16" y="28" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="13" font-weight="bold" fill="#ffffff">Accent dark</text>
+      <text x="314" y="28" text-anchor="end" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="12.5" fill="#ffffff">#B8571A</text>
+    </g>
+    <g transform="translate(26,150)">
+      <rect width="330" height="46" fill="#1a1a1a" stroke="#e4e7ed" stroke-width="0"/>
+      <text x="16" y="28" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="13" font-weight="bold" fill="#ffffff">Ink</text>
+      <text x="314" y="28" text-anchor="end" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="12.5" fill="#ffffff">#1A1A1A</text>
+    </g><text x="26" y="212" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="10" font-weight="bold" letter-spacing="1.6" fill="#8a8f99">NEUTRALS</text>
+    <g transform="translate(26,228)">
+      <rect width="330" height="46" fill="#1d2129" stroke="#e4e7ed" stroke-width="0"/>
+      <text x="16" y="28" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="13" font-weight="bold" fill="#ffffff">Heading</text>
+      <text x="314" y="28" text-anchor="end" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="12.5" fill="#ffffff">#1D2129</text>
+    </g>
+    <g transform="translate(26,274)">
+      <rect width="330" height="46" fill="#303133" stroke="#e4e7ed" stroke-width="0"/>
+      <text x="16" y="28" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="13" font-weight="bold" fill="#ffffff">Text</text>
+      <text x="314" y="28" text-anchor="end" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="12.5" fill="#ffffff">#303133</text>
+    </g>
+    <g transform="translate(26,320)">
+      <rect width="330" height="46" fill="#9a9a9a" stroke="#e4e7ed" stroke-width="0"/>
+      <text x="16" y="28" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="13" font-weight="bold" fill="#ffffff">Muted</text>
+      <text x="314" y="28" text-anchor="end" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="12.5" fill="#ffffff">#9A9A9A</text>
+    </g>
+    <g transform="translate(26,366)">
+      <rect width="330" height="46" fill="#d8d8d8" stroke="#e4e7ed" stroke-width="0"/>
+      <text x="16" y="28" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="13" font-weight="bold" fill="#1a1a1a">Line</text>
+      <text x="314" y="28" text-anchor="end" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="12.5" fill="#1a1a1a">#D8D8D8</text>
+    </g>
+    <g transform="translate(26,412)">
+      <rect width="330" height="46" fill="#e4e7ed" stroke="#e4e7ed" stroke-width="0"/>
+      <text x="16" y="28" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="13" font-weight="bold" fill="#1a1a1a">Border</text>
+      <text x="314" y="28" text-anchor="end" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="12.5" fill="#1a1a1a">#E4E7ED</text>
+    </g>
+    <g transform="translate(26,458)">
+      <rect width="330" height="46" fill="#f7f8fa" stroke="#e4e7ed" stroke-width="0"/>
+      <text x="16" y="28" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="13" font-weight="bold" fill="#1a1a1a">Background soft</text>
+      <text x="314" y="28" text-anchor="end" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="12.5" fill="#1a1a1a">#F7F8FA</text>
+    </g>
+    <g transform="translate(26,504)">
+      <rect width="330" height="46" fill="#ffffff" stroke="#e4e7ed" stroke-width="1"/>
+      <text x="16" y="28" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="13" font-weight="bold" fill="#1a1a1a">Background</text>
+      <text x="314" y="28" text-anchor="end" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="12.5" fill="#1a1a1a">#FFFFFF</text>
+    </g><text x="384" y="42" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="10" font-weight="bold" letter-spacing="1.6" fill="#8a8f99">ACCENT TINTS</text>
+    <g transform="translate(384,58)">
+      <rect width="330" height="46" fill="#e59962" stroke="#e4e7ed" stroke-width="0"/>
+      <text x="16" y="28" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="13" font-weight="bold" fill="#ffffff">Light 3</text>
+      <text x="314" y="28" text-anchor="end" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="12.5" fill="#ffffff">#E59962</text>
+    </g>
+    <g transform="translate(384,104)">
+      <rect width="330" height="46" fill="#edb68f" stroke="#e4e7ed" stroke-width="0"/>
+      <text x="16" y="28" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="13" font-weight="bold" fill="#1a1a1a">Light 5</text>
+      <text x="314" y="28" text-anchor="end" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="12.5" fill="#1a1a1a">#EDB68F</text>
+    </g>
+    <g transform="translate(384,150)">
+      <rect width="330" height="46" fill="#f4d3bc" stroke="#e4e7ed" stroke-width="0"/>
+      <text x="16" y="28" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="13" font-weight="bold" fill="#1a1a1a">Light 7</text>
+      <text x="314" y="28" text-anchor="end" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="12.5" fill="#1a1a1a">#F4D3BC</text>
+    </g>
+    <g transform="translate(384,196)">
+      <rect width="330" height="46" fill="#f8e2d2" stroke="#e4e7ed" stroke-width="0"/>
+      <text x="16" y="28" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="13" font-weight="bold" fill="#1a1a1a">Light 8</text>
+      <text x="314" y="28" text-anchor="end" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="12.5" fill="#1a1a1a">#F8E2D2</text>
+    </g>
+    <g transform="translate(384,242)">
+      <rect width="330" height="46" fill="#fbf0e9" stroke="#e4e7ed" stroke-width="0"/>
+      <text x="16" y="28" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="13" font-weight="bold" fill="#1a1a1a">Light 9</text>
+      <text x="314" y="28" text-anchor="end" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="12.5" fill="#1a1a1a">#FBF0E9</text>
+    </g><text x="384" y="304" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="10" font-weight="bold" letter-spacing="1.6" fill="#8a8f99">STATUS</text>
+    <g transform="translate(384,320)">
+      <rect width="330" height="46" fill="#2f9e44" stroke="#e4e7ed" stroke-width="0"/>
+      <text x="16" y="28" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="13" font-weight="bold" fill="#ffffff">Success</text>
+      <text x="314" y="28" text-anchor="end" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="12.5" fill="#ffffff">#2F9E44</text>
+    </g>
+    <g transform="translate(384,366)">
+      <rect width="330" height="46" fill="#ebf7ee" stroke="#e4e7ed" stroke-width="0"/>
+      <text x="16" y="28" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="13" font-weight="bold" fill="#1a1a1a">Success tint</text>
+      <text x="314" y="28" text-anchor="end" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="12.5" fill="#1a1a1a">#EBF7EE</text>
+    </g>
+    <g transform="translate(384,412)">
+      <rect width="330" height="46" fill="#c0392b" stroke="#e4e7ed" stroke-width="0"/>
+      <text x="16" y="28" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="13" font-weight="bold" fill="#ffffff">Danger</text>
+      <text x="314" y="28" text-anchor="end" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="12.5" fill="#ffffff">#C0392B</text>
+    </g>
+    <g transform="translate(384,458)">
+      <rect width="330" height="46" fill="#fceceb" stroke="#e4e7ed" stroke-width="0"/>
+      <text x="16" y="28" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="13" font-weight="bold" fill="#1a1a1a">Danger tint</text>
+      <text x="314" y="28" text-anchor="end" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="12.5" fill="#1a1a1a">#FCECEB</text>
+    </g>
+    <g transform="translate(384,504)">
+      <rect width="330" height="46" fill="#2b6cb0" stroke="#e4e7ed" stroke-width="0"/>
+      <text x="16" y="28" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="13" font-weight="bold" fill="#ffffff">Info</text>
+      <text x="314" y="28" text-anchor="end" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="12.5" fill="#ffffff">#2B6CB0</text>
+    </g>
+    <g transform="translate(384,550)">
+      <rect width="330" height="46" fill="#eaf1fb" stroke="#e4e7ed" stroke-width="0"/>
+      <text x="16" y="28" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="13" font-weight="bold" fill="#1a1a1a">Info tint</text>
+      <text x="314" y="28" text-anchor="end" font-family="Liberation Sans, DejaVu Sans, sans-serif" font-size="12.5" fill="#1a1a1a">#EAF1FB</text>
+    </g>
+</svg>

@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import type { Stripe, StripeCardElement, StripeElements } from '@stripe/stripe-js'
 import {
   PhLock,
   PhCreditCard,
@@ -15,12 +14,12 @@ import {
 } from '@phosphor-icons/vue'
 import QRCode from 'qrcode'
 import { useCartStore } from '../stores/cart'
-import { useAuthStore } from '../stores/auth'
-import { createOrder, createPaymentIntent, type Order } from '../lib/orders'
+import { useAuthStore, type Customer } from '../stores/auth'
+import { createOrder, type Order } from '../lib/orders'
 import { POINTS_PER_DOLLAR } from '../lib/loyalty'
-import { stripePromise } from '../lib/stripe'
-import { cambodiaAddressOptions, describeVillage } from '../lib/cambodiaAddress'
+import { cambodiaAddressOptions, describeVillage, parseLocation } from '../lib/cambodiaAddress'
 import KhqrCard from '../components/KhqrCard.vue'
+import visaLogo from '../assets/visa.svg'
 
 type Step = 'shipping' | 'payment' | 'review'
 
@@ -86,6 +85,29 @@ watch(selectedCommuneCode, () => {
   shippingForm.villageCode = ''
 })
 
+// Pre-fill from the saved profile without overwriting anything the
+// customer has already typed. District is set a tick after province so the
+// province watcher above doesn't immediately clear it again.
+async function prefillFromProfile(customer: Customer) {
+  if (!shippingForm.fullName) shippingForm.fullName = customer.full_name ?? ''
+  if (!shippingForm.phone) shippingForm.phone = customer.phone ?? ''
+  if (selectedProvinceCode.value) return
+
+  const { provinceCode, districtCode } = parseLocation(customer.location)
+  if (!provinceCode) return
+  selectedProvinceCode.value = provinceCode
+  await nextTick()
+  selectedDistrictCode.value = districtCode
+}
+
+watch(
+  () => auth.customer,
+  (customer) => {
+    if (customer) void prefillFromProfile(customer)
+  },
+  { immediate: true },
+)
+
 watch(
   () => shippingForm.villageCode,
   (villageCode) => {
@@ -94,9 +116,13 @@ watch(
   },
 )
 
+// Must match SHIPPING_COSTS in backend/routers/orders.py, which is what
+// actually gets charged.
+const EXPRESS_SHIPPING_COST = 1.5
+
 const shippingCost = computed(() => {
   if (cart.appliedRedemption?.reward.free_shipping) return 0
-  return shippingForm.method === 'express' ? 25.0 : 0
+  return shippingForm.method === 'express' ? EXPRESS_SHIPPING_COST : 0
 })
 
 const estimatedTax = computed(() => (cart.total + shippingCost.value) * 0.0875)
@@ -121,57 +147,73 @@ const paymentMethod = ref<PaymentMethod>('visa')
 
 interface PaymentForm {
   cardholderName: string
+  cardNumber: string
+  expiry: string
+  cvv: string
   billingSameAsShipping: boolean
 }
 
 const paymentForm = reactive<PaymentForm>({
   cardholderName: '',
+  cardNumber: '',
+  expiry: '',
+  cvv: '',
   billingSameAsShipping: true,
 })
 
-const cardElementRef = ref<HTMLDivElement | null>(null)
+// Simulated card processing: no payment provider is wired up, so the card is
+// only validated client-side (never sent to the backend) and the order is
+// marked paid at placement, same as KHQR. This test number always declines
+// so the failure path can still be demoed.
+const DECLINED_TEST_CARD = '4000000000000002'
+
 const cardError = ref<string | null>(null)
-const cardComplete = ref(false)
-let stripe: Stripe | null = null
-let elements: StripeElements | null = null
-let cardElement: StripeCardElement | null = null
+const cardDigits = computed(() => paymentForm.cardNumber.replace(/\D/g, ''))
+const cardLast4 = computed(() => cardDigits.value.slice(-4))
+// Visa numbers start with 4 — swap the generic card icon for the Visa logo
+// as soon as that first digit is typed.
+const isVisaDetected = computed(() => cardDigits.value.startsWith('4'))
 
-async function mountCardElement() {
-  if (!stripe) {
-    stripe = await stripePromise
-  }
-  if (!stripe || !cardElementRef.value) return
-
-  if (!elements) {
-    elements = stripe.elements()
-  }
-  if (!cardElement) {
-    cardElement = elements.create('card', {
-      hidePostalCode: true,
-      style: {
-        base: {
-          color: '#303133',
-          '::placeholder': { color: '#a8abb2' },
-        },
-      },
-    })
-    cardElement.on('change', (event) => {
-      cardError.value = event.error?.message ?? null
-      cardComplete.value = event.complete
-    })
-  } else {
-    cardElement.unmount()
-  }
-  cardElement.mount(cardElementRef.value)
+function onCardNumberInput() {
+  const digits = cardDigits.value.slice(0, 16)
+  paymentForm.cardNumber = digits.replace(/(\d{4})(?=\d)/g, '$1 ')
+  cardError.value = null
 }
 
-watch(
-  () => currentStep.value === 'payment' && paymentMethod.value === 'visa',
-  (shouldMount) => {
-    if (shouldMount) mountCardElement()
-  },
-  { immediate: true, flush: 'post' },
-)
+function onExpiryInput() {
+  const digits = paymentForm.expiry.replace(/\D/g, '').slice(0, 4)
+  paymentForm.expiry = digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits
+  cardError.value = null
+}
+
+function onCvvInput() {
+  paymentForm.cvv = paymentForm.cvv.replace(/\D/g, '').slice(0, 3)
+  cardError.value = null
+}
+
+// Random Visa-looking number shown as the card field's placeholder.
+function randomVisaNumber() {
+  const digits = '4' + Array.from({ length: 15 }, () => Math.floor(Math.random() * 10)).join('')
+  return digits.replace(/(\d{4})(?=\d)/g, '$1 ')
+}
+
+const cardNumberPlaceholder = randomVisaNumber()
+
+function validateCard(): string | null {
+  const digits = cardDigits.value
+  if (digits.length !== 16) return 'Enter a valid card number'
+  if (!digits.startsWith('4')) return 'Only Visa cards are accepted'
+
+  const match = /^(\d{2})\/(\d{2})$/.exec(paymentForm.expiry)
+  const month = match ? Number(match[1]) : 0
+  if (!match || month < 1 || month > 12) return 'Enter a valid expiry date (MM/YY)'
+  const now = new Date()
+  const expiresAt = new Date(2000 + Number(match[2]), month) // first day after expiry month
+  if (expiresAt <= now) return 'This card has expired'
+
+  if (paymentForm.cvv.length !== 3) return 'Enter the 3-digit CVV'
+  return null
+}
 
 function formatPrice(value: number) {
   return `$${value.toFixed(2)}`
@@ -187,9 +229,9 @@ function goToPayment() {
 }
 
 function goToReview() {
-  if (paymentMethod.value === 'visa' && !cardComplete.value) {
-    cardError.value = cardError.value ?? 'Enter your card details to continue'
-    return
+  if (paymentMethod.value === 'visa') {
+    cardError.value = validateCard()
+    if (cardError.value) return
   }
   currentStep.value = 'review'
   window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -237,31 +279,13 @@ async function placeOrder() {
       quantity: item.quantity,
     }))
 
-    let paymentIntentId: string | null = null
-
     if (paymentMethod.value === 'visa') {
-      if (!stripe || !cardElement) {
-        throw new Error('Payment form is not ready yet — please try again')
-      }
-      const { client_secret: clientSecret } = await createPaymentIntent(
-        {
-          items: cartItems,
-          shipping_method: shippingForm.method,
-          redemption_id: cart.appliedRedemption?.id ?? null,
-        },
-        auth.session.access_token,
-      )
-      const { paymentIntent, error } = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: {
-          card: cardElement,
-          billing_details: { name: paymentForm.cardholderName },
-        },
-      })
-      if (error || paymentIntent?.status !== 'succeeded') {
-        ElMessage.error(error?.message ?? 'Card was declined')
+      // Simulated authorization delay before the "charge" goes through.
+      await new Promise((resolve) => setTimeout(resolve, 1200))
+      if (cardDigits.value === DECLINED_TEST_CARD) {
+        ElMessage.error('Your card was declined')
         return
       }
-      paymentIntentId = paymentIntent.id
     }
 
     const order = await createOrder(
@@ -277,7 +301,6 @@ async function placeOrder() {
         },
         payment_method: paymentMethod.value,
         redemption_id: cart.appliedRedemption?.id ?? null,
-        payment_intent_id: paymentIntentId,
       },
       auth.session.access_token,
     )
@@ -441,7 +464,7 @@ const shippingMethodLabel = computed(() =>
                   <span class="method-name">J&amp;T Express / Virak Buntham</span>
                   <span class="method-detail">1-3 Business Days</span>
                 </span>
-                <span class="method-price complimentary">Complimentary</span>
+                <span class="method-price complimentary">Free</span>
               </label>
 
               <label
@@ -454,7 +477,7 @@ const shippingMethodLabel = computed(() =>
                   <span class="method-name">Grab Express</span>
                   <span class="method-detail">Same-Day Delivery (Phnom Penh area)</span>
                 </span>
-                <span class="method-price">$5.00</span>
+                <span class="method-price">{{ formatPrice(EXPRESS_SHIPPING_COST) }}</span>
               </label>
             </div>
 
@@ -517,10 +540,56 @@ const shippingMethodLabel = computed(() =>
               </div>
 
               <div class="form-field">
-                <label for="cardElement">Card Details</label>
-                <div id="cardElement" ref="cardElementRef" class="card-element"></div>
-                <p v-if="cardError" class="card-error">{{ cardError }}</p>
+                <label for="cardNumber">Card Number</label>
+                <div class="input-with-icon">
+                  <input
+                    id="cardNumber"
+                    v-model="paymentForm.cardNumber"
+                    type="text"
+                    inputmode="numeric"
+                    autocomplete="cc-number"
+                    :placeholder="cardNumberPlaceholder"
+                    required
+                    @input="onCardNumberInput"
+                  />
+                  <span class="card-brand">
+                    <Transition name="card-brand" mode="out-in">
+                      <img v-if="isVisaDetected" key="visa" :src="visaLogo" alt="Visa" />
+                      <PhCreditCard v-else key="generic" class="card-brand-generic" :size="18" />
+                    </Transition>
+                  </span>
+                </div>
               </div>
+
+              <div class="form-row">
+                <div class="form-field">
+                  <label for="cardExpiry">Expiry Date</label>
+                  <input
+                    id="cardExpiry"
+                    v-model="paymentForm.expiry"
+                    type="text"
+                    inputmode="numeric"
+                    autocomplete="cc-exp"
+                    placeholder="MM/YY"
+                    required
+                    @input="onExpiryInput"
+                  />
+                </div>
+                <div class="form-field">
+                  <label for="cardCvv">CVV</label>
+                  <input
+                    id="cardCvv"
+                    v-model="paymentForm.cvv"
+                    type="password"
+                    inputmode="numeric"
+                    autocomplete="cc-csc"
+                    placeholder="•••"
+                    required
+                    @input="onCvvInput"
+                  />
+                </div>
+              </div>
+              <p v-if="cardError" class="card-error">{{ cardError }}</p>
 
               <label class="billing-checkbox">
                 <input v-model="paymentForm.billingSameAsShipping" type="checkbox" />
@@ -566,7 +635,7 @@ const shippingMethodLabel = computed(() =>
             <h2 class="review-section-title">Delivery Method</h2>
             <div class="review-row">
               <span>{{ shippingMethodLabel }}</span>
-              <span>{{ shippingCost === 0 ? 'Complimentary' : formatPrice(shippingCost) }}</span>
+              <span>{{ shippingCost === 0 ? 'Free' : formatPrice(shippingCost) }}</span>
             </div>
           </div>
 
@@ -576,14 +645,19 @@ const shippingMethodLabel = computed(() =>
               <button type="button" class="edit-link" @click="editStep('payment')">Edit</button>
             </div>
             <div class="payment-summary-card">
-              <PhCreditCard v-if="paymentMethod === 'visa'" :size="20" />
+              <img
+                v-if="paymentMethod === 'visa'"
+                :src="visaLogo"
+                alt="Visa"
+                class="payment-summary-logo"
+              />
               <PhArrowSquareOut v-else-if="paymentMethod === 'aba_payway'" :size="20" />
               <PhQrCode v-else :size="20" />
               <div>
                 <p class="payment-summary-method">{{ paymentMethodLabel }}</p>
                 <p class="payment-summary-detail">
                   <template v-if="paymentMethod === 'visa'"
-                    >Card charged on order placement</template
+                    >Visa ending in {{ cardLast4 }}</template
                   >
                   <template v-else-if="paymentMethod === 'aba_payway'"
                     >Redirect at checkout</template
@@ -656,7 +730,7 @@ const shippingMethodLabel = computed(() =>
         <div class="summary-row">
           <span>Shipping</span>
           <span :class="{ complimentary: shippingCost === 0 }">
-            {{ shippingCost === 0 ? 'Complimentary' : formatPrice(shippingCost) }}
+            {{ shippingCost === 0 ? 'Free' : formatPrice(shippingCost) }}
           </span>
         </div>
         <div class="summary-row">
@@ -1097,6 +1171,39 @@ const shippingMethodLabel = computed(() =>
   padding-right: 2.75rem;
 }
 
+.card-brand {
+  position: absolute;
+  right: 0.9rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+
+.card-brand img {
+  height: 1.5rem;
+  width: auto;
+}
+
+.card-brand-generic {
+  color: var(--color-text);
+  opacity: 0.5;
+}
+
+.card-brand-enter-active,
+.card-brand-leave-active {
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.card-brand-enter-from,
+.card-brand-leave-to {
+  opacity: 0;
+  transform: scale(0.6);
+}
+
 .input-icon {
   position: absolute;
   right: 0.9rem;
@@ -1105,14 +1212,6 @@ const shippingMethodLabel = computed(() =>
   color: var(--color-text);
   opacity: 0.5;
   pointer-events: none;
-}
-
-.card-element {
-  height: 2.75rem;
-  padding: 0.85rem 0.9rem;
-  background: var(--color-background);
-  border: 1px solid var(--color-border);
-  color: var(--color-text);
 }
 
 .card-error {
@@ -1255,6 +1354,11 @@ const shippingMethodLabel = computed(() =>
   background: var(--color-background-soft);
   border: 1px solid var(--color-border);
   color: var(--color-text);
+}
+
+.payment-summary-logo {
+  height: 1.25rem;
+  width: auto;
 }
 
 .payment-summary-method {

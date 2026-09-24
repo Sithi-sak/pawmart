@@ -11,7 +11,10 @@ export interface Customer {
   location: string | null
   role: 'customer' | 'store_owner' | 'admin'
   loyalty_points_balance: number
+  created_at: string
 }
+
+export type ProfileUpdate = Pick<Customer, 'full_name' | 'phone' | 'location'>
 
 // Email/password customer auth is Gmail-only — keeps the admin's
 // non-Gmail address from ever being a valid input on the customer forms,
@@ -183,6 +186,18 @@ export const useAuthStore = defineStore('auth', () => {
     if (error) throw error
   }
 
+  async function updateProfile(changes: ProfileUpdate) {
+    if (!user.value) throw new Error('Not signed in.')
+    const { data, error } = await supabase
+      .from('customers')
+      .update(changes)
+      .eq('id', user.value.id)
+      .select()
+      .single()
+    if (error) throw error
+    customer.value = data as Customer
+  }
+
   async function signOut() {
     const { error } = await supabase.auth.signOut()
     if (error) throw error
@@ -214,6 +229,7 @@ export const useAuthStore = defineStore('auth', () => {
     signUpWithPassword,
     signInWithGoogle,
     signOut,
+    updateProfile,
     sendPasswordReset,
     updatePassword,
   }

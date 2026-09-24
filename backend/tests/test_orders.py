@@ -171,10 +171,10 @@ class TestCartValidation:
 class TestTotals:
     def test_express_shipping_and_tax_are_included_in_the_total(self, supabase):
         pricing = _price_cart(supabase, _items((1, 1)), "express", "cust-1", None)
-        assert pricing["shipping_cost"] == 25.0
-        expected_tax = round((20.0 + 25.0) * 0.0875, 2)
+        assert pricing["shipping_cost"] == 1.5
+        expected_tax = round((20.0 + 1.5) * 0.0875, 2)
         assert pricing["tax"] == expected_tax
-        assert pricing["total"] == round(20.0 + 25.0 + expected_tax, 2)
+        assert pricing["total"] == round(20.0 + 1.5 + expected_tax, 2)
 
     def test_discount_is_applied_before_tax(self, supabase):
         pricing = _price_cart(supabase, _items((1, 1)), "standard", "cust-1", 100)

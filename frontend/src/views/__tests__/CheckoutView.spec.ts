@@ -5,35 +5,14 @@ import { Fragment, defineComponent, h, type VNode } from 'vue'
 import type { CartItem } from '@/stores/cart'
 
 const createOrderMock = vi.fn()
-const createPaymentIntentMock = vi.fn()
 vi.mock('@/lib/orders', () => ({
   createOrder: (...args: unknown[]) => createOrderMock(...args),
-  createPaymentIntent: (...args: unknown[]) => createPaymentIntentMock(...args),
 }))
 
 const elMessageErrorMock = vi.fn()
 vi.mock('element-plus', () => ({
   ElMessage: { error: (...args: unknown[]) => elMessageErrorMock(...args) },
 }))
-
-// Fake Stripe.js: confirmCardPayment is the only method the component's
-// success/decline branching actually depends on; elements()/create() just
-// need to hand back something mountable with an `on('change', ...)` hook.
-const confirmCardPaymentMock = vi.fn()
-let cardChangeHandler:
-  ((event: { complete: boolean; error?: { message: string } }) => void) | undefined
-const fakeCardElement = {
-  on: vi.fn((event: string, cb: typeof cardChangeHandler) => {
-    if (event === 'change') cardChangeHandler = cb
-  }),
-  mount: vi.fn(),
-  unmount: vi.fn(),
-}
-const fakeStripe = {
-  elements: vi.fn(() => ({ create: vi.fn(() => fakeCardElement) })),
-  confirmCardPayment: (...args: unknown[]) => confirmCardPaymentMock(...args),
-}
-vi.mock('@/lib/stripe', () => ({ stripePromise: Promise.resolve(fakeStripe) }))
 
 let mockCartItems: CartItem[] = []
 let mockAppliedRedemption: {
@@ -181,10 +160,26 @@ async function selectPaymentMethod(wrapper: ReturnType<typeof mountCheckout>, la
   await button.trigger('click')
 }
 
-async function completeVisaCardEntry(wrapper: ReturnType<typeof mountCheckout>) {
-  await flushPromises() // let stripePromise resolve and mount the card element
-  cardChangeHandler?.({ complete: true })
+async function completeVisaCardEntry(
+  wrapper: ReturnType<typeof mountCheckout>,
+  cardNumber = '4242424242424242',
+) {
   await wrapper.find('#cardholderName').setValue('Jane Doe')
+  await wrapper.find('#cardNumber').setValue(cardNumber)
+  await wrapper.find('#cardExpiry').setValue('1299')
+  await wrapper.find('#cardCvv').setValue('123')
+}
+
+// Visa placement waits on a simulated authorization delay (setTimeout).
+async function placeVisaOrder(wrapper: ReturnType<typeof mountCheckout>) {
+  vi.useFakeTimers()
+  try {
+    await wrapper.find('.place-order-btn').trigger('click')
+    await vi.runAllTimersAsync()
+  } finally {
+    vi.useRealTimers()
+  }
+  await flushPromises()
 }
 
 async function goToReview(wrapper: ReturnType<typeof mountCheckout>) {
@@ -196,19 +191,11 @@ beforeEach(() => {
   setActivePinia(createPinia())
   mockCartItems = [makeCartItem()]
   mockAppliedRedemption = null
-  cardChangeHandler = undefined
 })
 
 describe('CheckoutView', () => {
   describe('Visa payment', () => {
-    it('charges the card and creates the order on success', async () => {
-      createPaymentIntentMock.mockResolvedValue({
-        client_secret: 'cs_1',
-        payment_intent_id: 'pi_1',
-      })
-      confirmCardPaymentMock.mockResolvedValue({
-        paymentIntent: { id: 'pi_1', status: 'succeeded' },
-      })
+    it('creates the order on a valid card', async () => {
       createOrderMock.mockResolvedValue({ id: 42, total: 21.75 })
 
       const wrapper = mountCheckout()
@@ -216,21 +203,13 @@ describe('CheckoutView', () => {
       await completeVisaCardEntry(wrapper)
       await goToReview(wrapper)
 
-      await wrapper.find('.place-order-btn').trigger('click')
-      await flushPromises()
+      await placeVisaOrder(wrapper)
 
-      expect(createPaymentIntentMock).toHaveBeenCalledWith(
-        expect.objectContaining({ items: [{ product_id: 1, quantity: 1 }] }),
-        'tok-1',
-      )
-      expect(confirmCardPaymentMock).toHaveBeenCalledWith(
-        'cs_1',
-        expect.objectContaining({
-          payment_method: expect.objectContaining({ card: fakeCardElement }),
-        }),
-      )
       expect(createOrderMock).toHaveBeenCalledWith(
-        expect.objectContaining({ payment_method: 'visa', payment_intent_id: 'pi_1' }),
+        expect.objectContaining({
+          items: [{ product_id: 1, quantity: 1 }],
+          payment_method: 'visa',
+        }),
         'tok-1',
       )
       expect(cartClearMock).toHaveBeenCalled()
@@ -241,21 +220,14 @@ describe('CheckoutView', () => {
     })
 
     it('shows the decline error and never creates an order when the card is declined', async () => {
-      createPaymentIntentMock.mockResolvedValue({
-        client_secret: 'cs_1',
-        payment_intent_id: 'pi_1',
-      })
-      confirmCardPaymentMock.mockResolvedValue({ error: { message: 'Your card was declined.' } })
-
       const wrapper = mountCheckout()
       await fillShippingAndContinue(wrapper)
-      await completeVisaCardEntry(wrapper)
+      await completeVisaCardEntry(wrapper, '4000000000000002')
       await goToReview(wrapper)
 
-      await wrapper.find('.place-order-btn').trigger('click')
-      await flushPromises()
+      await placeVisaOrder(wrapper)
 
-      expect(elMessageErrorMock).toHaveBeenCalledWith('Your card was declined.')
+      expect(elMessageErrorMock).toHaveBeenCalledWith('Your card was declined')
       expect(createOrderMock).not.toHaveBeenCalled()
       expect(cartClearMock).not.toHaveBeenCalled()
       expect(routerPushMock).not.toHaveBeenCalled()
@@ -266,11 +238,21 @@ describe('CheckoutView', () => {
     it('blocks moving to review until the card details are complete', async () => {
       const wrapper = mountCheckout()
       await fillShippingAndContinue(wrapper)
-      await flushPromises()
 
       await goToReview(wrapper)
 
       expect(wrapper.find('.card-error').exists()).toBe(true)
+      expect(wrapper.find('.payment-step').isVisible()).toBe(true)
+    })
+
+    it('rejects a card number that is too short', async () => {
+      const wrapper = mountCheckout()
+      await fillShippingAndContinue(wrapper)
+      await completeVisaCardEntry(wrapper, '424242424242')
+
+      await goToReview(wrapper)
+
+      expect(wrapper.find('.card-error').text()).toBe('Enter a valid card number')
       expect(wrapper.find('.payment-step').isVisible()).toBe(true)
     })
   })
@@ -288,7 +270,7 @@ describe('CheckoutView', () => {
       await flushPromises()
 
       expect(createOrderMock).toHaveBeenCalledWith(
-        expect.objectContaining({ payment_method: 'khqr', payment_intent_id: null }),
+        expect.objectContaining({ payment_method: 'khqr' }),
         'tok-1',
       )
       expect(routerPushMock).not.toHaveBeenCalled()

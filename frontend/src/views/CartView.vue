@@ -165,7 +165,7 @@ function proceedToCheckout() {
         </div>
         <div class="summary-row">
           <span>Shipping</span>
-          <span class="complimentary">Complimentary</span>
+          <span class="complimentary">Free</span>
         </div>
         <div v-if="cart.appliedRedemption" class="summary-row discount-row">
           <span>{{ cart.appliedRedemption.reward.title }}</span>

@@ -40,6 +40,10 @@ vi.mock('@/stores/auth', () => ({
   }),
 }))
 
+vi.mock('@/stores/wishlist', () => ({
+  useWishlistStore: () => ({ loading: false, itemCount: 0 }),
+}))
+
 const elMessageSuccessMock = vi.fn()
 const elMessageErrorMock = vi.fn()
 vi.mock('element-plus', () => ({
@@ -83,8 +87,10 @@ beforeEach(() => {
     id: 'cust-1',
     full_name: 'Test Customer',
     email: 'test@gmail.com',
+    phone: null,
     location: '',
     loyalty_points_balance: 500,
+    created_at: '2026-08-01T00:00:00Z',
   })
   authSession = { access_token: 'token-abc' }
   fetchPetsMock.mockResolvedValue([])

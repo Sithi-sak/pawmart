@@ -2,11 +2,9 @@ import random
 import string
 from typing import Literal
 
-import stripe
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
-from ..core.config import get_settings
 from ..core.deps import (
     CurrentCustomer,
     get_current_customer,
@@ -17,7 +15,7 @@ from .loyalty import award_points_for_order
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
 
-SHIPPING_COSTS = {"standard": 0.0, "express": 25.0}
+SHIPPING_COSTS = {"standard": 0.0, "express": 1.5}
 TAX_RATE = 0.0875
 # Orders only ever move forward through these statuses (task 3.3): there is
 # no courier integration, so each step is a real physical event the shop
@@ -46,16 +44,6 @@ class OrderCreateIn(BaseModel):
     # id of an unconsumed loyalty_transactions "redeem" row (see
     # AccountView's reward redemption) the customer picked to discount this
     # order with.
-    redemption_id: int | None = None
-    # Only present (and required) for payment_method == "visa" — the
-    # PaymentIntent created by POST /payment-intent, confirmed client-side
-    # with Stripe Elements before "Place Order" ever calls this endpoint.
-    payment_intent_id: str | None = None
-
-
-class PaymentIntentIn(BaseModel):
-    items: list[OrderItemIn]
-    shipping_method: Literal["standard", "express"]
     redemption_id: int | None = None
 
 
@@ -230,26 +218,6 @@ def _load_order(supabase, order_id: int) -> dict:
     return {**order, "items": _attach_item_images(supabase, items), "status_history": history}
 
 
-@router.post("/payment-intent")
-def create_payment_intent(
-    payload: PaymentIntentIn,
-    customer: CurrentCustomer = Depends(get_current_customer),  # noqa: B008
-) -> dict:
-    supabase = get_supabase()
-    pricing = _price_cart(
-        supabase, payload.items, payload.shipping_method, customer.id, payload.redemption_id
-    )
-
-    stripe.api_key = get_settings().stripe_secret_key
-    intent = stripe.PaymentIntent.create(
-        amount=round(pricing["total"] * 100),
-        currency="usd",
-        payment_method_types=["card"],
-        metadata={"customer_id": customer.id},
-    )
-    return {"client_secret": intent.client_secret, "payment_intent_id": intent.id}
-
-
 @router.post("", status_code=status.HTTP_201_CREATED)
 def create_order(
     payload: OrderCreateIn,
@@ -260,37 +228,10 @@ def create_order(
         supabase, payload.items, payload.shipping.method, customer.id, payload.redemption_id
     )
 
-    if payload.payment_method == "visa":
-        if not payload.payment_intent_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="Missing payment_intent_id"
-            )
-        stripe.api_key = get_settings().stripe_secret_key
-        try:
-            intent = stripe.PaymentIntent.retrieve(payload.payment_intent_id)
-        except stripe.error.StripeError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid payment intent"
-            ) from exc
-
-        # StripeObject (stripe-python 15+) has no .get() -- only __getitem__/__contains__.
-        intent_customer_id = intent.metadata["customer_id"] if "customer_id" in intent.metadata else None  # noqa: SIM401
-        if intent_customer_id != customer.id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your payment")
-        if intent.status != "succeeded":
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="Payment has not succeeded"
-            )
-        if intent.amount != round(pricing["total"] * 100):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="Payment amount does not match order total"
-            )
-        payment_status = "paid"
-    else:
-        # aba_payway and khqr have no real payment-gateway callback in this
-        # MVP, so the order is marked paid at placement time same as a
-        # verified Visa charge — see 4.1 checkpoint notes.
-        payment_status = "paid"
+    # No payment-gateway callback exists for any method in this MVP (Visa is
+    # a simulated card form, KHQR is scan-to-confirm UX only), so every order
+    # is marked paid at placement time — see 4.1 checkpoint notes.
+    payment_status = "paid"
 
     order_row = {
         "order_number": _generate_order_number(),
@@ -305,21 +246,13 @@ def create_order(
         "shipping_cost": pricing["shipping_cost"],
         "payment_method": payload.payment_method,
         "payment_status": payment_status,
-        "stripe_payment_intent_id": payload.payment_intent_id,
         "subtotal": pricing["subtotal"],
         "discount": pricing["discount"],
         "tax": pricing["tax"],
         "total": pricing["total"],
     }
 
-    try:
-        order = supabase.table("orders").insert(order_row).execute().data[0]
-    except Exception as exc:
-        # Unique constraint on stripe_payment_intent_id -- this PaymentIntent
-        # already paid for a different order (double-submit / replay).
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="This payment has already been used"
-        ) from exc
+    order = supabase.table("orders").insert(order_row).execute().data[0]
 
     order_items_rows = [{**li, "order_id": order["id"]} for li in pricing["line_items"]]
     inserted_items = supabase.table("order_items").insert(order_items_rows).execute().data

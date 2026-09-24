@@ -46,3 +46,25 @@ export function describeVillage(villageCode: string): string | null {
   if (!location) return null
   return `${location.village}, ${location.commune}, ${location.district}, ${location.province}`
 }
+
+// customers.location is free text; the profile stores it as
+// "District, Province" so it reads naturally and can be matched back to
+// codes (e.g. to pre-select checkout's province/district pickers).
+export function formatLocation(provinceCode: string, districtCode: string): string {
+  const province = cambodiaAddressOptions.find((p) => p.value === provinceCode)
+  if (!province) return ''
+  const district = province.children?.find((d) => d.value === districtCode)
+  return district ? `${district.label}, ${province.label}` : province.label
+}
+
+export function parseLocation(location: string | null): {
+  provinceCode: string
+  districtCode: string
+} {
+  const parts = (location ?? '').split(',').map((part) => part.trim())
+  const provinceLabel = parts[parts.length - 1]
+  const districtLabel = parts.length > 1 ? parts[0] : ''
+  const province = cambodiaAddressOptions.find((p) => p.label === provinceLabel)
+  const district = province?.children?.find((d) => d.label === districtLabel)
+  return { provinceCode: province?.value ?? '', districtCode: district?.value ?? '' }
+}

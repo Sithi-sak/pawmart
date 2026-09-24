@@ -502,7 +502,7 @@ function toggleWishlist() {
           <ul class="perks">
             <li>
               <PhTruck :size="18" />
-              <span>Complimentary Express Shipping</span>
+              <span>Free Standard Shipping</span>
             </li>
             <li>
               <PhShieldCheck :size="18" />
@@ -554,9 +554,9 @@ function toggleWishlist() {
             >
               <div v-if="openPanel === 'shipping'" class="accordion-content">
                 <p class="accordion-body">
-                  Complimentary express shipping on all orders within Cambodia, arriving in 2–4
-                  business days. Returns are accepted within 30 days of delivery for unused items in
-                  their original packaging.
+                  Free standard shipping on all orders within Cambodia, arriving in 2–4 business
+                  days. Returns are accepted within 30 days of delivery for unused items in their
+                  original packaging.
                 </p>
               </div>
             </Transition>

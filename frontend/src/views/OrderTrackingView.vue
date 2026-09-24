@@ -319,9 +319,7 @@ onMounted(async () => {
           </div>
           <div class="totals-row">
             <span>Shipping</span>
-            <span>{{
-              order.shipping_cost ? formatPrice(order.shipping_cost) : 'Complimentary'
-            }}</span>
+            <span>{{ order.shipping_cost ? formatPrice(order.shipping_cost) : 'Free' }}</span>
           </div>
           <div v-if="order.discount" class="totals-row">
             <span>Discount</span>

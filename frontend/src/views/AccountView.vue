@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import {
   PhEnvelopeSimple,
   PhMapPin,
+  PhPhone,
+  PhCalendarBlank,
+  PhInfo,
   PhCaretRight,
   PhPlus,
   PhClockCounterClockwise,
@@ -13,6 +16,8 @@ import {
 } from '@phosphor-icons/vue'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
+import { useWishlistStore } from '@/stores/wishlist'
+import { cambodiaAddressOptions, formatLocation, parseLocation } from '@/lib/cambodiaAddress'
 import { fetchPets, createPet, type Pet } from '@/lib/pets'
 import { fetchRewards, redeemReward, type Reward } from '@/lib/loyalty'
 import { fetchOrders, type OrderSummary, type OrderStatus } from '@/lib/orders'
@@ -20,54 +25,83 @@ import { fetchOrders, type OrderSummary, type OrderStatus } from '@/lib/orders'
 const auth = useAuthStore()
 const router = useRouter()
 
-interface Profile {
-  name: string
-  email: string
-  location: string
-}
+const wishlist = useWishlistStore()
 
-const profile = reactive<Profile>({
-  name: '',
-  email: '',
-  location: '',
+const profileName = computed(() => auth.customer?.full_name?.trim() || 'PawMart Member')
+const profileEmail = computed(() => auth.customer?.email ?? auth.user?.email ?? '')
+const profilePhone = computed(() => auth.customer?.phone?.trim() ?? '')
+const profileLocation = computed(() => auth.customer?.location?.trim() ?? '')
+
+const initials = computed(() => {
+  const words = profileName.value.split(/\s+/).filter(Boolean)
+  const first = words[0] ?? ''
+  const last = words.length > 1 ? (words[words.length - 1] ?? '') : ''
+  return (last ? first.charAt(0) + last.charAt(0) : first.slice(0, 2)).toUpperCase()
 })
 
-const isEditing = ref(false)
+const memberSince = computed(() => {
+  const createdAt = auth.customer?.created_at
+  if (!createdAt) return ''
+  return new Date(createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+})
 
-// auth.customer can populate asynchronously after this component has
-// already mounted (e.g. right after an OAuth redirect) — snapshotting it
-// once at setup time meant the name sometimes rendered blank. Keep it live
-// instead, except while the user has unsaved edits open.
-watch(
-  () => auth.customer,
-  (customer) => {
-    if (isEditing.value) return
-    profile.name = customer?.full_name ?? ''
-    profile.email = customer?.email ?? auth.user?.email ?? ''
-    profile.location = customer?.location ?? ''
-  },
-  { immediate: true },
-)
+const isProfileIncomplete = computed(() => !profilePhone.value || !profileLocation.value)
 
 async function handleSignOut() {
   await auth.signOut()
   router.push('/login')
 }
 
-const editForm = reactive<Profile>({ ...profile })
+const isEditing = ref(false)
+const isSavingProfile = ref(false)
+
+const editForm = reactive({
+  name: '',
+  phone: '',
+  provinceCode: '',
+  districtCode: '',
+})
+
+const editDistrictOptions = computed(
+  () => cambodiaAddressOptions.find((p) => p.value === editForm.provinceCode)?.children ?? [],
+)
+
+function handleProvinceChange() {
+  editForm.districtCode = ''
+}
 
 function startEdit() {
-  Object.assign(editForm, profile)
+  const { provinceCode, districtCode } = parseLocation(profileLocation.value)
+  Object.assign(editForm, {
+    name: auth.customer?.full_name ?? '',
+    phone: profilePhone.value,
+    provinceCode,
+    districtCode,
+  })
   isEditing.value = true
 }
 
-function saveEdit() {
-  Object.assign(profile, editForm)
-  isEditing.value = false
-}
+async function saveEdit() {
+  const name = editForm.name.trim()
+  if (!name) {
+    ElMessage.error('Please enter your name')
+    return
+  }
 
-function cancelEdit() {
-  isEditing.value = false
+  isSavingProfile.value = true
+  try {
+    await auth.updateProfile({
+      full_name: name,
+      phone: editForm.phone.trim() || null,
+      location: formatLocation(editForm.provinceCode, editForm.districtCode) || null,
+    })
+    isEditing.value = false
+    ElMessage.success('Profile updated')
+  } catch {
+    ElMessage.error('Could not save your profile. Try again.')
+  } finally {
+    isSavingProfile.value = false
+  }
 }
 
 const pets = reactive<Pet[]>([])
@@ -90,6 +124,7 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
 }
 
 const recentOrders = reactive<OrderSummary[]>([])
+const orderCount = ref(0)
 const ordersLoading = ref(true)
 const ordersError = ref(false)
 
@@ -102,6 +137,7 @@ onMounted(async () => {
 
   try {
     const orders = await fetchOrders(auth.session.access_token)
+    orderCount.value = orders.length
     recentOrders.push(...orders.slice(0, 3))
   } catch {
     ordersError.value = true
@@ -201,39 +237,142 @@ async function saveCompanion() {
 <template>
   <div class="account">
     <div class="profile-header">
-      <div v-if="!isEditing" class="profile-info">
-        <h1 class="profile-name">{{ profile.name }}</h1>
-        <div class="profile-meta">
-          <span class="meta-item"><PhEnvelopeSimple :size="16" />{{ profile.email }}</span>
-          <span class="meta-item"><PhMapPin :size="16" />{{ profile.location }}</span>
-        </div>
-      </div>
-      <div v-else class="profile-edit-form">
-        <div class="form-field">
-          <label for="profile-name">Name</label>
-          <input id="profile-name" v-model="editForm.name" type="text" />
-        </div>
-        <div class="form-field">
-          <label for="profile-email">Email</label>
-          <input id="profile-email" v-model="editForm.email" type="email" />
-        </div>
-        <div class="form-field">
-          <label for="profile-location">Location</label>
-          <input id="profile-location" v-model="editForm.location" type="text" />
+      <div class="profile-identity">
+        <div class="profile-avatar" aria-hidden="true">{{ initials }}</div>
+        <div class="profile-info">
+          <h1 class="profile-name">{{ profileName }}</h1>
+          <div class="profile-meta">
+            <!-- <span class="meta-item"><PhEnvelopeSimple :size="16" />{{ profileEmail }}</span> -->
+            <span class="meta-item" :class="{ 'is-empty': !profilePhone }">
+              <PhPhone :size="16" />{{ profilePhone || 'Add phone number' }}
+            </span>
+            <span class="meta-item" :class="{ 'is-empty': !profileLocation }">
+              <PhMapPin :size="16" />{{ profileLocation || 'Add your location' }}
+            </span>
+            <span v-if="memberSince" class="meta-item">
+              <PhCalendarBlank :size="16" />Member since {{ memberSince }}
+            </span>
+          </div>
         </div>
       </div>
 
       <div class="profile-actions">
-        <template v-if="!isEditing">
-          <button type="button" class="cancel-btn" @click="handleSignOut">Sign Out</button>
-          <button type="button" class="edit-btn" @click="startEdit">Edit Profile</button>
-        </template>
-        <template v-else>
-          <button type="button" class="cancel-btn" @click="cancelEdit">Cancel</button>
-          <button type="button" class="edit-btn" @click="saveEdit">Save</button>
-        </template>
+        <button type="button" class="cancel-btn" @click="handleSignOut">Sign Out</button>
+        <button type="button" class="edit-btn" @click="startEdit">Edit Profile</button>
       </div>
     </div>
+
+    <div class="profile-stats">
+      <RouterLink to="/account/orders" class="stat-item">
+        <span class="stat-value">{{ ordersLoading ? '–' : orderCount }}</span>
+        <span class="stat-label">Orders</span>
+      </RouterLink>
+      <RouterLink to="/account/pets" class="stat-item">
+        <span class="stat-value">{{ petsLoading ? '–' : pets.length }}</span>
+        <span class="stat-label">Pets</span>
+      </RouterLink>
+      <a href="#paws-rewards" class="stat-item">
+        <span class="stat-value">{{ formatPoints(pointsBalance) }}</span>
+        <span class="stat-label">Points</span>
+      </a>
+      <RouterLink to="/wishlist" class="stat-item">
+        <span class="stat-value">{{ wishlist.loading ? '–' : wishlist.itemCount }}</span>
+        <span class="stat-label">Wishlist</span>
+      </RouterLink>
+    </div>
+
+    <div v-if="isProfileIncomplete" class="profile-hint">
+      <PhInfo :size="18" />
+      <span>Add your phone number and location to speed up checkout.</span>
+      <button type="button" class="hint-link" @click="startEdit">Complete profile</button>
+    </div>
+
+    <el-dialog
+      v-model="isEditing"
+      title="Edit Profile"
+      width="min(560px, 92vw)"
+      class="profile-dialog"
+      :close-on-click-modal="!isSavingProfile"
+    >
+      <form class="profile-edit-form" @submit.prevent="saveEdit">
+        <div class="form-row">
+          <div class="form-field">
+            <label for="profile-name">Full Name</label>
+            <input id="profile-name" v-model="editForm.name" type="text" required />
+          </div>
+          <div class="form-field">
+            <label for="profile-phone">Phone Number</label>
+            <input
+              id="profile-phone"
+              v-model="editForm.phone"
+              type="tel"
+              placeholder="e.g. 012 345 678"
+            />
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="profile-email">Email</label>
+          <input id="profile-email" :value="profileEmail" type="email" readonly disabled />
+          <span class="field-note"
+            >Your email is linked to your sign-in and can't be changed here.</span
+          >
+        </div>
+
+        <div class="form-row">
+          <div class="form-field">
+            <label for="profile-province">Province</label>
+            <el-select
+              id="profile-province"
+              v-model="editForm.provinceCode"
+              filterable
+              clearable
+              placeholder="Select province"
+              @change="handleProvinceChange"
+            >
+              <el-option
+                v-for="province in cambodiaAddressOptions"
+                :key="province.value"
+                :label="province.label"
+                :value="province.value"
+              />
+            </el-select>
+          </div>
+          <div class="form-field">
+            <label for="profile-district">District / Khan</label>
+            <el-select
+              id="profile-district"
+              v-model="editForm.districtCode"
+              filterable
+              clearable
+              placeholder="Select district"
+              :disabled="!editForm.provinceCode"
+            >
+              <el-option
+                v-for="district in editDistrictOptions"
+                :key="district.value"
+                :label="district.label"
+                :value="district.value"
+              />
+            </el-select>
+          </div>
+        </div>
+
+        <div class="dialog-actions">
+          <button
+            type="button"
+            class="cancel-btn"
+            :disabled="isSavingProfile"
+            @click="isEditing = false"
+          >
+            Cancel
+          </button>
+          <button type="submit" class="edit-btn" :disabled="isSavingProfile">
+            {{ isSavingProfile ? 'Saving…' : 'Save Changes' }}
+          </button>
+        </div>
+      </form>
+    </el-dialog>
 
     <div class="header-divider"></div>
 
@@ -387,7 +526,7 @@ async function saveCompanion() {
 
     <div class="section-divider"></div>
 
-    <section class="loyalty-section">
+    <section id="paws-rewards" class="loyalty-section">
       <div class="loyalty-header">
         <div>
           <p class="eyebrow">Loyalty Program</p>
@@ -494,21 +633,45 @@ async function saveCompanion() {
 /* Header */
 .profile-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 2rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.profile-identity {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  min-width: 0;
+}
+
+.profile-avatar {
+  flex-shrink: 0;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-accent);
+  color: #fff;
+  font-family: var(--font-serif);
+  font-size: 2rem;
+  letter-spacing: 0.04em;
 }
 
 .profile-name {
-  font-size: 2.75rem;
-  margin-bottom: 0.5rem;
+  font-size: 2.5rem;
+  line-height: 1.1;
+  margin-bottom: 0.6rem;
 }
 
 .profile-meta {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
 }
 
 .meta-item {
@@ -520,15 +683,130 @@ async function saveCompanion() {
   opacity: 0.75;
 }
 
-.profile-edit-form {
-  display: flex;
-  gap: 1.5rem;
-  flex: 1;
-  max-width: 640px;
+.meta-item.is-empty {
+  font-style: italic;
+  opacity: 0.5;
 }
 
-.profile-edit-form .form-field {
-  flex: 1;
+/* Stats */
+.profile-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border: 1px solid var(--color-border);
+  margin-bottom: 1.5rem;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 1.25rem 1rem;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.stat-item + .stat-item {
+  border-left: 1px solid var(--color-border);
+}
+
+.stat-item:hover {
+  background: var(--color-background-soft);
+}
+
+.stat-value {
+  font-family: var(--font-serif);
+  font-size: 1.75rem;
+  color: var(--color-heading);
+}
+
+.stat-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  opacity: 0.7;
+}
+
+.profile-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1.1rem;
+  margin-bottom: 1.5rem;
+  background: var(--color-background-soft);
+  border-left: 3px solid var(--color-accent);
+  font-size: 0.88rem;
+  color: var(--color-text);
+}
+
+.profile-hint svg {
+  flex-shrink: 0;
+  color: var(--color-accent);
+}
+
+.hint-link {
+  margin-left: auto;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--color-accent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.hint-link:hover {
+  color: var(--color-accent-dark);
+}
+
+/* Edit dialog */
+.profile-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.profile-edit-form input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.field-note {
+  font-size: 0.78rem;
+  color: var(--color-text);
+  opacity: 0.6;
+}
+
+.profile-edit-form :deep(.el-select) {
+  width: 100%;
+}
+
+.profile-edit-form :deep(.el-select__wrapper) {
+  min-height: 2.6rem;
+  border-radius: 0;
+  background: var(--color-background-soft);
+  box-shadow: 0 0 0 1px var(--color-border) inset;
+}
+
+.profile-edit-form :deep(.el-select__wrapper.is-focused) {
+  box-shadow: 0 0 0 1px var(--color-accent) inset;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.dialog-actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .form-field {
@@ -1141,12 +1419,33 @@ async function saveCompanion() {
 @media (max-width: 900px) {
   .profile-header {
     flex-direction: column;
+    align-items: flex-start;
   }
 
-  .profile-edit-form {
-    flex-direction: column;
-    max-width: none;
-    width: 100%;
+  .profile-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stat-item:nth-child(3) {
+    border-left: none;
+  }
+
+  .stat-item:nth-child(n + 3) {
+    border-top: 1px solid var(--color-border);
+  }
+
+  .profile-avatar {
+    width: 64px;
+    height: 64px;
+    font-size: 1.5rem;
+  }
+
+  .profile-name {
+    font-size: 2rem;
+  }
+
+  .profile-hint {
+    flex-wrap: wrap;
   }
 
   .profile-body {

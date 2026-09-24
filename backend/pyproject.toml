@@ -9,7 +9,6 @@ dependencies = [
     "pydantic-settings>=2.14.2",
     "python-dotenv>=1.2.2",
     "python-multipart>=0.0.32",
-    "stripe>=15.5.0",
     "supabase>=2.31.0",
     "uvicorn[standard]>=0.52.1",
 ]
