@@ -5,10 +5,10 @@ import dogImg from '@/assets/images/dog.png'
 import catImg from '@/assets/images/cat.png'
 import birdImg from '@/assets/images/bird.png'
 import fishImg from '@/assets/images/fish.png'
-import petFoodImg from '@/assets/images/type/pet-food.png'
-import petTrainingImg from '@/assets/images/type/pet-training-aids.png'
-import petGroomingImg from '@/assets/images/type/pet-grooming-supplies.png'
-import petSuppliesImg from '@/assets/images/type/pet-supplies.png'
+import petFoodImg from '@/assets/images/type/pet-food.webp'
+import petTrainingImg from '@/assets/images/type/pet-training-aids.webp'
+import petGroomingImg from '@/assets/images/type/pet-grooming-supplies.webp'
+import petSuppliesImg from '@/assets/images/type/pet-supplies.webp'
 
 interface Species {
   key: string

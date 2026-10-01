@@ -2,7 +2,6 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import {
-  PhEnvelopeSimple,
   PhMapPin,
   PhPhone,
   PhCalendarBlank,
@@ -22,6 +21,7 @@ import { fetchPets, createPet, type Pet } from '@/lib/pets'
 import { fetchRewards, redeemReward, type Reward } from '@/lib/loyalty'
 import { fetchOrders, type OrderSummary, type OrderStatus } from '@/lib/orders'
 import ProfileEditDialog from '@/components/ProfileEditDialog.vue'
+import { formatPrice } from '@/lib/format'
 
 const auth = useAuthStore()
 
@@ -143,10 +143,6 @@ async function handleRedeem(reward: Reward) {
   } finally {
     redeemingId.value = null
   }
-}
-
-function formatPrice(value: number) {
-  return `$${value.toFixed(2)}`
 }
 
 const speciesOptions = ['Dog', 'Cat', 'Bird', 'Reptile', 'Small Pet', 'Other']

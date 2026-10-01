@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
-import authCover from '@/assets/images/auth_cover.jpg'
-import authSignin from '@/assets/images/auth_signin.jpg'
-import authSignup from '@/assets/images/auth_signup.jpg'
+import authCover from '@/assets/images/auth_cover.webp'
+import authSignin from '@/assets/images/auth_signin.webp'
+import authSignup from '@/assets/images/auth_signup.webp'
 
 const route = useRoute()
 

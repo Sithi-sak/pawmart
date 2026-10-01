@@ -20,6 +20,7 @@ import { POINTS_PER_DOLLAR } from '../lib/loyalty'
 import { cambodiaAddressOptions, describeVillage, parseLocation } from '../lib/cambodiaAddress'
 import KhqrCard from '../components/KhqrCard.vue'
 import visaLogo from '../assets/visa.svg'
+import { formatPrice } from '@/lib/format'
 
 type Step = 'shipping' | 'payment' | 'review'
 
@@ -228,10 +229,6 @@ function validateCard(): string | null {
 
   if (paymentForm.cvv.length !== 3) return 'Enter the 3-digit CVV'
   return null
-}
-
-function formatPrice(value: number) {
-  return `$${value.toFixed(2)}`
 }
 
 function goToPayment() {

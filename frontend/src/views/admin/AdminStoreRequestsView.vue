@@ -6,11 +6,11 @@ import {
   approveStoreApplication,
   fetchStoreApplications,
   rejectStoreApplication,
-  slugify,
   type ApproveResult,
   type StoreApplication,
   type StoreApplicationStatus,
 } from '@/lib/storeApplications'
+import { formatDate, slugify } from '@/lib/format'
 
 const STATUS_LABELS: Record<StoreApplicationStatus, string> = {
   pending: 'Pending',
@@ -32,14 +32,6 @@ const filteredApplications = computed(() => {
 
 function statusCount(status: StoreApplicationStatus) {
   return applications.value.filter((a) => a.status === status).length
-}
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
 }
 
 async function loadApplications() {

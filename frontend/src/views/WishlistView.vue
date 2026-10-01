@@ -6,13 +6,10 @@ import { RouterLink } from 'vue-router'
 import { useWishlistStore, type WishlistItem } from '@/stores/wishlist'
 import { useCartStore } from '@/stores/cart'
 import { fetchProductBySlug } from '@/lib/products'
+import { formatPrice } from '@/lib/format'
 
 const wishlist = useWishlistStore()
 const cart = useCartStore()
-
-function formatPrice(value: number) {
-  return `$${value.toFixed(2)}`
-}
 
 async function addToCart(item: WishlistItem) {
   const product = await fetchProductBySlug(item.slug)

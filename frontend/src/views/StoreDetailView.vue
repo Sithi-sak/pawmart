@@ -13,21 +13,7 @@ import {
 import { fetchStoreBySlug, type Store } from '@/lib/stores'
 import { useCartStore } from '@/stores/cart'
 import { useWishlistStore } from '@/stores/wishlist'
-import petClothingImg from '@/assets/images/type/pet-clothing-accessories.png'
-import petFoodImg from '@/assets/images/type/pet-food.png'
-import petGroomingImg from '@/assets/images/type/pet-grooming-supplies.png'
-import petHealthcareImg from '@/assets/images/type/pet-healthcare.png'
-import petSuppliesImg from '@/assets/images/type/pet-supplies.png'
-import petTrainingImg from '@/assets/images/type/pet-training-aids.png'
-
-const typeImages: Record<string, string> = {
-  'pet-clothing-accessories': petClothingImg,
-  'pet-food': petFoodImg,
-  'pet-grooming-supplies': petGroomingImg,
-  'pet-healthcare': petHealthcareImg,
-  'pet-supplies': petSuppliesImg,
-  'pet-training-aids': petTrainingImg,
-}
+import { categoryImages } from '@/lib/categoryImages'
 
 const cart = useCartStore()
 const wishlist = useWishlistStore()
@@ -53,7 +39,7 @@ const selectedCategory = ref('All Products')
 const sortBy = ref('newest')
 
 function typeImage(name: string): string | undefined {
-  return typeImages[categories.value.find((c) => c.name === name)?.slug ?? '']
+  return categoryImages[categories.value.find((c) => c.name === name)?.slug ?? '']
 }
 
 function toggleCategory(name: string) {

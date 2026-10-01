@@ -6,6 +6,7 @@ import { useCartStore } from '../stores/cart'
 import { useAuthStore } from '@/stores/auth'
 import { fetchProductBySlug, type Product } from '@/lib/products'
 import { fetchAvailableRedemptions, type AvailableRedemption } from '@/lib/loyalty'
+import { formatPrice } from '@/lib/format'
 
 const cart = useCartStore()
 const auth = useAuthStore()
@@ -68,10 +69,6 @@ function applyRedemption(redemptionId: number | null) {
 function removeRedemption() {
   cart.removeRedemption()
   selectedRedemptionId.value = null
-}
-
-function formatPrice(value: number) {
-  return `$${value.toFixed(2)}`
 }
 
 function proceedToCheckout() {

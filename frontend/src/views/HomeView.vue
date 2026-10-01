@@ -11,10 +11,11 @@ import { usePetsStore } from '@/stores/pets'
 import type { Product } from '@/lib/products'
 import petCareImg from '@/assets/images/pet_care.jpg'
 import bedImg from '@/assets/images/bed.jpg'
-import essentialsImg from '@/assets/images/essentials.png'
+import essentialsImg from '@/assets/images/essentials.webp'
 import nutritionImg from '@/assets/images/nutrition.jpg'
-import lifestyleImg from '@/assets/images/lifestyle.png'
+import lifestyleImg from '@/assets/images/lifestyle.webp'
 import heroVideo from '@/assets/hero_video.mp4'
+import { formatPrice } from '@/lib/format'
 
 const auth = useAuthStore()
 const cart = useCartStore()
@@ -93,10 +94,6 @@ const recommendationSubtitle = computed(() => {
       : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
   return `Picked for ${list}, based on your pets and past orders.`
 })
-
-function formatPrice(value: number) {
-  return `$${value.toFixed(2)}`
-}
 
 async function addToCart(p: Product) {
   if (cart.conflictsWithCart(p)) {

@@ -33,6 +33,7 @@ import {
 import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
 import { useWishlistStore } from '@/stores/wishlist'
+import { formatPrice } from '@/lib/format'
 
 const cart = useCartStore()
 const wishlist = useWishlistStore()
@@ -267,10 +268,6 @@ function onPanelLeave(el: Element) {
   element.style.height = `${element.scrollHeight}px`
   void element.offsetHeight
   element.style.height = '0px'
-}
-
-function formatPrice(value: number) {
-  return `$${Number(value).toFixed(2)}`
 }
 
 function incrementQuantity() {

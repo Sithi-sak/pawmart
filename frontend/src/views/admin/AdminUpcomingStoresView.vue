@@ -9,19 +9,12 @@ import {
   updateUpcomingStore,
   type UpcomingStore,
 } from '@/lib/upcomingStores'
+import { formatDate } from '@/lib/format'
 
 const stores = ref<UpcomingStore[]>([])
 const loading = ref(true)
 const loadError = ref(false)
 const workingId = ref<number | null>(null)
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
-}
 
 async function loadStores() {
   loading.value = true

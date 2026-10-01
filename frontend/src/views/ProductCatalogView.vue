@@ -28,12 +28,7 @@ import dogImg from '@/assets/images/dog.png'
 import catImg from '@/assets/images/cat.png'
 import birdImg from '@/assets/images/bird.png'
 import fishImg from '@/assets/images/fish.png'
-import petClothingImg from '@/assets/images/type/pet-clothing-accessories.png'
-import petFoodImg from '@/assets/images/type/pet-food.png'
-import petGroomingImg from '@/assets/images/type/pet-grooming-supplies.png'
-import petHealthcareImg from '@/assets/images/type/pet-healthcare.png'
-import petSuppliesImg from '@/assets/images/type/pet-supplies.png'
-import petTrainingImg from '@/assets/images/type/pet-training-aids.png'
+import { categoryImages } from '@/lib/categoryImages'
 
 const cart = useCartStore()
 const wishlist = useWishlistStore()
@@ -48,15 +43,6 @@ const speciesImages: Record<string, string> = {
   Cat: catImg,
   Bird: birdImg,
   Fish: fishImg,
-}
-
-const typeImages: Record<string, string> = {
-  'pet-clothing-accessories': petClothingImg,
-  'pet-food': petFoodImg,
-  'pet-grooming-supplies': petGroomingImg,
-  'pet-healthcare': petHealthcareImg,
-  'pet-supplies': petSuppliesImg,
-  'pet-training-aids': petTrainingImg,
 }
 
 const priceRanges = [
@@ -88,7 +74,7 @@ const loading = ref(true)
 const loadError = ref(false)
 
 function typeImage(name: string): string | undefined {
-  return typeImages[categories.value.find((c) => c.name === name)?.slug ?? '']
+  return categoryImages[categories.value.find((c) => c.name === name)?.slug ?? '']
 }
 
 const storeNames = computed(() =>

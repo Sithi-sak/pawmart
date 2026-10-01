@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router'
 import { PhCaretLeft, PhTruck } from '@phosphor-icons/vue'
 import { useAuthStore } from '../stores/auth'
 import { fetchOrders, type OrderSummary, type OrderStatus } from '../lib/orders'
+import { formatDate, formatPrice } from '@/lib/format'
 
 const auth = useAuthStore()
 
@@ -17,18 +18,6 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
   shipping: 'Shipping',
   out_for_delivery: 'Out for Delivery',
   delivered: 'Delivered',
-}
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
-}
-
-function formatPrice(value: number) {
-  return `$${value.toFixed(2)}`
 }
 
 onMounted(async () => {

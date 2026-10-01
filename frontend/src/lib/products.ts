@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { slugify } from '@/lib/format'
 
 export interface Category {
   id: number
@@ -93,18 +94,8 @@ export interface ProductInput {
   store_id?: number
 }
 
-function slugify(name: string): string {
-  return (
-    name
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '') || 'product'
-  )
-}
-
 async function uniqueSlug(name: string): Promise<string> {
-  const base = slugify(name)
+  const base = slugify(name) || 'product'
   let candidate = base
   for (let suffix = 2; ; suffix++) {
     const { data, error } = await supabase

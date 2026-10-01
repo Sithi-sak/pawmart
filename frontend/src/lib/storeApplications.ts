@@ -90,13 +90,3 @@ export async function approveStoreApplication(
 
   return res.json() as Promise<ApproveResult>
 }
-
-// Mirrors a simple slugify — used to prefill the editable slug field in the
-// admin approval dialog from the applicant's proposed store name.
-export function slugify(value: string): string {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-}

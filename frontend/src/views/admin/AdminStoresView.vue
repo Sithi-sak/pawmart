@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router'
 import { PhMagnifyingGlass } from '@phosphor-icons/vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { fetchStoresForAdmin, setStoreStatus, type StoreWithStats } from '@/lib/stores'
+import { formatDate } from '@/lib/format'
 
 const stores = ref<StoreWithStats[]>([])
 const loading = ref(true)
@@ -23,14 +24,6 @@ const filteredStores = computed(() => {
       (s.owner?.email ?? '').toLowerCase().includes(query),
   )
 })
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
-}
 
 async function loadStores() {
   loading.value = true

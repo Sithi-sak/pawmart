@@ -5,7 +5,6 @@
     "": {
       "name": "frontend",
       "dependencies": {
-        "@element-plus/icons-vue": "^2.3.2",
         "@phosphor-icons/vue": "^2.2.1",
         "@supabase/supabase-js": "^2.112.2",
         "element-plus": "^2.14.3",

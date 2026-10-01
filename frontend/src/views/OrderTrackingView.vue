@@ -5,6 +5,7 @@ import { ElMessage } from 'element-plus'
 import { PhCheck, PhArchive, PhTruck, PhMapPin, PhPackage, PhHeadset } from '@phosphor-icons/vue'
 import { useAuthStore } from '../stores/auth'
 import { fetchOrder, type Order, type OrderStatus } from '../lib/orders'
+import { formatPrice } from '@/lib/format'
 
 const props = defineProps<{ id: string }>()
 const auth = useAuthStore()
@@ -141,10 +142,6 @@ function formatStepDate(iso: string) {
     hour: 'numeric',
     minute: '2-digit',
   })
-}
-
-function formatPrice(value: number) {
-  return `$${value.toFixed(2)}`
 }
 
 onMounted(async () => {

@@ -4,6 +4,7 @@ import { ElMessage } from 'element-plus'
 import { PhMagnifyingGlass } from '@phosphor-icons/vue'
 import { useAuthStore } from '@/stores/auth'
 import { fetchOrders, updateOrderStatus, type OrderStatus, type OrderSummary } from '@/lib/orders'
+import { formatDate, formatPrice } from '@/lib/format'
 
 const STATUSES: OrderStatus[] = [
   'confirmed',
@@ -87,18 +88,6 @@ async function handleStatusChange(order: OrderSummary, nextStatus: OrderStatus) 
   } finally {
     updatingId.value = null
   }
-}
-
-function formatPrice(value: number) {
-  return `$${value.toFixed(2)}`
-}
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
 }
 
 onMounted(async () => {

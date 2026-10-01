@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/auth'
 import { fetchOrder, type Order } from '../lib/orders'
 import { POINTS_PER_DOLLAR } from '../lib/loyalty'
 import thankYouCover from '../assets/images/thank_you_cover.jpg'
+import { formatPrice } from '@/lib/format'
 
 const route = useRoute()
 const auth = useAuthStore()
@@ -18,10 +19,6 @@ const pointsEarned = computed(() => {
   if (!order.value || order.value.payment_status !== 'paid') return 0
   return Math.floor((order.value.subtotal - order.value.discount) * POINTS_PER_DOLLAR)
 })
-
-function formatPrice(value: number) {
-  return `$${value.toFixed(2)}`
-}
 
 function formatArrivalDate(date: Date) {
   return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
