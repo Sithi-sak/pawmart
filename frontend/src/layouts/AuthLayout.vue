@@ -63,14 +63,23 @@ const visualImage = computed(() => {
 @media (max-width: 900px) {
   .auth-shell {
     grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
   }
 
+  /* Short image banner instead of hiding the visual entirely -- it carries
+     the only link home, which an installed PWA has no browser chrome for. */
   .auth-visual {
-    display: none;
+    height: calc(150px + env(safe-area-inset-top, 0px));
+  }
+
+  .auth-brand {
+    top: calc(1.25rem + env(safe-area-inset-top, 0px));
+    left: 1.25rem;
   }
 
   .auth-panel {
-    padding: 2.5rem 1.5rem;
+    justify-content: flex-start;
+    padding: 2rem 1.25rem calc(2rem + env(safe-area-inset-bottom, 0px));
   }
 }
 </style>

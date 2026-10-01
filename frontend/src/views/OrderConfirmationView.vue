@@ -413,4 +413,26 @@ onMounted(async () => {
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 768px) {
+  .confirmation {
+    padding: 0.5rem 0 2.5rem;
+  }
+
+  .confirmation-header {
+    margin-bottom: 1.75rem;
+  }
+
+  .confirmation-title {
+    font-size: 1.85rem;
+  }
+
+  .confirmation-body {
+    gap: 1.5rem;
+  }
+
+  .order-summary {
+    padding: 1.25rem;
+  }
+}
 </style>

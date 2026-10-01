@@ -15,7 +15,16 @@ from .loyalty import award_points_for_order
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
 
-SHIPPING_COSTS = {"standard": 0.0, "express": 1.5}
+# Delivery is zoned by province: Phnom Penh is cheaper for J&T / Virak
+# Buntham, and Grab Express only runs inside Phnom Penh at all. The zone is
+# read off the shipping city (describeVillage() in the frontend's
+# cambodiaAddress.ts always ends it with the province name), so the price
+# charged can't disagree with the address the order ships to.
+PHNOM_PENH_PROVINCE = "Phnom Penh Capital"
+SHIPPING_COSTS = {
+    "standard": {"phnom_penh": 1.5, "provinces": 2.5},
+    "express": {"phnom_penh": 3.0},
+}
 TAX_RATE = 0.0875
 # Orders only ever move forward through these statuses (task 3.3): there is
 # no courier integration, so each step is a real physical event the shop
@@ -94,6 +103,7 @@ def _price_cart(
     supabase,
     items: list[OrderItemIn],
     shipping_method: str,
+    shipping_city: str,
     customer_id: str,
     redemption_id: int | None,
 ) -> dict:
@@ -164,7 +174,18 @@ def _price_cart(
         discount = min(float(reward["discount_amount"] or 0), subtotal)
         free_shipping = reward["free_shipping"]
 
-    shipping_cost = 0.0 if free_shipping else SHIPPING_COSTS[shipping_method]
+    zone = (
+        "phnom_penh"
+        if shipping_city.strip().endswith(PHNOM_PENH_PROVINCE)
+        else "provinces"
+    )
+    zone_costs = SHIPPING_COSTS[shipping_method]
+    if zone not in zone_costs:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Grab Express only delivers within Phnom Penh",
+        )
+    shipping_cost = 0.0 if free_shipping else zone_costs[zone]
     tax = round((subtotal - discount + shipping_cost) * TAX_RATE, 2)
     total = round(subtotal - discount + shipping_cost + tax, 2)
 
@@ -225,7 +246,12 @@ def create_order(
 ) -> dict:
     supabase = get_supabase()
     pricing = _price_cart(
-        supabase, payload.items, payload.shipping.method, customer.id, payload.redemption_id
+        supabase,
+        payload.items,
+        payload.shipping.method,
+        payload.shipping.city,
+        customer.id,
+        payload.redemption_id,
     )
 
     # No payment-gateway callback exists for any method in this MVP (Visa is
@@ -302,13 +328,26 @@ def list_orders(
 
     order_ids = [o["id"] for o in orders]
     items = (
-        supabase.table("order_items").select("order_id, quantity").in_("order_id", order_ids).execute().data
+        supabase.table("order_items")
+        .select("id, order_id, product_id, quantity")
+        .in_("order_id", order_ids)
+        .order("id")
+        .execute()
+        .data
         if order_ids
         else []
     )
     item_counts: dict[int, int] = {}
+    first_items: dict[int, dict] = {}
     for item in items:
         item_counts[item["order_id"]] = item_counts.get(item["order_id"], 0) + item["quantity"]
+        first_items.setdefault(item["order_id"], item)
+
+    # Order lists show the order's first item's picture as its thumbnail.
+    thumbnails = {
+        i["order_id"]: i["image_url"]
+        for i in _attach_item_images(supabase, list(first_items.values()))
+    }
 
     show_customer_info = is_store_owner_caller
     customers_by_id: dict[str, dict] = {}
@@ -327,6 +366,7 @@ def list_orders(
         {
             **o,
             "item_count": item_counts.get(o["id"], 0),
+            "thumbnail_url": thumbnails.get(o["id"]),
             **({"customer": customers_by_id.get(o["customer_id"])} if show_customer_info else {}),
         }
         for o in orders

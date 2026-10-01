@@ -249,6 +249,14 @@ function proceedToCheckout() {
           </li>
         </ul>
       </aside>
+
+      <div class="mobile-checkout-bar">
+        <div class="mobile-checkout-total">
+          <span class="mobile-checkout-label">Total</span>
+          <span class="mobile-checkout-amount">{{ formatPrice(cart.total) }}</span>
+        </div>
+        <button type="button" class="checkout-btn" @click="proceedToCheckout">Checkout</button>
+      </div>
     </div>
 
     <div v-else class="empty-cart">
@@ -359,7 +367,7 @@ function proceedToCheckout() {
 }
 
 .item-name {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 1.3rem;
   color: var(--color-heading);
   text-decoration: none;
@@ -678,6 +686,7 @@ function proceedToCheckout() {
 }
 
 .related-name {
+  font-family: var(--font-sans);
   font-size: 0.85rem;
   letter-spacing: 0.03em;
   text-transform: uppercase;
@@ -716,6 +725,129 @@ function proceedToCheckout() {
 
   .related-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+.mobile-checkout-bar {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .cart {
+    padding: 0 0 2rem;
+  }
+
+  .cart-header {
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .page-title {
+    font-size: 1.85rem;
+  }
+
+  .header-divider {
+    margin-bottom: 1.25rem;
+  }
+
+  .cart-body {
+    gap: 1.75rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .line-item {
+    grid-template-columns: 88px 1fr auto;
+    gap: 0.9rem;
+    padding: 1.1rem 0;
+  }
+
+  .item-name {
+    font-size: 1.05rem;
+    line-height: 1.25;
+  }
+
+  .item-aside {
+    grid-column: auto;
+    flex-direction: column;
+    align-items: flex-end;
+    margin-top: 0;
+  }
+
+  .item-price {
+    font-size: 0.95rem;
+  }
+
+  .order-summary {
+    padding: 1.25rem;
+  }
+
+  .summary-title {
+    font-size: 1.25rem;
+  }
+
+  /* The summary's own checkout button scrolls away below a long cart, so a
+     pinned bar above the tab bar keeps it reachable. */
+  .mobile-checkout-bar {
+    position: fixed;
+    z-index: 15;
+    left: 0;
+    right: 0;
+    bottom: calc(var(--tab-bar-height) + var(--safe-bottom));
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.6rem var(--page-gutter);
+    background: var(--color-background);
+    border-top: 1px solid var(--color-border);
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
+  }
+
+  /* Hidden with the tab bar while typing (see lib/keyboard.ts). */
+  :global(html.keyboard-open) .mobile-checkout-bar {
+    display: none;
+  }
+
+  .mobile-checkout-total {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+  }
+
+  .mobile-checkout-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    opacity: 0.6;
+  }
+
+  .mobile-checkout-amount {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--color-accent);
+  }
+
+  .mobile-checkout-bar .checkout-btn {
+    flex: 1;
+    height: 2.85rem;
+    margin-bottom: 0;
+  }
+
+  /* Clear the pinned bar at the end of the page. */
+  .cart:has(.mobile-checkout-bar) {
+    padding-bottom: 5rem;
+  }
+
+  .related-header {
+    align-items: center;
+  }
+
+  .section-title {
+    font-size: 1.4rem;
+  }
+
+  .related-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem 0.75rem;
   }
 }
 </style>

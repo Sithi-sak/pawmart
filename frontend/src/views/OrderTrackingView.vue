@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { PhCheck, PhArchive, PhTruck, PhMapPin, PhPackage, PhHeadset } from '@phosphor-icons/vue'
 import { useAuthStore } from '../stores/auth'
 import { fetchOrder, type Order, type OrderStatus } from '../lib/orders'
@@ -11,6 +12,32 @@ const auth = useAuthStore()
 const order = ref<Order | null>(null)
 const loading = ref(true)
 const loadError = ref(false)
+
+// Contact is simulated for the MVP (no support inbox or per-store contact
+// channel exists yet): the dialog collects a message and confirms it, but
+// nothing is actually sent anywhere.
+const contactVisible = ref(false)
+const contactMessage = ref('')
+const contactError = ref<string | null>(null)
+const sendingContact = ref(false)
+
+function openContact() {
+  contactMessage.value = ''
+  contactError.value = null
+  contactVisible.value = true
+}
+
+async function sendContact() {
+  if (!contactMessage.value.trim()) {
+    contactError.value = 'Please write a message'
+    return
+  }
+  sendingContact.value = true
+  await new Promise((resolve) => setTimeout(resolve, 600))
+  sendingContact.value = false
+  contactVisible.value = false
+  ElMessage.success("Message sent. We'll get back to you within 24 hours.")
+}
 
 interface StepDef {
   key: OrderStatus
@@ -277,7 +304,7 @@ onMounted(async () => {
           <p class="field-label">Shipping Method</p>
           <p class="field-value">{{ SHIPPING_METHOD_LABELS[order.shipping_method] }}</p>
 
-          <button type="button" class="contact-btn">
+          <button type="button" class="contact-btn" @click="openContact">
             Contact
             <PhHeadset :size="18" />
           </button>
@@ -339,6 +366,30 @@ onMounted(async () => {
         </div>
       </div>
     </template>
+
+    <el-dialog
+      v-model="contactVisible"
+      title="Contact Support"
+      width="90%"
+      class="contact-dialog"
+      align-center
+    >
+      <form class="contact-form" @submit.prevent="sendContact">
+        <p class="contact-order">Order #{{ order?.order_number }}</p>
+        <label for="contactMessage" class="field-label">Your Message</label>
+        <textarea
+          id="contactMessage"
+          v-model="contactMessage"
+          rows="5"
+          placeholder="Tell us what you need help with"
+          @input="contactError = null"
+        ></textarea>
+        <p v-if="contactError" class="contact-error">{{ contactError }}</p>
+        <button type="submit" class="contact-btn" :disabled="sendingContact">
+          {{ sendingContact ? 'Sending…' : 'Send Message' }}
+        </button>
+      </form>
+    </el-dialog>
   </div>
 </template>
 
@@ -673,6 +724,46 @@ onMounted(async () => {
   background: var(--color-accent-dark);
 }
 
+.contact-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+:deep(.contact-dialog) {
+  max-width: 440px;
+}
+
+.contact-order {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-heading);
+  margin-bottom: 1rem;
+}
+
+.contact-form .field-label {
+  display: block;
+  margin-top: 0;
+}
+
+.contact-form textarea {
+  display: block;
+  width: 100%;
+  padding: 0.75rem 0.9rem;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 0;
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 0.9rem;
+  resize: vertical;
+}
+
+.contact-error {
+  margin-top: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--el-color-danger);
+}
+
 .items-header {
   display: flex;
   align-items: center;
@@ -793,7 +884,7 @@ onMounted(async () => {
 
 /* Mobile: stack header, collapse timeline to a vertical list (closer to
    how Shopee/Lazada-style tracking reads on a phone), single-column body. */
-@media (max-width: 700px) {
+@media (max-width: 768px) {
   .tracking-header {
     flex-direction: column;
   }
@@ -883,6 +974,28 @@ onMounted(async () => {
   .timeline-step.is-current .step-icon,
   .timeline-step.is-current .step-icon::after {
     animation: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .tracking {
+    padding: 0 0 2.5rem;
+  }
+
+  .tracking-header {
+    gap: 1rem;
+  }
+
+  .tracking-title {
+    font-size: 1.75rem;
+  }
+
+  .order-number-card {
+    width: 100%;
+  }
+
+  .tracking-body {
+    gap: 1rem;
   }
 }
 </style>

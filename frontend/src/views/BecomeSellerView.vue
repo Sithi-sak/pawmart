@@ -157,4 +157,18 @@ async function handleSubmit() {
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 768px) {
+  .become-seller {
+    padding: 0.5rem 0 2.5rem;
+  }
+
+  .intro {
+    margin-bottom: 1.75rem;
+  }
+
+  .page-title {
+    font-size: 1.75rem;
+  }
+}
 </style>

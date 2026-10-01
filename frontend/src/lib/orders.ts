@@ -52,6 +52,8 @@ export interface OrderSummary {
   total: number
   created_at: string
   item_count: number
+  // First item's product image, null if the product has none or was deleted.
+  thumbnail_url: string | null
   payment_method: 'visa' | 'aba_payway' | 'khqr'
   payment_status: 'paid'
   // Only present when fetched by an admin (task 3.8) — the customer's own

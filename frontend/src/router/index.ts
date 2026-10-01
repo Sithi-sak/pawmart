@@ -74,6 +74,12 @@ const router = createRouter({
           meta: { requiresAuth: true },
         },
         {
+          path: 'account/settings',
+          name: 'settings',
+          component: () => import('../views/SettingsView.vue'),
+          meta: { requiresAuth: true },
+        },
+        {
           path: 'account/pets',
           name: 'pet-profiles',
           component: () => import('../views/PetProfilesView.vue'),

@@ -68,6 +68,7 @@ function makeOrder(overrides: Partial<OrderSummary> = {}): OrderSummary {
     total: 42,
     created_at: '2026-01-01T00:00:00Z',
     item_count: 2,
+    thumbnail_url: null,
     payment_method: 'visa',
     payment_status: 'paid',
     customer: { id: 'cust-1', full_name: 'Jane Doe', email: 'jane@x.com' },

@@ -654,4 +654,23 @@ async function deletePet(pet: Pet) {
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 768px) {
+  .pet-profiles {
+    padding: 0 0 2.5rem;
+  }
+
+  /* The app bar's back button covers this on phones. */
+  .back-link {
+    display: none;
+  }
+
+  .page-title {
+    font-size: 1.85rem;
+  }
+
+  .pets-grid {
+    gap: 0.75rem;
+  }
+}
 </style>

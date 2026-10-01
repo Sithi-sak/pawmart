@@ -12,6 +12,9 @@ from backend.routers.orders import (
     update_order_status,
 )
 
+PP_CITY = "Phsar Thmei Ti Muoy, Phsar Thmei Ti Muoy, Doun Penh, Phnom Penh Capital"
+PROVINCE_CITY = "Kampong Svay, Kampong Svay, Serei Saophoan, Banteay Meanchey"
+
 
 def _items(*pairs: tuple[int, int]) -> list[OrderItemIn]:
     return [OrderItemIn(product_id=pid, quantity=qty) for pid, qty in pairs]
@@ -90,95 +93,111 @@ def supabase():
 
 class TestStockLimit:
     def test_quantity_at_stock_ceiling_is_allowed(self, supabase):
-        pricing = _price_cart(supabase, _items((2, 2)), "standard", "cust-1", None)
+        pricing = _price_cart(supabase, _items((2, 2)), "standard", PP_CITY, "cust-1", None)
         assert pricing["line_items"][0]["quantity"] == 2
 
     def test_quantity_over_stock_is_rejected(self, supabase):
         with pytest.raises(HTTPException) as exc_info:
-            _price_cart(supabase, _items((2, 3)), "standard", "cust-1", None)
+            _price_cart(supabase, _items((2, 3)), "standard", PP_CITY, "cust-1", None)
         assert exc_info.value.status_code == 400
         assert "Chew Toy" in exc_info.value.detail
 
     def test_zero_stock_product_cannot_be_ordered_at_all(self, supabase):
         supabase.seed("products", [{"id": 4, "name": "Sold Out", "price": 5.0, "stock": 0, "store_id": 10}])
         with pytest.raises(HTTPException) as exc_info:
-            _price_cart(supabase, _items((4, 1)), "standard", "cust-1", None)
+            _price_cart(supabase, _items((4, 1)), "standard", PP_CITY, "cust-1", None)
         assert exc_info.value.status_code == 400
         assert "Sold Out" in exc_info.value.detail
 
 
 class TestRedemption:
     def test_valid_redemption_applies_discount(self, supabase):
-        pricing = _price_cart(supabase, _items((1, 1)), "standard", "cust-1", 100)
+        pricing = _price_cart(supabase, _items((1, 1)), "standard", PP_CITY, "cust-1", 100)
         assert pricing["subtotal"] == 20.0
         assert pricing["discount"] == 5.0
 
     def test_free_shipping_redemption_zeroes_shipping_cost(self, supabase):
-        pricing = _price_cart(supabase, _items((1, 1)), "express", "cust-1", 101)
+        pricing = _price_cart(supabase, _items((1, 1)), "express", PP_CITY, "cust-1", 101)
         assert pricing["shipping_cost"] == 0.0
 
     def test_discount_is_capped_at_subtotal(self, supabase):
-        pricing = _price_cart(supabase, _items((1, 1)), "standard", "cust-1", 102)
+        pricing = _price_cart(supabase, _items((1, 1)), "standard", PP_CITY, "cust-1", 102)
         assert pricing["subtotal"] == 20.0
         assert pricing["discount"] == 20.0
         assert pricing["total"] >= 0
 
     def test_already_used_redemption_is_rejected(self, supabase):
         with pytest.raises(HTTPException) as exc_info:
-            _price_cart(supabase, _items((1, 1)), "standard", "cust-1", 103)
+            _price_cart(supabase, _items((1, 1)), "standard", PP_CITY, "cust-1", 103)
         assert exc_info.value.status_code == 400
 
     def test_someone_elses_redemption_is_rejected(self, supabase):
         with pytest.raises(HTTPException) as exc_info:
-            _price_cart(supabase, _items((1, 1)), "standard", "cust-1", 104)
+            _price_cart(supabase, _items((1, 1)), "standard", PP_CITY, "cust-1", 104)
         assert exc_info.value.status_code == 400
 
     def test_unknown_redemption_is_rejected(self, supabase):
         with pytest.raises(HTTPException) as exc_info:
-            _price_cart(supabase, _items((1, 1)), "standard", "cust-1", 9999)
+            _price_cart(supabase, _items((1, 1)), "standard", PP_CITY, "cust-1", 9999)
         assert exc_info.value.status_code == 400
 
     def test_no_redemption_means_no_discount(self, supabase):
-        pricing = _price_cart(supabase, _items((1, 1)), "standard", "cust-1", None)
+        pricing = _price_cart(supabase, _items((1, 1)), "standard", PP_CITY, "cust-1", None)
         assert pricing["discount"] == 0.0
 
 
 class TestCartValidation:
     def test_empty_cart_is_rejected(self, supabase):
         with pytest.raises(HTTPException) as exc_info:
-            _price_cart(supabase, [], "standard", "cust-1", None)
+            _price_cart(supabase, [], "standard", PP_CITY, "cust-1", None)
         assert exc_info.value.status_code == 400
 
     def test_unknown_product_is_rejected(self, supabase):
         with pytest.raises(HTTPException) as exc_info:
-            _price_cart(supabase, _items((999, 1)), "standard", "cust-1", None)
+            _price_cart(supabase, _items((999, 1)), "standard", PP_CITY, "cust-1", None)
         assert exc_info.value.status_code == 400
         assert "999" in exc_info.value.detail
 
     def test_mixed_store_cart_is_rejected(self, supabase):
         with pytest.raises(HTTPException) as exc_info:
-            _price_cart(supabase, _items((1, 1), (3, 1)), "standard", "cust-1", None)
+            _price_cart(supabase, _items((1, 1), (3, 1)), "standard", PP_CITY, "cust-1", None)
         assert exc_info.value.status_code == 400
         assert "same store" in exc_info.value.detail
 
     def test_banned_store_cart_is_rejected(self, supabase):
         with pytest.raises(HTTPException) as exc_info:
-            _price_cart(supabase, _items((3, 1)), "standard", "cust-1", None)
+            _price_cart(supabase, _items((3, 1)), "standard", PP_CITY, "cust-1", None)
         assert exc_info.value.status_code == 400
         assert "no longer accepting orders" in exc_info.value.detail
 
 
+class TestShippingZones:
+    def test_standard_shipping_within_phnom_penh(self, supabase):
+        pricing = _price_cart(supabase, _items((1, 1)), "standard", PP_CITY, "cust-1", None)
+        assert pricing["shipping_cost"] == 1.5
+
+    def test_standard_shipping_outside_phnom_penh(self, supabase):
+        pricing = _price_cart(supabase, _items((1, 1)), "standard", PROVINCE_CITY, "cust-1", None)
+        assert pricing["shipping_cost"] == 2.5
+
+    def test_grab_express_outside_phnom_penh_is_rejected(self, supabase):
+        with pytest.raises(HTTPException) as exc_info:
+            _price_cart(supabase, _items((1, 1)), "express", PROVINCE_CITY, "cust-1", None)
+        assert exc_info.value.status_code == 400
+        assert "Phnom Penh" in exc_info.value.detail
+
+
 class TestTotals:
     def test_express_shipping_and_tax_are_included_in_the_total(self, supabase):
-        pricing = _price_cart(supabase, _items((1, 1)), "express", "cust-1", None)
-        assert pricing["shipping_cost"] == 1.5
-        expected_tax = round((20.0 + 1.5) * 0.0875, 2)
+        pricing = _price_cart(supabase, _items((1, 1)), "express", PP_CITY, "cust-1", None)
+        assert pricing["shipping_cost"] == 3.0
+        expected_tax = round((20.0 + 3.0) * 0.0875, 2)
         assert pricing["tax"] == expected_tax
-        assert pricing["total"] == round(20.0 + 1.5 + expected_tax, 2)
+        assert pricing["total"] == round(20.0 + 3.0 + expected_tax, 2)
 
     def test_discount_is_applied_before_tax(self, supabase):
-        pricing = _price_cart(supabase, _items((1, 1)), "standard", "cust-1", 100)
-        expected_tax = round((20.0 - 5.0) * 0.0875, 2)
+        pricing = _price_cart(supabase, _items((1, 1)), "standard", PP_CITY, "cust-1", 100)
+        expected_tax = round((20.0 - 5.0 + 1.5) * 0.0875, 2)
         assert pricing["tax"] == expected_tax
 
 
@@ -264,6 +283,26 @@ class TestListOrdersScoping:
     def test_admin_has_no_blanket_view_of_all_orders(self, order_supabase):
         customer = CurrentCustomer(id="admin-1", email="admin@x.com", role="admin")
         assert [o["id"] for o in list_orders(customer=customer)] == [3]
+
+    def test_order_thumbnail_is_the_first_items_product_image(self, order_supabase):
+        order_supabase.seed(
+            "order_items",
+            [
+                {"id": 11, "order_id": 1, "product_id": 7, "quantity": 1},
+                {"id": 12, "order_id": 1, "product_id": 8, "quantity": 2},
+            ],
+        )
+        order_supabase.seed(
+            "products",
+            [
+                {"id": 7, "images": ["https://img/first.jpg", "https://img/alt.jpg"]},
+                {"id": 8, "images": ["https://img/second.jpg"]},
+            ],
+        )
+        customer = CurrentCustomer(id="cust-1", email="a@gmail.com", role="customer")
+        [order] = list_orders(customer=customer)
+        assert order["thumbnail_url"] == "https://img/first.jpg"
+        assert order["item_count"] == 3
 
 
 # Order 1 (store 10, owner-1) starts "confirmed" -- every test below advances

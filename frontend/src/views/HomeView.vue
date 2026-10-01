@@ -263,8 +263,8 @@ function toggleWishlist(p: Product) {
 
 .section-soft {
   background: var(--color-background-soft);
-  margin: 0 calc(-1 * 1.5rem);
-  padding: 3.5rem 1.5rem;
+  margin: 0 calc(-1 * var(--page-gutter));
+  padding: 3.5rem var(--page-gutter);
 }
 
 .section-title {
@@ -321,7 +321,7 @@ function toggleWishlist(p: Product) {
   min-height: 560px;
   display: flex;
   align-items: center;
-  margin: -1.5rem calc(-1 * 1.5rem) 0;
+  margin: calc(-1 * var(--page-gutter)) calc(-1 * var(--page-gutter)) 0;
   padding: 3rem;
   overflow: hidden;
 }
@@ -556,6 +556,7 @@ function toggleWishlist(p: Product) {
 }
 
 .product-name {
+  font-family: var(--font-sans);
   font-size: 1.125rem;
   font-weight: 600;
   margin-bottom: 0.25rem;
@@ -641,6 +642,126 @@ function toggleWishlist(p: Product) {
 
   .philosophy {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .section {
+    padding: 2.25rem 0;
+  }
+
+  .section-soft {
+    padding: 2.25rem var(--page-gutter);
+  }
+
+  .section-title {
+    font-size: 1.6rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .hero {
+    min-height: 0;
+    height: min(50vh, 380px);
+    align-items: flex-end;
+    padding: 1.25rem var(--page-gutter) 1.5rem;
+  }
+
+  .hero-overlay {
+    background: linear-gradient(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.65));
+  }
+
+  .hero-title {
+    font-size: 1.85rem;
+    line-height: 1.15;
+    margin-bottom: 0.5rem;
+  }
+
+  .hero-copy {
+    font-size: 0.82rem;
+    line-height: 1.5;
+    margin-bottom: 1rem;
+  }
+
+  .hero .accent-btn {
+    height: 2.4rem;
+    padding: 0 1.1rem;
+    font-size: 0.75rem;
+  }
+
+  /* Two-up tiles with the featured and lifestyle cards spanning the row.
+     grid-area must be reset or the named areas (gone at this width) push the
+     cards into implicit columns off the right edge of the screen. */
+  .collections-grid {
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: none;
+    grid-template-areas: none;
+    gap: 0.75rem;
+  }
+
+  .collection-card {
+    grid-area: auto;
+    height: 170px;
+  }
+
+  .collection-card--featured,
+  .collection-card--lifestyle {
+    grid-column: 1 / -1;
+    height: 200px;
+  }
+
+  .collection-info {
+    left: 0.9rem;
+    bottom: 0.9rem;
+  }
+
+  .collection-info h3 {
+    font-size: 1.25rem;
+  }
+
+  .collection-info p {
+    font-size: 0.75rem;
+  }
+
+  .section-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .view-all-link {
+    font-size: 0.85rem;
+  }
+
+  .products-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem 0.75rem;
+  }
+
+  .product-name {
+    font-size: 0.95rem;
+    line-height: 1.3;
+  }
+
+  .product-category {
+    font-size: 0.7rem;
+  }
+
+  /* Cards open the product page on tap; no room for a cart button. */
+  .cart-btn {
+    display: none;
+  }
+
+  .philosophy {
+    gap: 2.5rem;
+  }
+
+  .philosophy-image {
+    aspect-ratio: 4 / 3;
+  }
+
+  .philosophy-accent {
+    bottom: -0.75rem;
+    right: -0.75rem;
   }
 }
 </style>

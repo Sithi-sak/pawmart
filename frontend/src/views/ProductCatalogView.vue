@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import {
   PhArrowLeft,
   PhArrowRight,
+  PhFunnelSimple,
   PhGridFour,
   PhHeart,
   PhList,
   PhMagnifyingGlass,
   PhStorefront,
+  PhX,
 } from '@phosphor-icons/vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -310,6 +312,25 @@ function toggleWishlist(p: Product) {
 function goToStore(p: Product) {
   if (p.stores) router.push(`/store/${p.stores.slug}`)
 }
+
+// On phones the filter sidebar becomes a bottom sheet behind a "Filters" button.
+const filtersOpen = ref(false)
+
+const activeFilterCount = computed(
+  () =>
+    selectedPriceRanges.value.length +
+    selectedTags.value.length +
+    selectedStores.value.length +
+    (selectedCategory.value !== 'All Products' ? 1 : 0),
+)
+
+watch(filtersOpen, (open) => {
+  document.body.style.overflow = open ? 'hidden' : ''
+})
+
+onUnmounted(() => {
+  document.body.style.overflow = ''
+})
 </script>
 
 <template>
@@ -382,9 +403,41 @@ function goToStore(p: Product) {
       </button>
     </div>
 
+    <div class="mobile-toolbar">
+      <el-input
+        v-model="searchQuery"
+        placeholder="Search products or stores"
+        size="large"
+        clearable
+        class="mobile-search-input"
+      >
+        <template #prefix>
+          <PhMagnifyingGlass :size="16" />
+        </template>
+      </el-input>
+      <button type="button" class="filters-toggle" @click="filtersOpen = true">
+        <PhFunnelSimple :size="18" />
+        Filters
+        <span v-if="activeFilterCount" class="filters-count">{{ activeFilterCount }}</span>
+      </button>
+    </div>
+
     <div class="catalog-body">
-      <aside class="filters">
-        <div class="filter-group">
+      <div v-if="filtersOpen" class="filters-backdrop" @click="filtersOpen = false"></div>
+      <aside class="filters" :class="{ 'is-open': filtersOpen }">
+        <div class="filters-sheet-header">
+          <h2 class="filters-sheet-title">Filters</h2>
+          <button
+            type="button"
+            class="filters-sheet-close"
+            aria-label="Close filters"
+            @click="filtersOpen = false"
+          >
+            <PhX :size="20" />
+          </button>
+        </div>
+
+        <div class="filter-group filter-group--search">
           <el-input v-model="searchQuery" placeholder="Search products or stores" size="large">
             <template #prefix>
               <PhMagnifyingGlass :size="16" />
@@ -455,6 +508,12 @@ function goToStore(p: Product) {
             </ul>
           </div>
         </div>
+
+        <div class="filters-sheet-footer">
+          <button type="button" class="filters-apply" @click="filtersOpen = false">
+            Show {{ filteredProducts.length }} Results
+          </button>
+        </div>
       </aside>
 
       <div class="results">
@@ -524,7 +583,7 @@ function goToStore(p: Product) {
                   class="sold-by-link"
                   @click.stop.prevent="goToStore(p)"
                 >
-                  Sold by {{ p.stores.name }}
+                  {{ p.stores.name }}
                 </button>
                 <div class="product-footer">
                   <div class="price-group">
@@ -1056,6 +1115,7 @@ function goToStore(p: Product) {
 }
 
 .product-name {
+  font-family: var(--font-sans);
   font-size: 1.125rem;
   line-height: 1.125rem;
   margin-bottom: 0.25rem;
@@ -1078,6 +1138,7 @@ function goToStore(p: Product) {
   margin-bottom: 0.75rem;
   font-family: inherit;
   font-size: 0.75rem;
+  text-align: left;
   color: var(--color-accent);
   text-decoration: underline;
   cursor: pointer;
@@ -1353,6 +1414,360 @@ function goToStore(p: Product) {
   .visit-store-btn {
     order: 1;
     margin-left: calc(56px + 1rem);
+  }
+}
+
+.mobile-toolbar,
+.filters-sheet-header,
+.filters-sheet-footer,
+.filters-backdrop {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .catalog {
+    padding: 0.25rem 0 2rem;
+  }
+
+  /* Title with the result count tucked under it as a subtitle, and the view
+     toggle vertically centred against both on the right. header-controls is
+     flattened (display: contents) so its two children join this grid. */
+  .catalog-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 1rem;
+    row-gap: 0.15rem;
+    margin-bottom: 1rem;
+  }
+
+  .page-title {
+    grid-column: 1;
+    grid-row: 1;
+    font-size: 1.35rem;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .results-count {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .view-toggle {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  .header-controls {
+    display: contents;
+  }
+
+  .section-title {
+    font-size: 1.2rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .results-count {
+    font-size: 0.7rem;
+  }
+
+  /* Species + item-type rows become swipeable strips that bleed to the
+     screen edges. */
+  .species-row,
+  .type-row {
+    display: flex;
+    gap: 0.75rem;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    margin-left: calc(-1 * var(--page-gutter));
+    margin-right: calc(-1 * var(--page-gutter));
+    padding-left: var(--page-gutter);
+    padding-right: var(--page-gutter);
+    scroll-padding-left: var(--page-gutter);
+  }
+
+  .species-row::-webkit-scrollbar,
+  .type-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .species-row {
+    padding-bottom: 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .type-row {
+    margin-bottom: 0;
+  }
+
+  .species-card,
+  .type-card {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+  }
+
+  .species-card {
+    width: 7.5rem;
+  }
+
+  .type-card {
+    width: 6.25rem;
+  }
+
+  .type-label {
+    font-size: 0.68rem;
+  }
+
+  .mobile-toolbar {
+    position: sticky;
+    top: calc(var(--app-bar-height) + env(safe-area-inset-top, 0px));
+    z-index: 5;
+    display: flex;
+    gap: 0.5rem;
+    margin: 0 calc(-1 * var(--page-gutter)) 1rem;
+    padding: 0.75rem var(--page-gutter);
+    background: var(--color-background);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .mobile-search-input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .filters-toggle {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+    height: 40px;
+    padding: 0 0.9rem;
+    background: var(--color-ink);
+    border: none;
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+  }
+
+  .filters-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.15rem;
+    height: 1.15rem;
+    padding: 0 0.3rem;
+    border-radius: 999px;
+    background: var(--color-accent);
+    font-size: 0.68rem;
+    font-weight: 600;
+  }
+
+  .catalog-body {
+    display: block;
+  }
+
+  /* Filter sidebar -> bottom sheet. Sits above the tab bar (z-index 20). */
+  .filters-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    background: rgba(0, 0, 0, 0.4);
+  }
+
+  .filters {
+    position: fixed;
+    z-index: 31;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-height: 85vh;
+    gap: 1.5rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0 var(--page-gutter);
+    background: var(--color-background);
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.15);
+    transform: translateY(100%);
+    visibility: hidden;
+    transition:
+      transform 0.3s ease,
+      visibility 0s linear 0.3s;
+  }
+
+  .filters.is-open {
+    transform: none;
+    visibility: visible;
+    transition: transform 0.3s ease;
+  }
+
+  .filter-group--search {
+    display: none;
+  }
+
+  /* Element Plus checkbox squares carry z-index: 1, so the sticky header and
+     footer need to sit above that or the list scrolls over them. */
+  .filters-sheet-header {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 0 0.75rem;
+    background: var(--color-background);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .filters-sheet-title {
+    font-size: 1.35rem;
+  }
+
+  .filters-sheet-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    margin-right: -0.5rem;
+    background: none;
+    border: none;
+    color: var(--color-heading);
+    cursor: pointer;
+  }
+
+  .filters-sheet-footer {
+    position: sticky;
+    z-index: 5;
+    bottom: 0;
+    display: block;
+    padding: 0.75rem 0 calc(0.75rem + var(--safe-bottom));
+    background: var(--color-background);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .filters-apply {
+    width: 100%;
+    height: 3rem;
+    background: var(--color-accent);
+    border: none;
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .category-list li {
+    font-size: 0.85rem;
+    padding: 0.2rem 0;
+  }
+
+  /* Compact two-up product cards, like a shopping app. */
+  .product-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .product-image {
+    aspect-ratio: 1 / 1;
+  }
+
+  .product-info {
+    padding: 0.65rem;
+  }
+
+  .product-name {
+    font-size: 0.95rem;
+    line-height: 1.25;
+  }
+
+  .product-category,
+  .sold-by-link {
+    font-size: 0.68rem;
+  }
+
+  /* Plain store label on phones: taps fall through to the card, which opens
+     the product rather than the store. */
+  .sold-by-link {
+    margin-bottom: 0.4rem;
+    color: var(--color-text);
+    opacity: 0.75;
+    text-decoration: none;
+    pointer-events: none;
+  }
+
+  /* Cards open the product page on tap; no room for a cart button. */
+  .cart-btn {
+    display: none;
+  }
+
+  .new-badge,
+  .tag-badge {
+    font-size: 0.6rem;
+    padding: 0.2rem 0.45rem;
+  }
+
+  .store-product-tile {
+    flex-basis: 160px;
+  }
+
+  .store-rows {
+    gap: 1.5rem;
+  }
+
+  .store-row + .store-row {
+    padding-top: 1.5rem;
+  }
+
+  /* Compact store header: the whole row is the link to the store, so the
+     separate Visit Store button is dropped. */
+  .store-row-header {
+    position: relative;
+    flex-wrap: nowrap;
+    gap: 0.75rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .store-row-logo {
+    width: 44px;
+    height: 44px;
+  }
+
+  .store-row-name {
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+
+  .store-row-name::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+
+  .store-row-description {
+    font-size: 0.75rem;
+  }
+
+  .store-row-count {
+    font-size: 0.68rem;
+    margin-top: 0.15rem;
+  }
+
+  .visit-store-btn {
+    display: none;
+  }
+
+  .pagination {
+    margin-top: 1.75rem;
   }
 }
 </style>

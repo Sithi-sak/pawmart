@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import {
   PhCaretDown,
@@ -13,6 +13,7 @@ import {
   PhPencilSimpleLine,
   PhChatCircleText,
   PhPawPrint,
+  PhX,
 } from '@phosphor-icons/vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -73,6 +74,17 @@ const reviewHoverRating = ref(0)
 const reviewComment = ref('')
 const submittingReview = ref(false)
 const showReviewForm = ref(false)
+
+// On phones the review form is a bottom sheet, so the page behind it
+// shouldn't scroll while it's open.
+watch(showReviewForm, (open) => {
+  const isPhone = window.matchMedia('(max-width: 768px)').matches
+  document.body.style.overflow = open && isPhone ? 'hidden' : ''
+})
+
+onUnmounted(() => {
+  document.body.style.overflow = ''
+})
 const reviewSort = ref<'recent' | 'highest' | 'lowest'>('recent')
 const ratingFilter = ref<number | null>(null)
 
@@ -502,7 +514,7 @@ function toggleWishlist() {
           <ul class="perks">
             <li>
               <PhTruck :size="18" />
-              <span>Free Standard Shipping</span>
+              <span>Delivery Nationwide from $1.50</span>
             </li>
             <li>
               <PhShieldCheck :size="18" />
@@ -554,9 +566,10 @@ function toggleWishlist() {
             >
               <div v-if="openPanel === 'shipping'" class="accordion-content">
                 <p class="accordion-body">
-                  Free standard shipping on all orders within Cambodia, arriving in 2–4 business
-                  days. Returns are accepted within 30 days of delivery for unused items in their
-                  original packaging.
+                  Standard delivery is $1.50 within Phnom Penh and $2.50 to other provinces,
+                  arriving in 1–3 business days. Same-day Grab Express delivery is available in
+                  Phnom Penh for $3.00. Returns are accepted within 30 days of delivery for unused
+                  items in their original packaging.
                 </p>
               </div>
             </Transition>
@@ -641,8 +654,23 @@ function toggleWishlist() {
           </aside>
 
           <div class="reviews-main">
+            <div
+              v-if="showReviewForm && auth.customer && !myReview"
+              class="review-sheet-backdrop"
+              @click="showReviewForm = false"
+            ></div>
             <div v-if="showReviewForm && auth.customer && !myReview" class="review-form-card">
-              <h3 class="review-form-title">Write a review</h3>
+              <div class="review-form-head">
+                <h3 class="review-form-title">Write a review</h3>
+                <button
+                  type="button"
+                  class="review-sheet-close"
+                  aria-label="Close"
+                  @click="showReviewForm = false"
+                >
+                  <PhX :size="20" />
+                </button>
+              </div>
               <p class="option-label">OVERALL RATING</p>
               <div class="star-picker-row">
                 <div class="star-picker">
@@ -923,6 +951,7 @@ function toggleWishlist() {
 }
 
 .product-name {
+  font-family: var(--font-sans);
   font-size: 2.75rem;
   line-height: 1.1;
   margin-bottom: 0.75rem;
@@ -1746,6 +1775,7 @@ function toggleWishlist() {
 }
 
 .related-name {
+  font-family: var(--font-sans);
   font-size: 1rem;
   margin-bottom: 0.35rem;
   color: var(--color-heading);
@@ -1785,6 +1815,210 @@ function toggleWishlist() {
 
   .related-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .product-detail {
+    /* Room for the fixed add-to-cart bar. */
+    padding: 0 0 5rem;
+  }
+
+  .section-title {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .detail-top {
+    gap: 1.25rem;
+    margin-bottom: 2.5rem;
+  }
+
+  /* Gallery -> edge-to-edge swipe carousel; the next photo peeks in so it's
+     obvious there's more to swipe. */
+  .gallery {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    margin: calc(-1 * var(--page-gutter)) calc(-1 * var(--page-gutter)) 0;
+    padding: 0 var(--page-gutter);
+    scroll-padding-left: var(--page-gutter);
+  }
+
+  .gallery::-webkit-scrollbar {
+    display: none;
+  }
+
+  .gallery > * {
+    flex: 0 0 88%;
+    scroll-snap-align: start;
+  }
+
+  .product-name {
+    font-size: 1.85rem;
+  }
+
+  .price {
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+
+  /* Primary actions pinned above the tab bar, like a native shop app. */
+  .cart-actions-row {
+    position: fixed;
+    z-index: 15;
+    left: 0;
+    right: 0;
+    bottom: calc(var(--tab-bar-height) + var(--safe-bottom));
+    margin: 0;
+    padding: 0.6rem var(--page-gutter);
+    background: var(--color-background);
+    border-top: 1px solid var(--color-border);
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
+  }
+
+  /* Hidden with the tab bar while typing (see lib/keyboard.ts). */
+  :global(html.keyboard-open) .cart-actions-row {
+    display: none;
+  }
+
+  .add-to-cart-btn,
+  .buy-now-btn {
+    height: 2.85rem;
+  }
+
+  .option-value-btn,
+  .qty-btn {
+    height: 2.75rem;
+  }
+
+  .details-care {
+    margin-bottom: 2.5rem;
+  }
+
+  .spec-card {
+    padding: 1.25rem;
+  }
+
+  .reviews-section {
+    margin-bottom: 2.5rem;
+  }
+
+  .review-form-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .review-submit-btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .review-sort {
+    width: 100%;
+  }
+
+  .related {
+    margin-bottom: 2rem;
+  }
+
+  .related-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .related-info {
+    padding: 0.65rem 0.75rem 0.8rem;
+  }
+
+  .related-name {
+    font-size: 0.9rem;
+    line-height: 1.3;
+  }
+}
+
+.review-sheet-backdrop,
+.review-sheet-close {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  /* Review form -> slide-up bottom sheet above the tab bar and cart bar. */
+  .review-sheet-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    background: rgba(0, 0, 0, 0.4);
+    animation: review-fade-in 0.25s ease;
+  }
+
+  .review-form-card {
+    position: fixed;
+    z-index: 31;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-height: 90vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    margin: 0;
+    padding: 0 var(--page-gutter) calc(1.25rem + var(--safe-bottom));
+    background: var(--color-background);
+    border: none;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.15);
+    animation: review-slide-up 0.3s ease;
+  }
+
+  .review-form-head {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+    padding: 1rem 0 0.75rem;
+    background: var(--color-background);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .review-form-head .review-form-title {
+    font-size: 1.35rem;
+    margin-bottom: 0;
+  }
+
+  .review-sheet-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    margin-right: -0.5rem;
+    background: none;
+    border: none;
+    color: var(--color-heading);
+    cursor: pointer;
+  }
+
+  .star-picker-btn :deep(svg) {
+    width: 30px;
+    height: 30px;
+  }
+}
+
+@keyframes review-slide-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes review-fade-in {
+  from {
+    opacity: 0;
   }
 }
 </style>

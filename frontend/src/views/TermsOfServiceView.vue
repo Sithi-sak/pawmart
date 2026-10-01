@@ -144,8 +144,8 @@ const obligations: string[] = [
 /* Hero */
 .hero {
   text-align: center;
-  margin: -1.5rem calc(-1 * 1.5rem) 0;
-  padding: 4rem 1.5rem 3rem;
+  margin: calc(-1 * var(--page-gutter)) calc(-1 * var(--page-gutter)) 0;
+  padding: 4rem var(--page-gutter) 3rem;
 }
 
 .hero-title {
@@ -254,6 +254,24 @@ const obligations: string[] = [
   .legal-meta {
     flex-direction: column;
     align-items: flex-start;
+  }
+}
+
+@media (max-width: 768px) {
+  .hero {
+    padding: 2.5rem var(--page-gutter) 2rem;
+  }
+
+  .hero-title {
+    font-size: 2rem;
+  }
+
+  .hero-divider {
+    margin-top: 1.5rem;
+  }
+
+  .legal {
+    padding: 2rem 0;
   }
 }
 </style>

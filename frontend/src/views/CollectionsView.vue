@@ -146,8 +146,8 @@ const collections: Collection[] = [
 
 .section-soft {
   background: var(--color-background-soft);
-  margin: 0 calc(-1 * 1.5rem);
-  padding: 3.5rem 1.5rem;
+  margin: 0 calc(-1 * var(--page-gutter));
+  padding: 3.5rem var(--page-gutter);
 }
 
 .section-title {
@@ -189,7 +189,7 @@ const collections: Collection[] = [
   align-items: center;
   justify-content: center;
   text-align: center;
-  margin: -1.5rem calc(-1 * 1.5rem) 0;
+  margin: calc(-1 * var(--page-gutter)) calc(-1 * var(--page-gutter)) 0;
   padding: 3rem;
   overflow: hidden;
 }
@@ -376,6 +376,83 @@ const collections: Collection[] = [
   .collection-image {
     width: 100%;
     aspect-ratio: 16 / 9;
+  }
+}
+
+@media (max-width: 768px) {
+  .section {
+    padding: 2.25rem 0;
+  }
+
+  .section-soft {
+    padding: 2.25rem var(--page-gutter);
+  }
+
+  .section-title {
+    font-size: 1.6rem;
+  }
+
+  .hero {
+    min-height: 0;
+    height: min(60vh, 440px);
+    padding: 2rem var(--page-gutter);
+  }
+
+  .hero-title {
+    font-size: 1.85rem;
+  }
+
+  .hero-copy {
+    font-size: 0.95rem;
+  }
+
+  .section-header {
+    margin-bottom: 1.25rem;
+  }
+
+  .species-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem 0.75rem;
+  }
+
+  .species-title {
+    font-size: 1.05rem;
+  }
+
+  .selection-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .collection-grid {
+    gap: 0.75rem;
+  }
+
+  /* Compact horizontal rows instead of tall stacked cards. */
+  .collection-card {
+    flex-direction: row;
+  }
+
+  .collection-image {
+    width: 35%;
+    aspect-ratio: auto;
+    padding: 0.75rem;
+  }
+
+  .collection-image img {
+    max-height: 120px;
+  }
+
+  .collection-content {
+    padding: 1rem;
+    gap: 0.4rem;
+  }
+
+  .collection-content h3 {
+    font-size: 1.1rem;
+  }
+
+  .collection-content p {
+    font-size: 0.85rem;
   }
 }
 </style>

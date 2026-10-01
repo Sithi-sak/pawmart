@@ -284,4 +284,10 @@ async function handleGoogleSignIn() {
 .switch-note a:hover {
   text-decoration: underline;
 }
+
+@media (max-width: 768px) {
+  .auth-title {
+    font-size: 2rem;
+  }
+}
 </style>

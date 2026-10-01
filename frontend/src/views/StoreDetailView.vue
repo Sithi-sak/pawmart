@@ -496,8 +496,11 @@ function toggleWishlist(p: Product) {
   gap: 1rem;
 }
 
+/* Column flex so the price row can sit at the bottom of every card in a grid
+   row, whatever the name/category length. */
 .product-card {
-  display: block;
+  display: flex;
+  flex-direction: column;
   text-decoration: none;
   color: var(--color-text);
   background: var(--color-background);
@@ -506,6 +509,7 @@ function toggleWishlist(p: Product) {
 
 .product-image {
   position: relative;
+  flex-shrink: 0;
   aspect-ratio: 3 / 2;
   height: auto;
   background-size: contain;
@@ -566,10 +570,14 @@ function toggleWishlist(p: Product) {
 }
 
 .product-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   padding: 1rem 1.1rem 1.1rem;
 }
 
 .product-name {
+  font-family: var(--font-sans);
   font-size: 1.05rem;
   margin-bottom: 0.25rem;
   color: var(--color-heading);
@@ -586,6 +594,7 @@ function toggleWishlist(p: Product) {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  margin-top: auto;
 }
 
 .price-group {
@@ -690,6 +699,87 @@ function toggleWishlist(p: Product) {
 
   .product-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .store-header {
+    flex-direction: row;
+    align-items: center;
+    gap: 1rem;
+    padding-bottom: 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .store-logo {
+    width: 64px;
+    height: 64px;
+  }
+
+  .store-name {
+    font-size: 1.6rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .store-description {
+    font-size: 0.85rem;
+  }
+
+  .section-title {
+    font-size: 1.25rem;
+  }
+
+  /* Category tiles -> swipeable strip bleeding to the screen edges. */
+  .type-row {
+    display: flex;
+    gap: 0.75rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin-left: calc(-1 * var(--page-gutter));
+    margin-right: calc(-1 * var(--page-gutter));
+    padding-left: var(--page-gutter);
+    padding-right: var(--page-gutter);
+  }
+
+  .type-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .type-card {
+    flex: 0 0 6.25rem;
+  }
+
+  .type-label {
+    font-size: 0.68rem;
+  }
+
+  .product-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .product-info {
+    padding: 0.65rem;
+  }
+
+  .product-name {
+    font-size: 0.92rem;
+    line-height: 1.25;
+  }
+
+  .product-category {
+    font-size: 0.68rem;
+  }
+
+  /* Cards open the product page on tap; no room for a cart button. */
+  .cart-btn {
+    display: none;
+  }
+
+  .new-badge,
+  .tag-badge {
+    font-size: 0.6rem;
+    padding: 0.2rem 0.45rem;
   }
 }
 </style>

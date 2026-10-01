@@ -16,6 +16,16 @@
   /* Shared max content width for the site header, main, and footer */
   --content-max-width: 80%;
 
+  /* Horizontal padding around page content. Views that bleed a section out to
+     the screen edge use calc(-1 * var(--page-gutter)) so they stay in sync. */
+  --page-gutter: 1.5rem;
+
+  /* Mobile app shell: top app bar + bottom tab bar heights. The tab bar only
+     exists below the mobile breakpoint, so it's 0 on desktop. */
+  --app-bar-height: 3.5rem;
+  --tab-bar-height: 0px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+
   /* Square corners throughout — overrides Element Plus's default rounding */
   --el-border-radius-base: 0;
   --el-border-radius-small: 0;
@@ -31,6 +41,16 @@
   --el-color-primary-light-8: #f8e2d2;
   --el-color-primary-light-9: #fbf0e9;
   --el-color-primary-rgb: 218, 109, 31;
+}
+
+/* Mobile breakpoint (768px) is mirrored in the media queries of every layout
+   and view -- CSS custom properties can't be used inside @media. */
+@media (max-width: 768px) {
+  :root {
+    --content-max-width: 100%;
+    --page-gutter: 1rem;
+    --tab-bar-height: 3.75rem;
+  }
 }
 
 *,
@@ -52,6 +72,9 @@ button {
 }
 
 html {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: var(--color-border) transparent;
@@ -102,4 +125,82 @@ h4 {
   color: var(--color-heading);
   font-family: var(--font-serif);
   font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  /* iOS Safari zooms the page when focusing any input under 16px, which
+     breaks the app-like feel. Element Plus inputs default to 14px. */
+  input,
+  select,
+  textarea,
+  .el-input__inner,
+  .el-textarea__inner,
+  .el-select__selected-item {
+    font-size: 16px !important;
+  }
+
+  /* Element Plus's message boxes (confirm dialogs) and dialogs use fixed
+     widths with no viewport clamp. */
+  .el-message-box {
+    width: calc(100vw - 2rem) !important;
+    max-width: 420px;
+  }
+
+  .el-dialog {
+    width: calc(100vw - 2rem) !important;
+    max-width: 480px;
+    margin-top: 8vh !important;
+  }
+
+  .el-dialog__body {
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+
+  /* Drawers opened from the right fill the screen on phones. */
+  .el-drawer.rtl,
+  .el-drawer.ltr {
+    width: 100% !important;
+  }
+
+  /* Bottom-sheet drawers: rounded top corners, room for the home indicator. */
+  .el-drawer.btt {
+    border-radius: 16px 16px 0 0;
+    padding-bottom: var(--safe-bottom);
+  }
+
+  /* Keep toasts clear of the notch / status bar in standalone mode. */
+  .el-message {
+    top: calc(env(safe-area-inset-top, 0px) + 12px) !important;
+    max-width: calc(100vw - 2rem);
+  }
+
+  /* Denser admin/seller tables (they already scroll horizontally). */
+  .el-table {
+    font-size: 13px;
+  }
+
+  /* Touch scrolling doesn't need visible scrollbars. */
+  ::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+}
+
+/* Utility for horizontally swipeable rows (chips, carousels). */
+.scroll-row {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.scroll-row::-webkit-scrollbar {
+  display: none;
+}
+
+.scroll-row > * {
+  scroll-snap-align: start;
+  flex-shrink: 0;
 }

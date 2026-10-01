@@ -131,8 +131,8 @@ const features: Feature[] = [
 
 .section-soft {
   background: var(--color-background-soft);
-  margin: 0 calc(-1 * 1.5rem);
-  padding: 3.5rem 1.5rem;
+  margin: 0 calc(-1 * var(--page-gutter));
+  padding: 3.5rem var(--page-gutter);
 }
 
 .section-title {
@@ -160,7 +160,7 @@ const features: Feature[] = [
 /* Hero */
 .hero {
   position: relative;
-  margin: -1.5rem calc(-1 * 1.5rem) 0;
+  margin: calc(-1 * var(--page-gutter)) calc(-1 * var(--page-gutter)) 0;
   padding-bottom: 4rem;
 }
 
@@ -353,6 +353,58 @@ const features: Feature[] = [
   .cta {
     flex-direction: column;
     align-items: flex-start;
+  }
+}
+
+@media (max-width: 768px) {
+  .section {
+    padding: 2.25rem 0;
+  }
+
+  .section-soft {
+    padding: 2.25rem var(--page-gutter);
+  }
+
+  .section-title {
+    font-size: 1.5rem;
+  }
+
+  .hero {
+    padding-bottom: 1rem;
+  }
+
+  .hero-media {
+    height: 260px;
+  }
+
+  .hero-card {
+    margin: -3rem var(--page-gutter) 0;
+    padding: 1.5rem;
+  }
+
+  .hero-title {
+    font-size: 1.65rem;
+  }
+
+  .commitment,
+  .craft {
+    gap: 2rem;
+  }
+
+  .commitment-media {
+    gap: 0.75rem;
+  }
+
+  .studio-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .cta {
+    padding: 2rem 0;
+  }
+
+  .cta h2 {
+    font-size: 1.3rem;
   }
 }
 </style>

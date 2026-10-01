@@ -195,4 +195,10 @@ async function handleSubmit() {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+@media (max-width: 768px) {
+  .auth-title {
+    font-size: 2rem;
+  }
+}
 </style>

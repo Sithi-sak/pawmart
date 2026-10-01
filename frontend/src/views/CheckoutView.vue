@@ -117,12 +117,27 @@ watch(
 )
 
 // Must match SHIPPING_COSTS in backend/routers/orders.py, which is what
-// actually gets charged.
-const EXPRESS_SHIPPING_COST = 1.5
+// actually gets charged. Grab Express only runs inside Phnom Penh.
+const PHNOM_PENH_PROVINCE_CODE = '12'
+const STANDARD_SHIPPING_COST = { phnomPenh: 1.5, provinces: 2.5 }
+const EXPRESS_SHIPPING_COST = 3
+
+const isPhnomPenh = computed(() => selectedProvinceCode.value === PHNOM_PENH_PROVINCE_CODE)
+// Before a province is picked, quote the Phnom Penh rate as the "from" price.
+const standardShippingCost = computed(() =>
+  selectedProvinceCode.value && !isPhnomPenh.value
+    ? STANDARD_SHIPPING_COST.provinces
+    : STANDARD_SHIPPING_COST.phnomPenh,
+)
+const expressAvailable = computed(() => !selectedProvinceCode.value || isPhnomPenh.value)
+
+watch(expressAvailable, (available) => {
+  if (!available && shippingForm.method === 'express') shippingForm.method = 'standard'
+})
 
 const shippingCost = computed(() => {
   if (cart.appliedRedemption?.reward.free_shipping) return 0
-  return shippingForm.method === 'express' ? EXPRESS_SHIPPING_COST : 0
+  return shippingForm.method === 'express' ? EXPRESS_SHIPPING_COST : standardShippingCost.value
 })
 
 const estimatedTax = computed(() => (cart.total + shippingCost.value) * 0.0875)
@@ -333,7 +348,7 @@ const paymentMethodLabel = computed(
 const shippingMethodLabel = computed(() =>
   shippingForm.method === 'express'
     ? 'Grab Express — Same-Day Delivery'
-    : 'J&T Express / Virak Buntham — 2-4 Business Days',
+    : 'J&T Express / Virak Buntham — 1-3 Business Days',
 )
 </script>
 
@@ -464,18 +479,31 @@ const shippingMethodLabel = computed(() =>
                   <span class="method-name">J&amp;T Express / Virak Buntham</span>
                   <span class="method-detail">1-3 Business Days</span>
                 </span>
-                <span class="method-price complimentary">Free</span>
+                <span class="method-price">{{ formatPrice(standardShippingCost) }}</span>
               </label>
 
               <label
                 class="method-option"
-                :class="{ 'is-selected': shippingForm.method === 'express' }"
+                :class="{
+                  'is-selected': shippingForm.method === 'express',
+                  'is-disabled': !expressAvailable,
+                }"
               >
-                <input v-model="shippingForm.method" type="radio" name="method" value="express" />
+                <input
+                  v-model="shippingForm.method"
+                  type="radio"
+                  name="method"
+                  value="express"
+                  :disabled="!expressAvailable"
+                />
                 <span class="method-radio"></span>
                 <span class="method-info">
                   <span class="method-name">Grab Express</span>
-                  <span class="method-detail">Same-Day Delivery (Phnom Penh area)</span>
+                  <span class="method-detail">{{
+                    expressAvailable
+                      ? 'Same-Day Delivery (Phnom Penh only)'
+                      : 'Not available outside Phnom Penh'
+                  }}</span>
                 </span>
                 <span class="method-price">{{ formatPrice(EXPRESS_SHIPPING_COST) }}</span>
               </label>
@@ -1004,6 +1032,11 @@ const shippingMethodLabel = computed(() =>
 .method-option.is-selected {
   border-color: var(--color-accent);
   background: var(--color-background-soft);
+}
+
+.method-option.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .method-option input[type='radio'] {
@@ -1628,6 +1661,92 @@ const shippingMethodLabel = computed(() =>
   .form-row,
   .review-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .checkout {
+    padding: 0 0 2.5rem;
+  }
+
+  .stepper {
+    justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+
+  .step {
+    gap: 0.4rem;
+  }
+
+  .step-number {
+    width: 1.6rem;
+    height: 1.6rem;
+    font-size: 0.72rem;
+  }
+
+  .step-label {
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+  }
+
+  .step-connector {
+    margin: 0 0.5rem;
+  }
+
+  .stepper-divider {
+    margin-bottom: 1.5rem;
+  }
+
+  .checkout-body {
+    gap: 2rem;
+  }
+
+  .step-title {
+    font-size: 1.6rem;
+  }
+
+  .shipping-form,
+  .payment-form {
+    gap: 1.1rem;
+  }
+
+  .form-row {
+    gap: 1.1rem;
+  }
+
+  .address-row {
+    grid-template-columns: 1fr;
+  }
+
+  .method-option {
+    padding: 0.85rem 0.9rem;
+    gap: 0.75rem;
+  }
+
+  .continue-btn,
+  .place-order-btn {
+    height: 3rem;
+  }
+
+  .trust-badges {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem 1.25rem;
+    padding-top: 1.5rem;
+  }
+
+  .review-item {
+    grid-template-columns: 56px 1fr auto;
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  .order-summary {
+    padding: 1.25rem;
+  }
+
+  .summary-title {
+    font-size: 1.25rem;
   }
 }
 </style>

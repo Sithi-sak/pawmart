@@ -90,7 +90,14 @@ onMounted(async () => {
 
     <div v-else class="order-list">
       <div v-for="order in orders" :key="order.id" class="order-card">
-        <div class="order-thumb placeholder-img"></div>
+        <img
+          v-if="order.thumbnail_url"
+          :src="order.thumbnail_url"
+          :alt="`Order #${order.order_number}`"
+          class="order-thumb"
+          loading="lazy"
+        />
+        <div v-else class="order-thumb placeholder-img"></div>
 
         <div class="order-info">
           <p class="order-name">Order #{{ order.order_number }}</p>
@@ -181,6 +188,12 @@ onMounted(async () => {
   height: auto;
 }
 
+img.order-thumb {
+  width: 100%;
+  object-fit: cover;
+  background: var(--color-background);
+}
+
 .sk-order-name {
   width: 70%;
   margin-bottom: 0.4rem;
@@ -244,7 +257,7 @@ onMounted(async () => {
   color: var(--color-accent);
 }
 
-@media (max-width: 700px) {
+@media (max-width: 768px) {
   .order-card {
     grid-template-columns: 56px 1fr;
     grid-template-areas:
@@ -269,6 +282,17 @@ onMounted(async () => {
   .track-btn {
     grid-area: action;
     width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  /* The app bar's back button covers this on phones. */
+  .back-link {
+    display: none;
+  }
+
+  .page-title {
+    font-size: 1.85rem;
   }
 }
 </style>

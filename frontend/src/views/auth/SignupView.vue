@@ -343,4 +343,15 @@ async function handleGoogleSignUp() {
   color: var(--color-text);
   opacity: 0.5;
 }
+
+@media (max-width: 768px) {
+  .auth-title {
+    font-size: 2rem;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 1.1rem;
+  }
+}
 </style>

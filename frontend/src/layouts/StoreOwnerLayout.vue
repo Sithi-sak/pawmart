@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { RouterLink, RouterView, useRouter } from 'vue-router'
+import { PhPackage, PhReceipt, PhSquaresFour } from '@phosphor-icons/vue'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
@@ -16,9 +17,15 @@ async function handleSignOut() {
     <aside class="admin-sidebar">
       <RouterLink to="/store/manage" class="brand">🐾 PawMart Seller</RouterLink>
       <nav class="admin-nav">
-        <RouterLink to="/store/manage">Dashboard</RouterLink>
-        <RouterLink to="/store/manage/products">Products</RouterLink>
-        <RouterLink to="/store/manage/orders">Orders</RouterLink>
+        <RouterLink to="/store/manage">
+          <PhSquaresFour :size="22" class="nav-icon" />Dashboard
+        </RouterLink>
+        <RouterLink to="/store/manage/products">
+          <PhPackage :size="22" class="nav-icon" />Products
+        </RouterLink>
+        <RouterLink to="/store/manage/orders">
+          <PhReceipt :size="22" class="nav-icon" />Orders
+        </RouterLink>
       </nav>
       <button type="button" class="back-link" @click="handleSignOut">Sign Out</button>
     </aside>
@@ -94,5 +101,87 @@ async function handleSignOut() {
   min-height: 0;
   padding: 1.5rem;
   overflow-y: auto;
+}
+
+.nav-icon {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  /* Sidebar -> slim top bar (brand + sign out); nav -> bottom tab bar. */
+  .admin-shell {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .admin-sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    width: auto;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    height: calc(var(--app-bar-height) + env(safe-area-inset-top, 0px));
+    padding: env(safe-area-inset-top, 0px) var(--page-gutter) 0;
+    background: var(--color-background);
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+    overflow: visible;
+  }
+
+  .admin-nav {
+    position: fixed;
+    z-index: 20;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    height: calc(var(--tab-bar-height) + var(--safe-bottom));
+    padding-bottom: var(--safe-bottom);
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid var(--color-border);
+  }
+
+  /* Out of the way while typing instead of riding up on the keyboard
+     (see lib/keyboard.ts). */
+  :global(html.keyboard-open) .admin-nav {
+    display: none;
+  }
+
+  .admin-nav a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.15rem;
+    padding: 0 0.25rem;
+    font-size: 0.65rem;
+    font-weight: 500;
+    text-align: center;
+    line-height: 1.2;
+    opacity: 0.6;
+  }
+
+  .admin-nav a.router-link-exact-active {
+    background: none;
+    opacity: 1;
+  }
+
+  .nav-icon {
+    display: block;
+  }
+
+  .admin-main {
+    overflow: visible;
+    padding: var(--page-gutter) var(--page-gutter)
+      calc(var(--tab-bar-height) + var(--safe-bottom) + 1.5rem);
+  }
 }
 </style>

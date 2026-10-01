@@ -255,4 +255,10 @@ async function handleSubmit() {
 .help-link:hover {
   text-decoration: underline;
 }
+
+@media (max-width: 768px) {
+  .auth-title {
+    font-size: 2rem;
+  }
+}
 </style>
