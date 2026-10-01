@@ -7,7 +7,6 @@ import ElementPlus from 'element-plus'
 
 import App from './App.vue'
 import router from './router'
-import { installKeyboardTracking } from './lib/keyboard'
 
 const app = createApp(App)
 
@@ -16,8 +15,6 @@ app.use(router)
 app.use(ElementPlus)
 
 app.mount('#app')
-
-installKeyboardTracking()
 
 // Dev is skipped so the worker's caching never fights Vite's HMR.
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {

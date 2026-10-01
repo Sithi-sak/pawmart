@@ -312,13 +312,11 @@ async function save() {
     overflow: hidden;
   }
 
-  /* The keyboard vars only exist while it's open (see lib/keyboard.ts); on
-     iOS they lift the sheet so the footer sits right on top of it. */
   .el-dialog.profile-dialog {
     width: 100% !important;
     max-width: none;
-    margin: auto 0 var(--keyboard-inset, 0px) !important;
-    max-height: calc(var(--visual-height, 100dvh) - env(safe-area-inset-top, 0px) - 1.5rem);
+    margin: auto 0 0 !important;
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 1.5rem);
     display: flex;
     flex-direction: column;
     padding: 0;
@@ -347,11 +345,6 @@ async function save() {
   .profile-dialog .el-dialog__footer {
     padding: 0.75rem 1.25rem calc(0.75rem + var(--safe-bottom));
     border-top: 1px solid var(--color-border);
-  }
-
-  /* The keyboard covers the home indicator, so no need to clear it. */
-  html.keyboard-open .profile-dialog .el-dialog__footer {
-    padding-bottom: 0.75rem;
   }
 
   /* Slide up from the bottom edge instead of Element Plus's drop-in. */

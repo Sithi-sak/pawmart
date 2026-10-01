@@ -802,11 +802,6 @@ function proceedToCheckout() {
     box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
   }
 
-  /* Hidden with the tab bar while typing (see lib/keyboard.ts). */
-  :global(html.keyboard-open) .mobile-checkout-bar {
-    display: none;
-  }
-
   .mobile-checkout-total {
     display: flex;
     flex-direction: column;

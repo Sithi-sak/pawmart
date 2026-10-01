@@ -1879,11 +1879,6 @@ function toggleWishlist() {
     box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
   }
 
-  /* Hidden with the tab bar while typing (see lib/keyboard.ts). */
-  :global(html.keyboard-open) .cart-actions-row {
-    display: none;
-  }
-
   .add-to-cart-btn,
   .buy-now-btn {
     height: 2.85rem;

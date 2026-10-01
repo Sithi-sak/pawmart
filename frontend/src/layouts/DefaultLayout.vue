@@ -315,23 +315,17 @@ function goBack() {
   padding: var(--page-gutter);
 }
 
+/* Enter-only: with no leave transition, out-in swaps the old page out within
+   a frame or two instead of making every tap wait on a fade-out first. */
 :deep(.page-enter-active) {
   transition:
-    opacity 0.35s ease,
-    transform 0.35s ease;
+    opacity 0.2s ease,
+    transform 0.2s ease;
 }
 
 :deep(.page-enter-from) {
   opacity: 0;
-  transform: translateY(16px);
-}
-
-:deep(.page-leave-active) {
-  transition: opacity 0.15s ease;
-}
-
-:deep(.page-leave-to) {
-  opacity: 0;
+  transform: translateY(12px);
 }
 
 /* Footer */
@@ -499,12 +493,6 @@ function goBack() {
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border-top: 1px solid var(--color-border);
-  }
-
-  /* Out of the way while typing instead of riding up on the keyboard
-     (see lib/keyboard.ts). */
-  :global(html.keyboard-open) .tab-bar {
-    display: none;
   }
 
   .tab {

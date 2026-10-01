@@ -149,12 +149,6 @@ async function handleSignOut() {
     border-top: 1px solid var(--color-border);
   }
 
-  /* Out of the way while typing instead of riding up on the keyboard
-     (see lib/keyboard.ts). */
-  :global(html.keyboard-open) .admin-nav {
-    display: none;
-  }
-
   .admin-nav a {
     display: flex;
     flex-direction: column;
