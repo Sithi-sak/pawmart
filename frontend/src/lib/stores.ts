@@ -10,6 +10,9 @@ export interface Store {
   description: string | null
   logo_url: string | null
   status: StoreStatus
+  // Registered for VAT with the GDT -- only these stores show "VAT
+  // included" on receipts. Admin-only (see 20261003000000 migration).
+  vat_registered: boolean
   created_at: string
 }
 
@@ -61,6 +64,29 @@ export async function setStoreStatus(id: number, status: StoreStatus): Promise<S
     .single()
   if (error) throw error
   return data as Store
+}
+
+export async function setStoreVatRegistered(id: number, vatRegistered: boolean): Promise<Store> {
+  const { data, error } = await supabase
+    .from('stores')
+    .update({ vat_registered: vatRegistered })
+    .eq('id', id)
+    .select('*')
+    .single()
+  if (error) throw error
+  return data as Store
+}
+
+// Checkout only needs this one flag to label the VAT already inside the
+// price; the backend works out the real amount on its own.
+export async function fetchStoreVatRegistered(id: number): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('stores')
+    .select('vat_registered')
+    .eq('id', id)
+    .maybeSingle()
+  if (error) throw error
+  return data?.vat_registered ?? false
 }
 
 export interface StoreWithStats extends Store {

@@ -565,8 +565,9 @@ function toggleWishlist() {
                 <p class="accordion-body">
                   Standard delivery is $1.50 within Phnom Penh and $2.50 to other provinces,
                   arriving in 1–3 business days. Same-day Grab Express delivery is available in
-                  Phnom Penh for $3.00. Returns are accepted within 30 days of delivery for unused
-                  items in their original packaging.
+                  Phnom Penh for $3.00. Returns are accepted within 7 days of delivery for unused
+                  items in their original packaging; opened food and healthcare items can only
+                  be returned if they arrived wrong or damaged.
                 </p>
               </div>
             </Transition>

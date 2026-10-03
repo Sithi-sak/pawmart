@@ -25,7 +25,10 @@ SHIPPING_COSTS = {
     "standard": {"phnom_penh": 1.5, "provinces": 2.5},
     "express": {"phnom_penh": 3.0},
 }
-TAX_RATE = 0.0875
+# Cambodian VAT. Prices are VAT inclusive, so this is never added on top:
+# orders.tax records the VAT already inside the price, and only for a store
+# registered for VAT (stores.vat_registered) since others can't charge it.
+VAT_RATE = 0.10
 # Orders only ever move forward through these statuses (task 3.3): there is
 # no courier integration, so each step is a real physical event the shop
 # reports itself (packed it, handed it to the driver, driver delivered it).
@@ -139,7 +142,14 @@ def _price_cart(
     # can still reach checkout, so re-check status here (this call uses the
     # service-role key and bypasses the RLS gate that owns_store() enforces
     # everywhere else, see 3.10.10 notes).
-    store = supabase.table("stores").select("status").eq("id", store_id).maybe_single().execute().data
+    store = (
+        supabase.table("stores")
+        .select("status, vat_registered")
+        .eq("id", store_id)
+        .maybe_single()
+        .execute()
+        .data
+    )
     if store is None or store["status"] != "active":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -185,9 +195,14 @@ def _price_cart(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Grab Express only delivers within Phnom Penh",
         )
-    shipping_cost = 0.0 if free_shipping else zone_costs[zone]
-    tax = round((subtotal - discount + shipping_cost) * TAX_RATE, 2)
-    total = round(subtotal - discount + shipping_cost + tax, 2)
+    # The reward is "Free Standard Shipping" -- it doesn't cover Grab Express.
+    shipping_cost = 0.0 if free_shipping and shipping_method == "standard" else zone_costs[zone]
+    # VAT is on the store's sale price: a Paws Rewards discount is paid by
+    # PawMart, not the store, so it doesn't shrink the store's taxable sale.
+    tax = (
+        round(subtotal * VAT_RATE / (1 + VAT_RATE), 2) if store.get("vat_registered") else 0.0
+    )
+    total = round(subtotal - discount + shipping_cost, 2)
 
     return {
         "store_id": store_id,

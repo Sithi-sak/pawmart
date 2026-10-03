@@ -29,13 +29,15 @@ def supabase():
             {"id": 1, "name": "Kibble", "price": 20.0, "stock": 5, "store_id": 10},
             {"id": 2, "name": "Chew Toy", "price": 15.0, "stock": 2, "store_id": 10},
             {"id": 3, "name": "Other Store Bowl", "price": 8.0, "stock": 5, "store_id": 20},
+            {"id": 5, "name": "Small Shop Leash", "price": 11.0, "stock": 5, "store_id": 30},
         ],
     )
     fake.seed(
         "stores",
         [
-            {"id": 10, "status": "active"},
-            {"id": 20, "status": "banned"},
+            {"id": 10, "status": "active", "vat_registered": True},
+            {"id": 20, "status": "banned", "vat_registered": False},
+            {"id": 30, "status": "active", "vat_registered": False},
         ],
     )
     fake.seed(
@@ -116,9 +118,13 @@ class TestRedemption:
         assert pricing["subtotal"] == 20.0
         assert pricing["discount"] == 5.0
 
-    def test_free_shipping_redemption_zeroes_shipping_cost(self, supabase):
-        pricing = _price_cart(supabase, _items((1, 1)), "express", PP_CITY, "cust-1", 101)
+    def test_free_shipping_redemption_zeroes_standard_shipping(self, supabase):
+        pricing = _price_cart(supabase, _items((1, 1)), "standard", PP_CITY, "cust-1", 101)
         assert pricing["shipping_cost"] == 0.0
+
+    def test_free_shipping_redemption_does_not_cover_grab_express(self, supabase):
+        pricing = _price_cart(supabase, _items((1, 1)), "express", PP_CITY, "cust-1", 101)
+        assert pricing["shipping_cost"] == 3.0
 
     def test_discount_is_capped_at_subtotal(self, supabase):
         pricing = _price_cart(supabase, _items((1, 1)), "standard", PP_CITY, "cust-1", 102)
@@ -188,17 +194,21 @@ class TestShippingZones:
 
 
 class TestTotals:
-    def test_express_shipping_and_tax_are_included_in_the_total(self, supabase):
+    def test_vat_is_inside_the_price_not_added_on_top(self, supabase):
         pricing = _price_cart(supabase, _items((1, 1)), "express", PP_CITY, "cust-1", None)
         assert pricing["shipping_cost"] == 3.0
-        expected_tax = round((20.0 + 3.0) * 0.0875, 2)
-        assert pricing["tax"] == expected_tax
-        assert pricing["total"] == round(20.0 + 3.0 + expected_tax, 2)
+        assert pricing["tax"] == round(20.0 * 10 / 110, 2)
+        assert pricing["total"] == 23.0
 
-    def test_discount_is_applied_before_tax(self, supabase):
+    def test_reward_discount_does_not_reduce_the_store_vat(self, supabase):
         pricing = _price_cart(supabase, _items((1, 1)), "standard", PP_CITY, "cust-1", 100)
-        expected_tax = round((20.0 - 5.0 + 1.5) * 0.0875, 2)
-        assert pricing["tax"] == expected_tax
+        assert pricing["tax"] == round(20.0 * 10 / 110, 2)
+        assert pricing["total"] == 20.0 - 5.0 + 1.5
+
+    def test_store_not_vat_registered_has_no_vat(self, supabase):
+        pricing = _price_cart(supabase, _items((5, 1)), "standard", PP_CITY, "cust-1", None)
+        assert pricing["tax"] == 0.0
+        assert pricing["total"] == 11.0 + 1.5
 
 
 # get_order/list_orders call get_supabase() internally (unlike _price_cart,

@@ -16,6 +16,7 @@ import QRCode from 'qrcode'
 import { useCartStore } from '../stores/cart'
 import { useAuthStore, type Customer } from '../stores/auth'
 import { createOrder, type Order } from '../lib/orders'
+import { fetchStoreVatRegistered } from '../lib/stores'
 import { POINTS_PER_DOLLAR } from '../lib/loyalty'
 import { cambodiaAddressOptions, describeVillage, parseLocation } from '../lib/cambodiaAddress'
 import KhqrCard from '../components/KhqrCard.vue'
@@ -136,14 +137,36 @@ watch(expressAvailable, (available) => {
   if (!available && shippingForm.method === 'express') shippingForm.method = 'standard'
 })
 
+// The reward is "Free Standard Shipping", so Grab Express is still charged.
 const shippingCost = computed(() => {
+  if (shippingForm.method === 'express') return EXPRESS_SHIPPING_COST
   if (cart.appliedRedemption?.reward.free_shipping) return 0
-  return shippingForm.method === 'express' ? EXPRESS_SHIPPING_COST : standardShippingCost.value
+  return standardShippingCost.value
 })
 
-const estimatedTax = computed(() => (cart.total + shippingCost.value) * 0.0875)
+// Prices are VAT inclusive (see VAT_RATE in backend/routers/orders.py), so
+// VAT is only shown as the part already inside the subtotal, never added on
+// top, and only for a store registered for VAT.
+const VAT_RATE = 0.1
+const storeVatRegistered = ref(false)
+watch(
+  () => cart.activeStoreId,
+  async (storeId) => {
+    storeVatRegistered.value = false
+    if (storeId == null) return
+    try {
+      storeVatRegistered.value = await fetchStoreVatRegistered(storeId)
+    } catch {
+      // Only a label, the backend works out the real VAT itself.
+    }
+  },
+  { immediate: true },
+)
+const vatIncluded = computed(() =>
+  storeVatRegistered.value ? (cart.subtotal * VAT_RATE) / (1 + VAT_RATE) : 0,
+)
 
-const orderTotal = computed(() => cart.total + shippingCost.value + estimatedTax.value)
+const orderTotal = computed(() => cart.total + shippingCost.value)
 
 // Points are only credited once a payment actually clears (see orders.py's
 // award_points_for_order) — for KHQR that's still a manual admin step (4.1),
@@ -758,9 +781,9 @@ const shippingMethodLabel = computed(() =>
             {{ shippingCost === 0 ? 'Free' : formatPrice(shippingCost) }}
           </span>
         </div>
-        <div class="summary-row">
-          <span>Estimated Tax</span>
-          <span>{{ formatPrice(estimatedTax) }}</span>
+        <div v-if="vatIncluded > 0" class="summary-row">
+          <span>Includes VAT (10%)</span>
+          <span>{{ formatPrice(vatIncluded) }}</span>
         </div>
 
         <div class="summary-divider"></div>

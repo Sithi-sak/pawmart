@@ -3,7 +3,12 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { PhMagnifyingGlass } from '@phosphor-icons/vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { fetchStoresForAdmin, setStoreStatus, type StoreWithStats } from '@/lib/stores'
+import {
+  fetchStoresForAdmin,
+  setStoreStatus,
+  setStoreVatRegistered,
+  type StoreWithStats,
+} from '@/lib/stores'
 import { formatDate } from '@/lib/format'
 
 const stores = ref<StoreWithStats[]>([])
@@ -60,6 +65,19 @@ async function toggleBan(store: StoreWithStats) {
     const updated = await setStoreStatus(store.id, banning ? 'banned' : 'active')
     store.status = updated.status
     ElMessage.success(banning ? 'Store banned' : 'Store unbanned')
+  } catch (err) {
+    ElMessage.error(err instanceof Error ? err.message : 'Could not update this store')
+  } finally {
+    workingId.value = null
+  }
+}
+
+async function toggleVat(store: StoreWithStats, vatRegistered: boolean) {
+  workingId.value = store.id
+  try {
+    const updated = await setStoreVatRegistered(store.id, vatRegistered)
+    store.vat_registered = updated.vat_registered
+    ElMessage.success(vatRegistered ? 'Store marked VAT registered' : 'Store marked not VAT registered')
   } catch (err) {
     ElMessage.error(err instanceof Error ? err.message : 'Could not update this store')
   } finally {
@@ -135,6 +153,15 @@ onMounted(loadStores)
         </el-table-column>
         <el-table-column label="Created" min-width="120">
           <template #default="{ row }">{{ formatDate(row.created_at) }}</template>
+        </el-table-column>
+        <el-table-column label="VAT" width="90">
+          <template #default="{ row }">
+            <el-switch
+              :model-value="row.vat_registered"
+              :loading="workingId === row.id"
+              @update:model-value="(value: string | number | boolean) => toggleVat(row, !!value)"
+            />
+          </template>
         </el-table-column>
         <el-table-column label="Status" width="110">
           <template #default="{ row }">

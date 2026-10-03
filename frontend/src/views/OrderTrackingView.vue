@@ -349,8 +349,8 @@ onMounted(async () => {
             <span>Discount</span>
             <span>-{{ formatPrice(order.discount) }}</span>
           </div>
-          <div class="totals-row">
-            <span>Tax</span>
+          <div v-if="order.tax" class="totals-row">
+            <span>Includes VAT (10%)</span>
             <span>{{ formatPrice(order.tax) }}</span>
           </div>
 

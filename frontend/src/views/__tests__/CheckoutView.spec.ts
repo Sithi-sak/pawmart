@@ -41,8 +41,15 @@ vi.mock('@/stores/cart', () => ({
     get total() {
       return this.subtotal - this.discount
     },
+    get activeStoreId() {
+      return mockCartItems[0]?.storeId ?? null
+    },
     clear: cartClearMock,
   }),
+}))
+
+vi.mock('@/lib/stores', () => ({
+  fetchStoreVatRegistered: vi.fn().mockResolvedValue(false),
 }))
 
 vi.mock('@/stores/auth', () => ({

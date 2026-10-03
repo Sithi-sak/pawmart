@@ -229,6 +229,7 @@ export const useCartStore = defineStore('cart', () => {
     subtotal,
     discount,
     total,
+    activeStoreId,
     activeStoreName,
     conflictsWithCart,
     addItem,
